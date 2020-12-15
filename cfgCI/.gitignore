@@ -57,3 +57,5 @@ slave
 tools
 utils
 zmq
+two_body_rdm
+cfgCI
