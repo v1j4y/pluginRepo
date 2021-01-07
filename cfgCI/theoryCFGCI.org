@@ -1,0 +1,79 @@
+# -*- mode:org -*-
+#+TITLE: Theory CFGCI
+#+AUTHOR: Vijay Gopal Chilkuri
+#+EMAIL: vijay.gopal.c@gmail.com
+#+OPTIONS: toc:t
+#+LATEX_CLASS: article
+#+LATEX_HEADER: \usepackage{tabularx}
+#+LATEX_HEADER: \usepackage{braket}
+#+LATEX_HEADER: \usepackage{minted}
+
+* Introduction
+
+There are three main aspects while using configuration based representation
+
+* Algorithms
+
+** Calculate the orthogonalization matrix
+
+The orthogonalization matrix gives the orthonormalized vectors
+in bonded-function (or determinant) basis which are eigenfunctions
+of \( S^2 \) c.f. \( \mathbf{O}_{i}\) matrices.
+
+#+name: getOrthoMatrix
+#+begin_src c
+void getOrthoMatrix(int *cfg, Matrix &orthoMat);
+#+end_src
+
+** Make the prototype matrices
+
+jThe prototype matrices give the matrix-elements (MEs) for a given type
+of excitation \(p->q\) of a specific type between two CFGs \(I,J\).
+
+These matrices are independent of the MOs and only depend on the total number of
+electrons \(nel\), total number of orbitals \(norb\), and the total spin \(S\).
+
+#+name: makePrototypeMatrices
+#+begin_src c
+void makePrototypeMatrices(int nel, int norb, double spin);
+#+end_src
+
+** Calculate the Operator MEs
+
+The operator matrix-elements are calculated using the bonded-function (or
+determinant) basis and are called \( A^{pq}_{IK} \), where \(p,q\) are the two
+molecular orbital indices and \(I,K\) are the two CFGs.
+
+Note that this function simply returns the value from a prototype lookup table
+which contains the pretabulated values for a given \(p,q\) excitation of a
+specified type which is one of the four:
+
+1. SOMO \(->\) VMO
+2. SOMO \(->\) SOMO
+3. DOMO \(->\) VMO
+4. DOMO \(->\) SOMO
+
+#+name: getOneElOperatorMatrix
+#+begin_src c
+void getOneElOperatorMatrix(int *cfgI, int *cfgK);
+#+end_src
+
+** Sigma-Vector I
+
+The one-electron part \( \sum_{pq} \tilde{h}_{pq} <\Psi|\hat{E}_{pq}|\Psi>\).
+
+** Sigma-Vector II
+
+The two-electron part \(\frac{1}{2} \sum_{pq,rs} g(pq,rs) <\Psi|\hat{E}_{pq}\hat{E}_{rs}|\Psi> \)
+
+*** Function to calculate Sigma-Vector
+
+#+name: calcSigmaFunction
+#+begin_src c :results output
+<<getOrthoMatrix>>
+void calcSigma(double *coeff, double *Gpqrs);
+#+end_src
+
+* Bibliography
+
+bibliography:biblio.org
