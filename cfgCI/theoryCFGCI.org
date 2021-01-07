@@ -14,6 +14,24 @@ There are three main aspects while using configuration based representation
 
 * Algorithms
 
+** Print all CFGs
+
+The only input required is the selected list of CFGs at a given CIPSI iteration \( I \).
+
+#+name: printCFGlist
+#+begin_src c :main no :tangle cfgCI_utils.c
+#include <stdio.h>
+
+void printcfglist_(int *inpcfgs, int *inpNcfgs){
+  int *cfglist =  inpcfgs;
+  int Ncfgs    = *inpNcfgs;
+  for(int i=0;i < Ncfgs;i++)
+    printf("%d> %d\n",i,cfglist[i]);
+
+}
+#+end_src
+
+
 ** Calculate the orthogonalization matrix
 
 The orthogonalization matrix gives the orthonormalized vectors
