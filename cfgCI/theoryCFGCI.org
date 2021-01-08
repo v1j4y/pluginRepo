@@ -22,12 +22,14 @@ The only input required is the selected list of CFGs at a given CIPSI iteration 
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdio.h>
 
-void printcfglist_(int *inpcfgs, int *inpNcfgs){
+void printcfglist_(int *inpcfgs, int *inpNint, int *inpNcfgs){
   int *cfglist =  inpcfgs;
   int Ncfgs    = *inpNcfgs;
-  for(int i=0;i < Ncfgs;i++)
-    printf("%d> %d\n",i,cfglist[i]);
-
+  int N_int    = *inpNint;
+  printf("In printcfglist\n");
+  printf("Ncfgs = %d Nint=%d\n",Ncfgs, N_int);
+  printf(" -- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
+  printf(" -- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(2) + 0], cfglist[0*(2*Ncfgs) + 1*(2) + 0]);
 }
 #+end_src
 
