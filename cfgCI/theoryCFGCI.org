@@ -14,6 +14,26 @@ There are three main aspects while using configuration based representation
 
 * Algorithms
 
+** Small function to convert int to bit
+
+Convert input CFG to an array of bits containing 0's and 1's representing
+the position of SOMOs and DOMOs.
+
+#+name: printCFGlist
+#+begin_src c :main no :tangle cfgCI_utils.c
+void int_to_bin_digit(unsigned int in, int count, int* out)
+{
+    /* assert: count <= sizeof(int)*CHAR_BIT */
+    unsigned int mask = 1U << (count-1);
+    int i;
+    for (i = 0; i < count; i++) {
+        out[i] = (in & mask) ? 1 : 0;
+        in <<= 1;
+    }
+}
+#+end_src
+
+
 ** Print all CFGs
 
 The only input required is the selected list of CFGs at a given CIPSI iteration \( I \).
@@ -27,11 +47,19 @@ void printcfglist_(int *inpcfgs, int *inpNint, int *inpNcfgs){
   int Ncfgs    = *inpNcfgs;
   int N_int    = *inpNint;
   int stepInt  = sizeof(int);
+  int digit[18];
+  int cfg;
   printf("In printcfglist\n");
   printf("Ncfgs = %d Nint=%d size=%d\n",Ncfgs, N_int,stepInt);
   printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
-  for(int i = 2; i < 28; i+=stepInt)
-      printf("%d>1> %d \t %d\n",i,cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + i],cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + i]);
+  for(int i = 2; i < 28; i+=stepInt){
+      cfg = cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + i];
+      printf("%d> %d\n",i,cfg);
+      int_to_bin_digit(cfg,18,digit);
+      for(int j=0;j<18:j++)
+          printf("%d ",digit[j]);
+      printf("\n");
+  }
 }
 #+end_src
 
@@ -101,11 +129,6 @@ void calculateislands_(int *inpbfvr, int *inpbfvs, int *inpNMO, double *me){
   int NMO      = *inpNMO;
   int N_int    = *inpNint;
   int stepInt  = sizeof(int);
-  printf("In printcfglist\n");
-  printf("Ncfgs = %d Nint=%d size=%d\n",Ncfgs, N_int,stepInt);
-  printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
-  for(int i = 2; i < 28; i+=stepInt)
-      printf("%d>1> %d \t %d\n",i,cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + i],cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + i]);
 }
 #+end_src
 
