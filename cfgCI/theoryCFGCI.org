@@ -39,7 +39,7 @@ void printcfglist_(int *inpcfgs, int *inpNint, int *inpNcfgs){
 ** Calculate the orthogonalization matrix
 
 The orthogonalization matrix gives the orthonormalized vectors
-in bonded-function (or determinant) basis which are eigenfunctions
+in bonded-function (BF) (or determinant) basis which are eigenfunctions
 of \( S^2 \) c.f. \( \mathbf{O}_{i}\) matrices.
 
 #+name: getOrthoMatrix
@@ -60,6 +60,83 @@ electrons \(nel\), total number of orbitals \(norb\), and the total spin \(S\).
 void makePrototypeMatrices(int nel, int norb, double spin);
 #+end_src
 
+** Functions required for calculating MEs
+
+*** Calculate Overlap between two BFs
+
+The overlap between two bonded functions is based on the derivations
+by Cooper and McWeeney[?] and Sutcliffe[?]. They are based on Rumer
+diagrams. Here, we shall briefly outline the algorithm for the
+calculation of the overlap between two BFs.
+
+In order to calculate the Overlap (\( S \)) between two bonded functions
+\( V_r \) and \(V_s\), there are two steps which are as follows:
+
+1. Permutations of the strings to bring \(V_r, V_s\) into maximum overlap
+   configuration. This incurs a phase (\(-1\) for each permutation) \((-1)^r\).
+
+2. The calculation of the number of Islands (\(i\)), the number of Open chains (\(O\)),
+   and the number of E chains.
+
+The description of the three types of diagrams is described below:
+
+**** Islands
+
+Once the two BFs are brought into maximum overlap, the number of islands can be
+calculated. An island is defined as the total number of closed polygons formed
+by joining the common indices in \(V_r\) and \(V_s\). The pairs in each BF
+\(V_r\) and \(V_s\) are also joind by an arc. Each island has two primitive
+spin-functions. A primitive spin-function is defined as a product of
+\(\alpha-\beta\) pair in the two BFs. The two primitives originate from
+assigning \(\alpha\) or \(\beta\) to the head and tail of the closed polygon or
+vice-versa.
+
+#+name: calculateIslands
+#+begin_src c :main no :tangle cfgCI_utils.c
+#include <stdio.h>
+
+void calculateislands_(int *inpbfvr, int *inpbfvs, int *inpNMO, double *me){
+  int *bfinp =  inpbfvr;
+  int *bfinp =  inpbfvs;
+  int NMO      = *inpNMO;
+  int N_int    = *inpNint;
+  int stepInt  = sizeof(int);
+  printf("In printcfglist\n");
+  printf("Ncfgs = %d Nint=%d size=%d\n",Ncfgs, N_int,stepInt);
+  printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
+  for(int i = 2; i < 28; i+=stepInt)
+      printf("%d>1> %d \t %d\n",i,cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + i],cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + i]);
+}
+#+end_src
+
+
+**** Open chains (O)
+
+The open chains are constituted of open polygons which have an odd number of
+sides. These are made up of BFs which consist of un-paired spins such as
+\(2^{-1/2} \left[ \alpha(i)\beta(j) + \alpha(j)\beta(i) \right]\alpha(k) \) for
+\(V_r\) and \(\alpha(i)-2^{-1/2} \left[ \alpha(j)\beta(k) + \alpha(k)\beta(j)
+\right]\) for \(V_s\) respectively. These contribute a factor of \(1\) to the
+MEs.
+
+**** E type chains
+
+The E type chains originate from BFs which contain different indices which are
+mutually exclusive. The presence of mutually exclusive indices results in a
+vanishing ME between such BFs.
+
+
+Finally, the BFs contribute to the ME as follows:
+
+\(
+\braket{V_r | V_s} = \delta_{SS'}\delta_{E} 2^{i-s}(-1)^r
+\)
+
+Where \( S \) and \( S' \) are the spins for the \(V_r\) and \(V_s\) respectively and \(s\) represents the total number of pairs in \(V_r\) and \(V_s\). The total number of pairs are the same in \(V_r\) and \(V_s\) if they belong to the same spin subspace.
+
+
+
+
 ** Calculate the Operator MEs
 
 The operator matrix-elements are calculated using the bonded-function (or
@@ -74,6 +151,7 @@ specified type which is one of the four:
 2. SOMO \(->\) SOMO
 3. DOMO \(->\) VMO
 4. DOMO \(->\) SOMO
+
 
 #+name: getOneElOperatorMatrix
 #+begin_src c
