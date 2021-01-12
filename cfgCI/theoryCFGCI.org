@@ -56,7 +56,7 @@ void printcfglist_(int *inpcfgs, int *inpNint, int *inpNcfgs){
       cfg = cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + i];
       printf("%d> %d\n",i,cfg);
       int_to_bin_digit(cfg,18,digit);
-      for(int j=0;j<18:j++)
+      for(int j=0;j<18;j++)
           printf("%d ",digit[j]);
       printf("\n");
   }
@@ -124,10 +124,9 @@ vice-versa.
 #include <stdio.h>
 
 void calculateislands_(int *inpbfvr, int *inpbfvs, int *inpNMO, double *me){
-  int *bfinp =  inpbfvr;
-  int *bfinp =  inpbfvs;
+  int *bfvr  =  inpbfvr;
+  int *bfvs  =  inpbfvs;
   int NMO      = *inpNMO;
-  int N_int    = *inpNint;
   int stepInt  = sizeof(int);
 }
 #+end_src
