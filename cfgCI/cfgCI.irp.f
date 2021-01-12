@@ -4,9 +4,8 @@ program cfgCI
 ! TODO : Put the documentation of the program here
   END_DOC
   character*32 cc
+  integer i
   print *, N_int
-  print *, psi_configuration(1,1,:200)
-  print *, psi_configuration(1,2,:200)
   call debug_det(psi_det(1,1,1),N_int)
   call debug_det(psi_det(1,1,2),N_int)
   call debug_spindet(psi_det(1,1,1),N_int)
@@ -14,6 +13,9 @@ program cfgCI
   print *,N_int
   cc = "Hello"
   print *,psi_det_size
-  call printCFGlist(cfg_seniority_index,N_int,psi_det_size)
+  do i = 1, 15
+      print *, psi_configuration(1,1,i), psi_configuration(1,2,i)
+  end do
+  call printCFGlist(psi_configuration,N_int,psi_det_size)
   print *, 'Hello world'
 end

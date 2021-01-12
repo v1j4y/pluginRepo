@@ -26,10 +26,12 @@ void printcfglist_(int *inpcfgs, int *inpNint, int *inpNcfgs){
   int *cfglist =  inpcfgs;
   int Ncfgs    = *inpNcfgs;
   int N_int    = *inpNint;
+  int stepInt  = sizeof(int);
   printf("In printcfglist\n");
-  printf("Ncfgs = %d Nint=%d\n",Ncfgs, N_int);
-  printf(" -- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
-  printf(" -- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(2) + 0], cfglist[0*(2*Ncfgs) + 1*(2) + 0]);
+  printf("Ncfgs = %d Nint=%d size=%d\n",Ncfgs, N_int,stepInt);
+  printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
+  for(int i = 2; i < 28; i+=stepInt)
+      printf("%d>1> %d \t %d\n",i,cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + i],cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + i]);
 }
 #+end_src
 
