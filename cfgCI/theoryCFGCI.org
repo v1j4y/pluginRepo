@@ -21,7 +21,7 @@ the position of SOMOs and DOMOs.
 
 #+name: printCFGlist
 #+begin_src c :main no :tangle cfgCI_utils.c
-void int_to_bin_digit(unsigned int in, int count, int* out)
+void int_to_bin_digit(int64_t in, int count, int* out)
 {
     /* assert: count <= sizeof(int)*CHAR_BIT */
     unsigned int mask = 1U << (count-1);
@@ -41,14 +41,16 @@ The only input required is the selected list of CFGs at a given CIPSI iteration 
 #+name: printCFGlist
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdio.h>
+#include <stdint.h>
 
-void printcfglist_(int *inpcfgs, int *inpNint, int *inpNcfgs){
+void printcfglist_(int64_t *inpcfgs, int64_t *inpNint, int64_t *inpNcfgs){
   int *cfglist =  inpcfgs;
   int Ncfgs    = *inpNcfgs;
   int N_int    = *inpNint;
   int stepInt  = sizeof(int);
+  stepInt  = 1;
   int digit[18];
-  int cfg;
+  int64_t cfg;
   printf("In printcfglist\n");
   printf("Ncfgs = %d Nint=%d size=%d\n",Ncfgs, N_int,stepInt);
   printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
@@ -61,6 +63,62 @@ void printcfglist_(int *inpcfgs, int *inpNint, int *inpNcfgs){
       printf("\n");
   }
 }
+#+end_src
+
+** Generate BFs for a given number of SOMOs
+
+A BF is represented as an integer. The bit representation of the integer (0 or 1) indicates the pairs. The BFs can be generated using the following rules:
+
+1. A pair is represented by (0 1) with 0 indicating the left most index.
+
+2. The right most 0 is linked with the left most 1.
+
+This code generates all the bonded functions for a given number of SOMOs.
+
+#+name: genBFs
+#+begin_src python
+def recgraph(rumerbfs,nconf,posj,nleft,countidx,posj,ms,n):
+    ifenter = 0
+    if posj != 2*nleft:
+        for i in range(posj,2*nleft-1,-1):
+            ifenter = 1
+            nzeros = 0
+            nones = 0
+            for k in range(0,i):
+                if rumerbfs[countidx,k]==0:
+                    nzeros += 1
+                else:
+                    nones += 1
+            if nzeros > nones and countidx+1 <= nconf:
+                rumerbfs[countidx,i-1]=1
+                nleft -= 1
+            if nleft > 0 and countidx+1 <= nconf:
+                recgraph(i-1,nleft,countidx)
+                nleft += 1
+                if countidx+1 > nconf:
+                    break
+                rumerbfs[countidx,i-1]=0
+            else:
+                countidx+=1
+                if countidx+1 <= nconf:
+                    for k in range(0,n):
+                        rumerbfs[countidx,k]=bitset[countidx-1,k]
+                    rumerbfs[countidx,i-1]=0
+                    nleft += 1
+    if ifenter == 0:
+        if nleft == 0:
+            countidx+=1
+        elif nleft == ms:
+            for i in range(0,nconf):
+                rumerbfs[i,posj-1]=1
+            posj -= 1
+            if countidx + 1 < nconf:
+                recgraph(posj,nleft-1,countidx)
+        elif nleft < ms:
+            rumerbfs[countidx,posj-1]=1
+            if countidx + 1 < nconf:
+                recgraph(posj-1,nleft-1,countidx)
+    return
 #+end_src
 
 
