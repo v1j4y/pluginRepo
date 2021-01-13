@@ -14,13 +14,15 @@ There are three main aspects while using configuration based representation
 
 * Algorithms
 
-** Small function to convert int to bit
+*** Small function to convert int to bit
 
 Convert input CFG to an array of bits containing 0's and 1's representing
 the position of SOMOs and DOMOs.
 
 #+name: printCFGlist
 #+begin_src c :main no :tangle cfgCI_utils.c
+#include <stdint.h>
+
 void int_to_bin_digit(int64_t in, int count, int* out)
 {
     /* assert: count <= sizeof(int)*CHAR_BIT */
@@ -34,34 +36,78 @@ void int_to_bin_digit(int64_t in, int count, int* out)
 #+end_src
 
 
-** Print all CFGs
+*** Get number of CSFs
+
+#+name: getncsfs
+#+begin_src c :main no :tangle cfgCI_utils.c
+#include <stdio.h>
+#include <stdint.h>
+#include <math.h>
+
+inline double logbinom(double n, double k) {
+    return lgamma(n+1)-lgamma(n-k+1)-lgamma(k+1);
+}
+inline double binom(double n, double k) {
+    return exp(logbinom(n,k));
+}
+
+void getncsfs(int *inpnsomo, int *inpms, int *outncsfs){
+    int nsomo = *inpnsomo;
+    int ms = *inpms;
+    int nparcoupl = (nsomo + ms)/2;
+    *outncsfs = binom(nsomo, nparcoupl);
+}
+#+end_src
+
+** TODO [2/2] Print all CFGs
 
 The only input required is the selected list of CFGs at a given CIPSI iteration \( I \).
+
+- [X] Fortran module
+
+  #+begin_src fortran :main no :tangle cfgCI_interface.f90
+      module cfunctions
+      use, intrinsic :: ISO_C_BINDING
+      interface
+         subroutine printcfglist(nint, ncfgs, cfglist) bind(C, name='printCFGList')
+         import C_INT32_T, C_INT64_T
+         integer(kind=C_INT32_T) :: nint
+         integer(kind=C_INT32_T) :: ncfgs
+         integer(kind=C_INT64_T) :: cfglist(nint,2,ncfgs)
+         end subroutine printcfglist
+      end interface
+      end module cfunctions
+  #+end_src
+
+
+- [X] C function
 
 #+name: printCFGlist
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdio.h>
 #include <stdint.h>
 
-void printcfglist_(int64_t *inpcfgs, int64_t *inpNint, int64_t *inpNcfgs){
-  int *cfglist =  inpcfgs;
-  int Ncfgs    = *inpNcfgs;
-  int N_int    = *inpNint;
-  int stepInt  = sizeof(int);
-  stepInt  = 1;
-  int digit[18];
-  int64_t cfg;
-  printf("In printcfglist\n");
-  printf("Ncfgs = %d Nint=%d size=%d\n",Ncfgs, N_int,stepInt);
-  printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
-  for(int i = 2; i < 28; i+=stepInt){
-      cfg = cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + i];
-      printf("%d> %d\n",i,cfg);
-      int_to_bin_digit(cfg,18,digit);
-      for(int j=0;j<18;j++)
-          printf("%d ",digit[j]);
-      printf("\n");
-  }
+void printCFGList(int32_t *inpNint, int32_t *inpNcfgs, int64_t *cfglist){
+    int Ncfgs    = *inpNcfgs;
+    int N_int    = *inpNint;
+    int digit[18];
+    int64_t cfg1,cfg2;
+    int nsomo=4;
+    int ms=0;
+    int ncsfs=0;
+    printf("In 64 printcfglist\n");
+    printf("Ncfgs = %d Nint=%d\n",Ncfgs, N_int);
+    printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
+    for(int i = 0; i < 15; i++){
+        cfg1 = cfglist[1 + i*2];
+        printf("%d> domo=%d somo=%d\n",i,cfg1,cfg2);
+        int_to_bin_digit(cfg1,18,digit);
+        for(int j=0;j<18;j++)
+            printf("%d ",digit[j]);
+        printf("\n");
+    }
+    getncsfs(&nsomo,&ms,&ncsfs);
+    printf("Nsomos = %d\n",ncsfs);
 }
 #+end_src
 

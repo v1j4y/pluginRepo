@@ -1,4 +1,5 @@
 program cfgCI
+  use cfunctions
   implicit none
   BEGIN_DOC
 ! TODO : Put the documentation of the program here
@@ -16,6 +17,6 @@ program cfgCI
   do i = 1, 15
       print *, psi_configuration(1,1,i), psi_configuration(1,2,i)
   end do
-  call printCFGlist(psi_configuration,N_int,psi_det_size)
+  call printCFGlist(N_int, psi_det_size, psi_configuration)
   print *, 'Hello world'
 end
