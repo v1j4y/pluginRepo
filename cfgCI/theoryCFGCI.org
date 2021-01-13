@@ -122,8 +122,72 @@ A BF is represented as an integer. The bit representation of the integer (0 or 1
 This code generates all the bonded functions for a given number of SOMOs.
 
 #+name: genBFs
+#+begin_src c
+
+void recgraph(int64_t *rumerbfs, int64_t nconf,int64_t posj,int64_t nleft,int64_t countidx,int64_t ms,int64_t n){
+    int ifenter = 0;
+    if(posj != 2*nleft){
+        for(int i = posj; i < 2*nleft-1; i = i-1){
+            ifenter = 1;
+            int nzeros = 0;
+            int nones = 0;
+            for(int k = 0; k < i; k++){
+                if(rumerbfs[countidx,k]==0){
+                nzeros += 1;
+                }
+                else{
+                    nones += 1;
+                }
+            }
+            if(nzeros > nones and countidx+1 <= nconf){
+                rumerbfs[countidx,i-1]=1;
+                nleft -= 1;
+            }
+            if(nleft > 0 and countidx+1 <= nconf){
+                recgraph(i-1,nleft,countidx);
+                nleft += 1;
+                if(countidx+1 > nconf){
+                    break;
+                }
+                rumerbfs[countidx,i-1]=0;
+            }
+            else{
+                countidx+=1
+                    if(countidx+1 <= nconf){
+                        for(int k = 0; k < n; k++)
+                            rumerbfs[countidx,k]=rumerbfs[countidx-1,k];
+                        rumerbfs[countidx,i-1]=0;
+                        nleft += 1;
+                    }
+            }
+        }
+    }
+    if(ifenter == 0){
+        if(nleft == 0){
+            countidx+=1;
+        }
+        else if( nleft == ms){
+            for(int i = 0; i < nconf; i++)
+                rumerbfs[i,posj-1]=1;
+            posj -= 1;
+            if(countidx + 1 < nconf){
+                recgraph(posj,nleft-1,countidx);
+            }
+        }
+        else if(nleft < ms){
+            rumerbfs[countidx,posj-1]=1;
+            if(countidx + 1 < nconf){
+                recgraph(posj-1,nleft-1,countidx);
+            }
+        }
+    }
+    return;
+}
+#+end_src
+
+#+name: genBFspython
 #+begin_src python
-def recgraph(rumerbfs,nconf,posj,nleft,countidx,posj,ms,n):
+def recgraph(rumerbfs,nconf,posj,nleft,countidx,ms,n):
     ifenter = 0
     if posj != 2*nleft:
         for i in range(posj,2*nleft-1,-1):
@@ -148,7 +212,7 @@ def recgraph(rumerbfs,nconf,posj,nleft,countidx,posj,ms,n):
                 countidx+=1
                 if countidx+1 <= nconf:
                     for k in range(0,n):
-                        rumerbfs[countidx,k]=bitset[countidx-1,k]
+                        rumerbfs[countidx,k]=rumerbfs[countidx-1,k]
                     rumerbfs[countidx,i-1]=0
                     nleft += 1
     if ifenter == 0:
