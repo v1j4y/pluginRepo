@@ -126,7 +126,7 @@ This code generates all the bonded functions for a given number of SOMOs.
 Here we describe how we generate the Bonded functions as shown in the example below.
 
 #+begin_example
-SOMO: [ 1 1 1 1 1]
+SOMO: [ 1 1 1 1 1] Ms = 1
 BF list:
 [[0 0 0 1 1]
  [0 0 1 0 1]
@@ -154,6 +154,7 @@ struct bin_node {
     Node *C1;
     Node *PREV;
     int addr;
+    int cpl;
     int iSOMO;
 };
 
@@ -178,6 +179,12 @@ void buildTree(Tree *bftree, Node *inode, int isomo, int izeros, int icpl, int N
 
 void printTreeDriver(Tree *bftree, int NSOMOMax);
 void printTree(Node *bftree, int isomo, int NSOMOMax, int *vecBF);
+
+void getIthBF(Node *node, int isomo, bool foundBF, int NSOMOMax, int getaddr, int *vecBF);
+void getIthBFDriver(Tree *bftree, int NSOMOMax, int getaddr, int *vecBF);
+
+void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1);
+void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands);
 #+end_src
 
 #+name: treefuncmain
@@ -208,7 +215,7 @@ void buildTree(Tree *bftree,
     // Call 0 branch
     if((inode->C0) == -1 && izeros+1 <= zeromax){
         (inode->C0) = malloc(sizeof(Node));
-        *(inode->C0) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = -1, .iSOMO = -1 };
+        ,*(inode->C0) = (Node){ .C0 = -1, .C1 = -1, .PREV = inode, .addr = -1, .cpl = 0, .iSOMO = isomo };
         buildTree(bftree, inode->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
     }
     else buildTree(bftree, inode->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
@@ -216,7 +223,7 @@ void buildTree(Tree *bftree,
     // Call 1 branch
     if((inode->C1) == -1 && icpl-1 >= 0){
         (inode->C1) = malloc(sizeof(Node));
-        *(inode->C1) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = -1, .iSOMO = -1 };
+        ,*(inode->C1) = (Node){ .C0 = -1, .C1 = -1, .PREV = inode, .addr = -1, .cpl = 1, .iSOMO = isomo };
         buildTree(bftree, inode->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
     }
     else buildTree(bftree, inode->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
@@ -271,12 +278,51 @@ void printTreeDriver(Tree *bftree, int NSOMOMax){
         vecBF[i]=0;
     printTree(&(bftree->rootNode), isomo, NSOMOMax, vecBF);
 }
+
+void getIthBF(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, int *vecBF){
+    // Exit condition
+    if(foundBF) return;
+    if(isomo > NSOMOMax) return;
+    if(inode == -1) return;
+
+    if(isomo == NSOMOMax){
+        if(inode->addr == getaddr){
+            for(int i = NSOMOMax-1; i > -1; i--){
+                vecBF[i] = inode->cpl;
+                inode = inode->PREV;
+            }
+            foundBF = true;
+            return;
+        }
+    }
+    //printf("%d | %d (%d)\n",isomo,sizeof(inode),inode->C1);
+
+
+    // Recurse to C0
+    if(inode->C0 != -1){
+        getIthBF(inode->C0, isomo+1, foundBF, NSOMOMax, getaddr, vecBF);
+    }
+    // Recurse to C1
+    if(inode->C1 != -1){
+        getIthBF(inode->C1, isomo+1, foundBF, NSOMOMax, getaddr, vecBF);
+    }
+
+    return;
+}
+
+void getIthBFDriver(Tree *bftree, int NSOMOMax, int getaddr, int *vecBF){
+    int isomo = 0;
+    bool foundBF = false;
+    getIthBF(&(bftree->rootNode), isomo, foundBF, NSOMOMax, getaddr, vecBF);
+}
 #+end_src
 
 - [X] Test Build BF
 
 #+begin_src C :main no :noweb yes :tangle main.c
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 <<nodedef>>
 
@@ -284,28 +330,98 @@ void printTreeDriver(Tree *bftree, int NSOMOMax){
 
 <<treefuncmain>>
 
+<<indexlist>>
+
+<<calculateislands>>
+
 void main(){
-    int NSOMO = 10;
+    int NSOMO = 8;
     int MS = 0;
     int NBF=0;
     Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
-    bftree.rootNode = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .iSOMO = -1};
+    bftree.rootNode = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     buildTreeDriver(&bftree, NSOMO, MS, &NBF);
 
     printTreeDriver(&bftree, NSOMO);
 
-    printf("NBF = %d\n",NBF);
+    int *BF1 = malloc(NSOMO * sizeof(int));
+    int *BF2 = malloc(NSOMO * sizeof(int));
 
+    int getaddr = 9;
+    getIthBFDriver(&bftree, NSOMO, getaddr, BF1);
+
+    printf("add : %d > ",getaddr);
+    for(int i=0;i<NSOMO;i++)
+        printf("%d ",BF1[i]);
+    printf("\n");
+
+    getaddr = 10;
+    getIthBFDriver(&bftree, NSOMO, getaddr, BF2);
+
+    printf("add : %d > ",getaddr);
+    for(int i=0;i<NSOMO;i++)
+        printf("%d ",BF2[i]);
+    printf("\n");
+
+    int *IdxListBF1 = malloc(NSOMO * sizeof(int));
+    getBFIndexList(NSOMO, BF1, IdxListBF1);
+
+    printf("add : %d > ",getaddr);
+    for(int i=0;i<NSOMO;i++)
+        printf("%d ",IdxListBF1[i]);
+    printf("\n");
+
+    getBFIndexList(NSOMO, BF2, IdxListBF1);
+
+    printf("add : %d > ",getaddr);
+    for(int i=0;i<NSOMO;i++)
+        printf("%d ",IdxListBF1[i]);
+    printf("\n");
+
+    int *nislands = malloc(2  * sizeof(int));
+
+    getIslands(NSOMO, BF1, BF2, nislands);
+    //printf("NBF = %d\n",NBF);
+
+
+    // Garbage collection
+    free(BF1);
+    free(BF2);
+    free(IdxListBF1);
+    free(nislands);
 
     return;
 }
 #+end_src
 
 #+RESULTS:
-
-#+RESULTS:
-
+| add | :  |  0 | > | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 1 |
+| add | :  |  1 | > | 0 | 0 | 0 | 1 | 0 | 1 | 1 | 1 |
+| add | :  |  2 | > | 0 | 0 | 0 | 1 | 1 | 0 | 1 | 1 |
+| add | :  |  3 | > | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 1 |
+| add | :  |  4 | > | 0 | 0 | 1 | 0 | 0 | 1 | 1 | 1 |
+| add | :  |  5 | > | 0 | 0 | 1 | 0 | 1 | 0 | 1 | 1 |
+| add | :  |  6 | > | 0 | 0 | 1 | 0 | 1 | 1 | 0 | 1 |
+| add | :  |  7 | > | 0 | 0 | 1 | 1 | 0 | 0 | 1 | 1 |
+| add | :  |  8 | > | 0 | 0 | 1 | 1 | 0 | 1 | 0 | 1 |
+| add | :  |  9 | > | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 |
+| add | :  | 10 | > | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 |
+| add | :  | 11 | > | 0 | 1 | 0 | 0 | 1 | 1 | 0 | 1 |
+| add | :  | 12 | > | 0 | 1 | 0 | 1 | 0 | 0 | 1 | 1 |
+| add | :  | 13 | > | 0 | 1 | 0 | 1 | 0 | 1 | 0 | 1 |
+| add | :  |  9 | > | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 |
+| add | :  | 10 | > | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 |
+| add | :  | 10 | > | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 |
+| add | :  | 10 | > | 1 | 0 | 7 | 4 | 3 | 6 | 5 | 2 |
+| 0   | -> |  0 |   |   |   |   |   |   |   |   |   |
+| 1   | -> |  1 |   |   |   |   |   |   |   |   |   |
+| 0   | -> |  0 |   |   |   |   |   |   |   |   |   |
+| 0   | -> |  0 |   |   |   |   |   |   |   |   |   |
+| 0   | -> |  0 |   |   |   |   |   |   |   |   |   |
+| 1   | -> |  1 |   |   |   |   |   |   |   |   |   |
+| 1   | -> |  1 |   |   |   |   |   |   |   |   |   |
+| 1   | -> |  1 |   |   |   |   |   |   |   |   |   |
 
 
 ** Calculate the orthogonalization matrix
@@ -314,27 +430,17 @@ The orthogonalization matrix gives the orthonormalized vectors
 in bonded-function (BF) (or determinant) basis which are eigenfunctions
 of \( S^2 \) c.f. \( \mathbf{O}_{i}\) matrices.
 
-#+name: getOrthoMatrix
-#+begin_src c
-void getOrthoMatrix(int *cfg, Matrix &orthoMat);
-#+end_src
-
-** Make the prototype matrices
-
-jThe prototype matrices give the matrix-elements (MEs) for a given type
-of excitation \(p->q\) of a specific type between two CFGs \(I,J\).
-
-These matrices are independent of the MOs and only depend on the total number of
-electrons \(nel\), total number of orbitals \(norb\), and the total spin \(S\).
-
-#+name: makePrototypeMatrices
-#+begin_src c
-void makePrototypeMatrices(int nel, int norb, double spin);
-#+end_src
-
-** Functions required for calculating MEs
-
 *** Calculate Overlap between two BFs
+
+In our representation, the BFs are represented as a seqence of \(0,1\)
+as shown below:
+
+#+begin_example
+BF1 : [0 0 0 1 1] Ms = 1
+      (1 (1 (2 3) 4)
+#+end_example
+
+The second representation is only used to derive the overlap/matrix-elements.
 
 The overlap between two bonded functions is based on the derivations
 by Cooper and McWeeney[?] and Sutcliffe[?]. They are based on Rumer
@@ -352,7 +458,7 @@ In order to calculate the Overlap (\( S \)) between two bonded functions
 
 The description of the three types of diagrams is described below:
 
-**** Islands
+**** TODO [1/2] Islands
 
 Once the two BFs are brought into maximum overlap, the number of islands can be
 calculated. An island is defined as the total number of closed polygons formed
@@ -363,18 +469,132 @@ spin-functions. A primitive spin-function is defined as a product of
 assigning \(\alpha\) or \(\beta\) to the head and tail of the closed polygon or
 vice-versa.
 
+#+begin_example
+      ------------------------------------
+      |    --------------------------    |
+      |    |    ----------------    |    |
+      |    |    |    ------    |    |    |
+      |    |    |    |   \ /  \ /  \ /  \ /
+BF1 : 0    0    0    0    1    1    1    1
+      |    |    |    |    |    |    |    |
+BF2 : 0    1    0    0    0    1    1    1
+      |   / \   |    |    |   / \  / \  / \
+      ------    |    |    ------    |    |
+                |    ----------------    |
+                --------------------------
+#+end_example
+
+- [X] Get Index list
+
+#+name: indexlist
+#+begin_src c :main no :tangle cfgCI_utils.c
+#include <stdio.h>
+
+void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1){
+    int Iidx;
+    int Jidx;
+    int BFcopy[NSOMO];
+
+    int dictidx[2];
+    dictidx[0] = -1;
+    dictidx[1] =  1;
+
+    for(int i = 0; i < NSOMO; i++)
+        BFcopy[i] = BF1[i];
+
+    for(int i = 0; i < NSOMO; i++){
+        Iidx = i;
+        if(BFcopy[i] == 0){
+            int countN1=0;
+            for(int j = i+1; j < NSOMO; j++){
+                Jidx = j;
+                countN1 = countN1 + dictidx[BFcopy[j]];
+                if(countN1 > 0){
+                    break;
+                }
+            }
+            BFcopy[Iidx] = -1;
+            BFcopy[Jidx] = -1;
+            IdxListBF1[Jidx] = Iidx;
+            IdxListBF1[Iidx] = Jidx;
+        }
+    }
+
+}
+#+end_src
+
+- [ ] Get Islands
+
+
 #+name: calculateIslands
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdio.h>
 
-void calculateislands_(int *inpbfvr, int *inpbfvs, int *inpNMO, double *me){
-  int *bfvr  =  inpbfvr;
-  int *bfvs  =  inpbfvs;
-  int NMO      = *inpNMO;
-  int stepInt  = sizeof(int);
+void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands){
+
+    // Get BF ids
+    int *IdxListBF1 = malloc(NSOMO * sizeof(int));
+    int *IdxListBF2 = malloc(NSOMO * sizeof(int));
+
+    getBFIndexList(NSOMO, BF1, IdxListBF1);
+    getBFIndexList(NSOMO, BF2, IdxListBF2);
+
+    int maxcount=0;
+
+    int BF1copy[NSOMO];
+    for(int i = 0; i < NSOMO; i++)
+        BF1copy[i] = BF1[i];
+    int BF2copy[NSOMO];
+    for(int i = 0; i < NSOMO; i++)
+        BF2copy[i] = BF2[i];
+
+    for(int i = 0; i < NSOMO; i++){
+        int thisId = i;
+        int nextId = BF1copy[i];
+        while(BF1copy[thisId] != -1 || maxcount > 20){
+
+            maxcount++;
+
+            // First the bra
+            nextId = BF1copy[thisId];
+            BF1copy[thisId] = -1;
+            BF1copy[nextId] = -1;
+
+            // Then the ket
+            thisId = BF2[nextId];
+            BF2copy[thisId] = -1;
+            BF2copy[nextId] = -1;
+            printf("%d -> %d\n",thisId,nextId);
+        }
+    }
+
 }
 #+end_src
 
+
+**** Phase factor (r)
+
+The phase factor is calculated according to the following rule. The connecting
+lines shown in example above has a direction. Upon careful observation, one can
+observe that out of the eight SOMOs 6 are aligned i.e. both bra and ket have arrows
+or tails and 2 are misaligned. The phase \(r\) is defined as the minimum number of
+flips required to pair all indices for the bra and ket indices. In the above example
+three arrow directions have to be flipped giving \(r=3\) as shown below:
+
+#+begin_example
+      ------------------------------------
+      |    --------------------------    |
+      |    |    ----------------    |    |
+      |    |    |    ------    |    |    |
+      |   \ /   |   \ /   |   \ /   |   \ /
+BF1 : 0    0    0    0    1    1    1    1
+      |    |    |    |    |    |    |    |
+BF2 : 0    1    0    0    0    1    1    1
+      |   / \   |   / \   |   / \   |   / \
+      ------    |    |    ------    |    |
+                |    ----------------    |
+                --------------------------
+#+end_example
 
 **** Open chains (O)
 
@@ -398,9 +618,31 @@ Finally, the BFs contribute to the ME as follows:
 \braket{V_r | V_s} = \delta_{SS'}\delta_{E} 2^{i-s}(-1)^r
 \)
 
-Where \( S \) and \( S' \) are the spins for the \(V_r\) and \(V_s\) respectively and \(s\) represents the total number of pairs in \(V_r\) and \(V_s\). The total number of pairs are the same in \(V_r\) and \(V_s\) if they belong to the same spin subspace.
+Where \( S \) and \( S' \) are the spins for the \(V_r\) and \(V_s\)
+respectively and \(s\) represents the total number of pairs in \(V_r\) and
+\(V_s\). The total number of pairs are the same in \(V_r\) and \(V_s\) if they
+belong to the same spin subspace.
 
 
+#+name: getOrthoMatrix
+#+begin_src c
+void getOrthoMatrix(int *cfg, Matrix &orthoMat);
+#+end_src
+
+** Make the prototype matrices
+
+jThe prototype matrices give the matrix-elements (MEs) for a given type
+of excitation \(p->q\) of a specific type between two CFGs \(I,J\).
+
+These matrices are independent of the MOs and only depend on the total number of
+electrons \(nel\), total number of orbitals \(norb\), and the total spin \(S\).
+
+#+name: makePrototypeMatrices
+#+begin_src c
+void makePrototypeMatrices(int nel, int norb, double spin);
+#+end_src
+
+** Functions required for calculating MEs
 
 
 ** Calculate the Operator MEs
