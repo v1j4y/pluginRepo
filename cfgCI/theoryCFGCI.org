@@ -343,12 +343,12 @@ void main(){
 
     buildTreeDriver(&bftree, NSOMO, MS, &NBF);
 
-    printTreeDriver(&bftree, NSOMO);
+    //printTreeDriver(&bftree, NSOMO);
 
     int *BF1 = malloc(NSOMO * sizeof(int));
     int *BF2 = malloc(NSOMO * sizeof(int));
 
-    int getaddr = 9;
+    int getaddr = 1;
     getIthBFDriver(&bftree, NSOMO, getaddr, BF1);
 
     printf("add : %d > ",getaddr);
@@ -356,7 +356,7 @@ void main(){
         printf("%d ",BF1[i]);
     printf("\n");
 
-    getaddr = 10;
+    getaddr = 9;
     getIthBFDriver(&bftree, NSOMO, getaddr, BF2);
 
     printf("add : %d > ",getaddr);
@@ -379,49 +379,27 @@ void main(){
         printf("%d ",IdxListBF1[i]);
     printf("\n");
 
-    int *nislands = malloc(2  * sizeof(int));
+    int nislands;
 
-    getIslands(NSOMO, BF1, BF2, nislands);
-    //printf("NBF = %d\n",NBF);
+    getIslands(NSOMO, BF1, BF2, &nislands);
+    printf("nislands = %d\n",nislands);
 
 
     // Garbage collection
     free(BF1);
     free(BF2);
     free(IdxListBF1);
-    free(nislands);
 
     return;
 }
 #+end_src
 
 #+RESULTS:
-| add | :  |  0 | > | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 1 |
-| add | :  |  1 | > | 0 | 0 | 0 | 1 | 0 | 1 | 1 | 1 |
-| add | :  |  2 | > | 0 | 0 | 0 | 1 | 1 | 0 | 1 | 1 |
-| add | :  |  3 | > | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 1 |
-| add | :  |  4 | > | 0 | 0 | 1 | 0 | 0 | 1 | 1 | 1 |
-| add | :  |  5 | > | 0 | 0 | 1 | 0 | 1 | 0 | 1 | 1 |
-| add | :  |  6 | > | 0 | 0 | 1 | 0 | 1 | 1 | 0 | 1 |
-| add | :  |  7 | > | 0 | 0 | 1 | 1 | 0 | 0 | 1 | 1 |
-| add | :  |  8 | > | 0 | 0 | 1 | 1 | 0 | 1 | 0 | 1 |
-| add | :  |  9 | > | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 |
-| add | :  | 10 | > | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 |
-| add | :  | 11 | > | 0 | 1 | 0 | 0 | 1 | 1 | 0 | 1 |
-| add | :  | 12 | > | 0 | 1 | 0 | 1 | 0 | 0 | 1 | 1 |
-| add | :  | 13 | > | 0 | 1 | 0 | 1 | 0 | 1 | 0 | 1 |
-| add | :  |  9 | > | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 |
-| add | :  | 10 | > | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 |
-| add | :  | 10 | > | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 |
-| add | :  | 10 | > | 1 | 0 | 7 | 4 | 3 | 6 | 5 | 2 |
-| 0   | -> |  0 |   |   |   |   |   |   |   |   |   |
-| 1   | -> |  1 |   |   |   |   |   |   |   |   |   |
-| 0   | -> |  0 |   |   |   |   |   |   |   |   |   |
-| 0   | -> |  0 |   |   |   |   |   |   |   |   |   |
-| 0   | -> |  0 |   |   |   |   |   |   |   |   |   |
-| 1   | -> |  1 |   |   |   |   |   |   |   |   |   |
-| 1   | -> |  1 |   |   |   |   |   |   |   |   |   |
-| 1   | -> |  1 |   |   |   |   |   |   |   |   |   |
+| add      | : | 1 | > | 0 | 0 | 0 | 1 | 0 | 1 | 1 | 1 |
+| add      | : | 9 | > | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 |
+| add      | : | 9 | > | 7 | 6 | 3 | 2 | 5 | 4 | 1 | 0 |
+| add      | : | 9 | > | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 |
+| nislands | = | 2 |   |   |   |   |   |   |   |   |   |
 
 
 ** Calculate the orthogonalization matrix
@@ -458,7 +436,7 @@ In order to calculate the Overlap (\( S \)) between two bonded functions
 
 The description of the three types of diagrams is described below:
 
-**** TODO [1/2] Islands
+**** TODO [2/2] Islands
 
 Once the two BFs are brought into maximum overlap, the number of islands can be
 calculated. An island is defined as the total number of closed polygons formed
@@ -523,7 +501,7 @@ void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1){
 }
 #+end_src
 
-- [ ] Get Islands
+- [X] Get Islands
 
 
 #+name: calculateIslands
@@ -540,18 +518,21 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands){
     getBFIndexList(NSOMO, BF2, IdxListBF2);
 
     int maxcount=0;
+    ,*nislands = 0;
 
     int BF1copy[NSOMO];
     for(int i = 0; i < NSOMO; i++)
-        BF1copy[i] = BF1[i];
+        BF1copy[i] = IdxListBF1[i];
     int BF2copy[NSOMO];
     for(int i = 0; i < NSOMO; i++)
-        BF2copy[i] = BF2[i];
+        BF2copy[i] = IdxListBF2[i];
 
     for(int i = 0; i < NSOMO; i++){
         int thisId = i;
         int nextId = BF1copy[i];
-        while(BF1copy[thisId] != -1 || maxcount > 20){
+        maxcount = 0;
+        while(BF1copy[thisId] != -1 && maxcount < 20){
+            if(maxcount==0) *nislands += 1;
 
             maxcount++;
 
@@ -559,13 +540,20 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands){
             nextId = BF1copy[thisId];
             BF1copy[thisId] = -1;
             BF1copy[nextId] = -1;
+            //printf("\n(%d) %d> %d -> %d\n",i,maxcount,thisId,nextId);
 
             // Then the ket
-            thisId = BF2[nextId];
+            thisId = BF2copy[nextId];
             BF2copy[thisId] = -1;
             BF2copy[nextId] = -1;
-            printf("%d -> %d\n",thisId,nextId);
+            //printf("\n(%d) %d> %d -> %d\n",i,maxcount,nextId,thisId);
         }
+        //printf("\nBF1\n");
+        //for(int j = 0; j < NSOMO; j++)
+        //    printf("%d ",BF1copy[j]);
+        //printf("\nBF2\n");
+        //for(int j = 0; j < NSOMO; j++)
+        //    printf("%d ",BF2copy[j]);
     }
 
 }
