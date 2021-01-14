@@ -266,8 +266,8 @@ void printTree(Node *node, int isomo, int NSOMOMax, int *vecBF){
 
 void printTreeDriver(Tree *bftree, int NSOMOMax){
     int isomo = 0;
-    int vecBF[10];
-    for(int i=0;i<10;i++)
+    int vecBF[NSOMOMax];
+    for(int i=0;i<NSOMOMax;i++)
         vecBF[i]=0;
     printTree(&(bftree->rootNode), isomo, NSOMOMax, vecBF);
 }
@@ -285,7 +285,7 @@ void printTreeDriver(Tree *bftree, int NSOMOMax){
 <<treefuncmain>>
 
 void main(){
-    int NSOMO = 6;
+    int NSOMO = 10;
     int MS = 0;
     int NBF=0;
     Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
@@ -303,12 +303,6 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| add | : | 0 | > | 0 | 0 | 0 | 1 | 1 | 1 |
-| add | : | 1 | > | 0 | 0 | 1 | 0 | 1 | 1 |
-| add | : | 2 | > | 0 | 0 | 1 | 1 | 0 | 1 |
-| add | : | 3 | > | 0 | 1 | 0 | 0 | 1 | 1 |
-| add | : | 4 | > | 0 | 1 | 0 | 1 | 0 | 1 |
-| NBF | = | 5 |   |   |   |   |   |   |   |
 
 #+RESULTS:
 
