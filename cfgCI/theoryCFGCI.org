@@ -121,7 +121,7 @@ A BF is represented as an integer. The bit representation of the integer (0 or 1
 
 This code generates all the bonded functions for a given number of SOMOs.
 
-**** TODO [1/2] Algorithm
+**** TODO [3/3] Algorithm
 
 Here we describe how we generate the Bonded functions as shown in the example below.
 
@@ -163,7 +163,7 @@ struct bin_tree {
 };
 #+end_src
 
-- [ ] Build Tree
+- [X] Build Tree
 
   The algorithm for building the tree is very simple, the tree is constructed using two rules:
 
@@ -273,7 +273,7 @@ void printTreeDriver(Tree *bftree, int NSOMOMax){
 }
 #+end_src
 
-- [ ] Test Build BF
+- [X] Test Build BF
 
 #+begin_src C :main no :noweb yes :tangle main.c
 #include <stdio.h>
@@ -303,9 +303,12 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| add | : | 0 | > | 0 | 0 | 1 | 1 |
-| add | : | 1 | > | 0 | 1 | 0 | 1 |
-| NBF | = | 2 |   |   |   |   |   |
+| add | : | 0 | > | 0 | 0 | 0 | 1 | 1 | 1 |
+| add | : | 1 | > | 0 | 0 | 1 | 0 | 1 | 1 |
+| add | : | 2 | > | 0 | 0 | 1 | 1 | 0 | 1 |
+| add | : | 3 | > | 0 | 1 | 0 | 0 | 1 | 1 |
+| add | : | 4 | > | 0 | 1 | 0 | 1 | 0 | 1 |
+| NBF | = | 5 |   |   |   |   |   |   |   |
 
 #+RESULTS:
 
