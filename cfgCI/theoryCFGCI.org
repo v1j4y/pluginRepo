@@ -121,115 +121,194 @@ A BF is represented as an integer. The bit representation of the integer (0 or 1
 
 This code generates all the bonded functions for a given number of SOMOs.
 
-#+name: genBFs
-#+begin_src c
+**** TODO [1/2] Algorithm
 
-void recgraph(int64_t *rumerbfs, int64_t nconf,int64_t posj,int64_t nleft,int64_t countidx,int64_t ms,int64_t n){
-    int ifenter = 0;
-    if(posj != 2*nleft){
-        for(int i = posj; i < 2*nleft-1; i = i-1){
-            ifenter = 1;
-            int nzeros = 0;
-            int nones = 0;
-            for(int k = 0; k < i; k++){
-                if(rumerbfs[countidx,k]==0){
-                nzeros += 1;
-                }
-                else{
-                    nones += 1;
-                }
-            }
-            if(nzeros > nones and countidx+1 <= nconf){
-                rumerbfs[countidx,i-1]=1;
-                nleft -= 1;
-            }
-            if(nleft > 0 and countidx+1 <= nconf){
-                recgraph(i-1,nleft,countidx);
-                nleft += 1;
-                if(countidx+1 > nconf){
-                    break;
-                }
-                rumerbfs[countidx,i-1]=0;
-            }
-            else{
-                countidx+=1
-                    if(countidx+1 <= nconf){
-                        for(int k = 0; k < n; k++)
-                            rumerbfs[countidx,k]=rumerbfs[countidx-1,k];
-                        rumerbfs[countidx,i-1]=0;
-                        nleft += 1;
-                    }
-            }
-        }
+Here we describe how we generate the Bonded functions as shown in the example below.
+
+#+begin_example
+SOMO: [ 1 1 1 1 1]
+BF list:
+[[0 0 0 1 1]
+ [0 0 1 0 1]
+ [0 1 0 0 1]
+ [0 0 1 1 0]
+ [0 1 0 1 0]]
+#+end_example
+
+Basically, we use a binary tree to generate all the valid BFs.
+
+
+
+- [X] Tree node data structure
+
+The tree is built of a simple node which contains two links each for the two children \(C0, C1\) belonging to either a parallel \(0\)
+or an anti-parallel \(1\) coupling. The address ~addr~ of all intermediate nodes is -1 and the address of the leaf node is the id of the BF
+associated with the path traversed upon going back from the leaf to the root node using ~PREV~ pointer.
+
+#+name: nodedef
+#+begin_src c :main no :tangle tree_utils.h
+typedef struct bin_node Node;
+typedef struct bin_tree Tree;
+struct bin_node {
+    Node *C0;
+    Node *C1;
+    Node *PREV;
+    int addr;
+    int iSOMO;
+};
+
+struct bin_tree {
+    Node rootNode;
+    int NBF;
+};
+#+end_src
+
+- [ ] Build Tree
+
+  The algorithm for building the tree is very simple, the tree is constructed using two rules:
+
+  1. The total number of 0's cannot be larger than ~zeromax~
+  2. The total number of 1's cannot be smaller than ~onemin~
+
+#+name: treefuncdefs
+#+begin_src c :main no :tangle tree_utils.h
+void buildTreeDriver(Tree *bftree, int NSOMO, int MS, int *NBF);
+
+void buildTree(Tree *bftree, Node *inode, int isomo, int izeros, int icpl, int NSOMOMax, int MSmax);
+
+void printTreeDriver(Tree *bftree, int NSOMOMax);
+void printTree(Node *bftree, int isomo, int NSOMOMax, int *vecBF);
+#+end_src
+
+#+name: treefuncmain
+#+begin_src c :main no :tangle tree_utils.c
+void buildTree(Tree *bftree,
+               Node *inode,
+               int isomo,
+               int izeros,
+               int icpl,
+               int NSOMOMax,
+               int MSmax){
+
+    // Find the maximum parallel couplings 0
+    //      the maximum anti-parallel couplings 1
+    int zeromax = MSmax + (NSOMOMax-MSmax)/2;
+    int onemax = NSOMOMax - zeromax;
+
+    // Exit condition
+    if(isomo > NSOMOMax || icpl < 0 || izeros > zeromax ) return;
+
+    // If we find a valid BF assign its address
+    if(isomo == NSOMOMax){
+        inode->addr = bftree->rootNode.addr;
+        bftree->rootNode.addr += 1;
+        return;
     }
-    if(ifenter == 0){
-        if(nleft == 0){
-            countidx+=1;
-        }
-        else if( nleft == ms){
-            for(int i = 0; i < nconf; i++)
-                rumerbfs[i,posj-1]=1;
-            posj -= 1;
-            if(countidx + 1 < nconf){
-                recgraph(posj,nleft-1,countidx);
-            }
-        }
-        else if(nleft < ms){
-            rumerbfs[countidx,posj-1]=1;
-            if(countidx + 1 < nconf){
-                recgraph(posj-1,nleft-1,countidx);
-            }
-        }
+
+    // Call 0 branch
+    if((inode->C0) == -1 && izeros+1 <= zeromax){
+        (inode->C0) = malloc(sizeof(Node));
+        *(inode->C0) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = -1, .iSOMO = -1 };
+        buildTree(bftree, inode->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
     }
+    else buildTree(bftree, inode->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
+
+    // Call 1 branch
+    if((inode->C1) == -1 && icpl-1 >= 0){
+        (inode->C1) = malloc(sizeof(Node));
+        *(inode->C1) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = -1, .iSOMO = -1 };
+        buildTree(bftree, inode->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
+    }
+    else buildTree(bftree, inode->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
+
+    return;
+}
+
+void buildTreeDriver(Tree *bftree, int NSOMO, int MS, int *NBF){
+    int isomo = 0; // counts the total number of SOMO's
+    int izeros= 0; // Counts the total number of parallel coupings (i.e. 0's)
+    int icpl  = 0; // keep track of the ith ms (cannot be -ve)
+    int addr  = 0; // Counts the total BF's
+
+    buildTree(bftree, &(bftree->rootNode), isomo, izeros, icpl, NSOMO, MS);
+
+    ,*NBF = bftree->rootNode.addr;
+}
+
+void printTree(Node *node, int isomo, int NSOMOMax, int *vecBF){
+    // Exit condition
+    if(isomo > NSOMOMax) return;
+    if(node == -1) return;
+
+    if(isomo == NSOMOMax){
+        printf("add : %d > ",node->addr);
+        for(int i=0;i<NSOMOMax;i++)
+            printf("%d ",vecBF[i]);
+        printf("\n");
+        return;
+    }
+    //printf("%d | %d (%d)\n",isomo,sizeof(node),node->C1);
+
+
+    // Recurse to C0
+    if(node->C0 != -1){
+        vecBF[isomo] = 0;
+        printTree(node->C0, isomo+1, NSOMOMax, vecBF);
+    }
+    // Recurse to C1
+    if(node->C1 != -1){
+        vecBF[isomo] = 1;
+        printTree(node->C1, isomo+1, NSOMOMax, vecBF);
+    }
+
+    return;
+}
+
+void printTreeDriver(Tree *bftree, int NSOMOMax){
+    int isomo = 0;
+    int vecBF[10];
+    for(int i=0;i<10;i++)
+        vecBF[i]=0;
+    printTree(&(bftree->rootNode), isomo, NSOMOMax, vecBF);
+}
+#+end_src
+
+- [ ] Test Build BF
+
+#+begin_src C :main no :noweb yes :tangle main.c
+#include <stdio.h>
+
+<<nodedef>>
+
+<<treefuncdefs>>
+
+<<treefuncmain>>
+
+void main(){
+    int NSOMO = 6;
+    int MS = 0;
+    int NBF=0;
+    Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    bftree.rootNode = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .iSOMO = -1};
+
+    buildTreeDriver(&bftree, NSOMO, MS, &NBF);
+
+    printTreeDriver(&bftree, NSOMO);
+
+    printf("NBF = %d\n",NBF);
+
+
     return;
 }
 #+end_src
 
-#+name: genBFspython
-#+begin_src python
-def recgraph(rumerbfs,nconf,posj,nleft,countidx,ms,n):
-    ifenter = 0
-    if posj != 2*nleft:
-        for i in range(posj,2*nleft-1,-1):
-            ifenter = 1
-            nzeros = 0
-            nones = 0
-            for k in range(0,i):
-                if rumerbfs[countidx,k]==0:
-                    nzeros += 1
-                else:
-                    nones += 1
-            if nzeros > nones and countidx+1 <= nconf:
-                rumerbfs[countidx,i-1]=1
-                nleft -= 1
-            if nleft > 0 and countidx+1 <= nconf:
-                recgraph(i-1,nleft,countidx)
-                nleft += 1
-                if countidx+1 > nconf:
-                    break
-                rumerbfs[countidx,i-1]=0
-            else:
-                countidx+=1
-                if countidx+1 <= nconf:
-                    for k in range(0,n):
-                        rumerbfs[countidx,k]=rumerbfs[countidx-1,k]
-                    rumerbfs[countidx,i-1]=0
-                    nleft += 1
-    if ifenter == 0:
-        if nleft == 0:
-            countidx+=1
-        elif nleft == ms:
-            for i in range(0,nconf):
-                rumerbfs[i,posj-1]=1
-            posj -= 1
-            if countidx + 1 < nconf:
-                recgraph(posj,nleft-1,countidx)
-        elif nleft < ms:
-            rumerbfs[countidx,posj-1]=1
-            if countidx + 1 < nconf:
-                recgraph(posj-1,nleft-1,countidx)
-    return
-#+end_src
+#+RESULTS:
+| add | : | 0 | > | 0 | 0 | 1 | 1 |
+| add | : | 1 | > | 0 | 1 | 0 | 1 |
+| NBF | = | 2 |   |   |   |   |   |
+
+#+RESULTS:
+
 
 
 ** Calculate the orthogonalization matrix
