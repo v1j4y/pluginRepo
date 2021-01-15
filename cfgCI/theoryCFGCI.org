@@ -170,7 +170,7 @@ struct bin_node {
 };
 
 struct bin_tree {
-    Node rootNode;
+    Node *rootNode;
     int NBF;
 };
 #+end_src
@@ -185,11 +185,11 @@ struct bin_tree {
 #+name: treefuncdefs
 #+begin_src c :main no :tangle tree_utils.h
 
-#define MAX_SOMO 16
+#define MAX_SOMO 32
 
 void buildTreeDriver(Tree *bftree, int NSOMO, int MS, int *NBF);
 
-void buildTree(Tree *bftree, Node *inode, int isomo, int izeros, int icpl, int NSOMOMax, int MSmax);
+void buildTree(Tree *bftree, Node **inode, int isomo, int izeros, int icpl, int NSOMOMax, int MSmax);
 
 void printTreeDriver(Tree *bftree, int NSOMOMax);
 void printTree(Node *bftree, int isomo, int NSOMOMax, int *vecBF);
@@ -202,7 +202,7 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor);
 
 void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOMO);
 void getSetBits(int64_t n, int *nsetbits);
-void getOrthoMatrix(int64_t Isomo, int64_t MS, double *orthoMatrix);
+void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *rows, int *cols);
 
 
 // Misc utils
@@ -213,7 +213,7 @@ void printRealMatrix(double *orthoMatrix, int rows, int cols);
 #+name: treefuncmain
 #+begin_src c :main no :tangle tree_utils.c
 void buildTree(Tree *bftree,
-               Node *inode,
+               Node **inode,
                int isomo,
                int izeros,
                int icpl,
@@ -230,26 +230,26 @@ void buildTree(Tree *bftree,
 
     // If we find a valid BF assign its address
     if(isomo == NSOMOMax){
-        inode->addr = bftree->rootNode.addr;
-        bftree->rootNode.addr += 1;
+        (*inode)->addr = bftree->rootNode->addr;
+        bftree->rootNode->addr += 1;
         return;
     }
 
     // Call 0 branch
-    if((inode->C0) == -1 && izeros+1 <= zeromax){
-        (inode->C0) = malloc(sizeof(Node));
-        ,*(inode->C0) = (Node){ .C0 = -1, .C1 = -1, .PREV = inode, .addr = -1, .cpl = 0, .iSOMO = isomo };
-        buildTree(bftree, inode->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
+    if(((*inode)->C0) == -1 && izeros+1 <= zeromax){
+        ((*inode)->C0) = malloc(sizeof(Node));
+        (*(*inode)->C0) = (Node){ .C0 = -1, .C1 = -1, .PREV = *inode, .addr = -1, .cpl = 0, .iSOMO = isomo };
+        buildTree(bftree, &(*inode)->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
     }
-    else buildTree(bftree, inode->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
+    else buildTree(bftree, &(*inode)->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
 
     // Call 1 branch
-    if((inode->C1) == -1 && icpl-1 >= 0){
-        (inode->C1) = malloc(sizeof(Node));
-        ,*(inode->C1) = (Node){ .C0 = -1, .C1 = -1, .PREV = inode, .addr = -1, .cpl = 1, .iSOMO = isomo };
-        buildTree(bftree, inode->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
+    if(((*inode)->C1) == -1 && icpl-1 >= 0){
+        ((*inode)->C1) = malloc(sizeof(Node));
+        (*(*inode)->C1) = (Node){ .C0 = -1, .C1 = -1, .PREV = *inode, .addr = -1, .cpl = 1, .iSOMO = isomo };
+        buildTree(bftree, &(*inode)->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
     }
-    else buildTree(bftree, inode->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
+    else buildTree(bftree, &(*inode)->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
 
     return;
 }
@@ -262,33 +262,33 @@ void buildTreeDriver(Tree *bftree, int NSOMO, int MS, int *NBF){
 
     buildTree(bftree, &(bftree->rootNode), isomo, izeros, icpl, NSOMO, MS);
 
-    ,*NBF = bftree->rootNode.addr;
+    ,*NBF = bftree->rootNode->addr;
 }
 
-void printTree(Node *node, int isomo, int NSOMOMax, int *vecBF){
+void printTree(Node *inode, int isomo, int NSOMOMax, int *vecBF){
     // Exit condition
     if(isomo > NSOMOMax) return;
-    if(node == -1) return;
+    if(inode == -1) return;
 
     if(isomo == NSOMOMax){
-        printf("add : %d > ",node->addr);
+        printf("add : %d > ",inode->addr);
         for(int i=0;i<NSOMOMax;i++)
             printf("%d ",vecBF[i]);
         printf("\n");
         return;
     }
-    //printf("%d | %d (%d)\n",isomo,sizeof(node),node->C1);
+    //printf("%d | %d (%d)\n",isomo,sizeof(inode),inode->C1);
 
 
     // Recurse to C0
-    if(node->C0 != -1){
+    if(inode->C0 != -1){
         vecBF[isomo] = 0;
-        printTree(node->C0, isomo+1, NSOMOMax, vecBF);
+        printTree(inode->C0, isomo+1, NSOMOMax, vecBF);
     }
     // Recurse to C1
-    if(node->C1 != -1){
+    if(inode->C1 != -1){
         vecBF[isomo] = 1;
-        printTree(node->C1, isomo+1, NSOMOMax, vecBF);
+        printTree(inode->C1, isomo+1, NSOMOMax, vecBF);
     }
 
     return;
@@ -299,7 +299,7 @@ void printTreeDriver(Tree *bftree, int NSOMOMax){
     int vecBF[NSOMOMax];
     for(int i=0;i<NSOMOMax;i++)
         vecBF[i]=0;
-    printTree(&(bftree->rootNode), isomo, NSOMOMax, vecBF);
+    printTree((bftree->rootNode), isomo, NSOMOMax, vecBF);
 }
 
 void getIthBF(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, int *vecBF){
@@ -336,7 +336,7 @@ void getIthBF(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, i
 void getIthBFDriver(Tree *bftree, int NSOMOMax, int getaddr, int *vecBF){
     int isomo = 0;
     bool foundBF = false;
-    getIthBF(&(bftree->rootNode), isomo, foundBF, NSOMOMax, getaddr, vecBF);
+    getIthBF((bftree->rootNode), isomo, foundBF, NSOMOMax, getaddr, vecBF);
 }
 #+end_src
 
@@ -355,11 +355,12 @@ void getIthBFDriver(Tree *bftree, int NSOMOMax, int getaddr, int *vecBF){
 <<calculateislands>>
 
 void main(){
-    int NSOMO = 8;
+    int NSOMO = 6;
     int MS = 0;
     int NBF=0;
     Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
-    bftree.rootNode = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    bftree.rootNode = malloc(sizeof(Node));
+    (*bftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     buildTreeDriver(&bftree, NSOMO, MS, &NBF);
 
@@ -376,7 +377,7 @@ void main(){
         printf("%d ",BF1[i]);
     printf("\n");
 
-    getaddr = 9;
+    getaddr = 1;
     getIthBFDriver(&bftree, NSOMO, getaddr, BF2);
 
     printf("add : %d > ",getaddr);
@@ -416,11 +417,11 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| add      | : | 0 | >     | 0 |  0 | 0 | 0 | 1 | 1 | 1 | 1 |
-| add      | : | 9 | >     | 0 |  1 | 0 | 0 | 0 | 1 | 1 | 1 |
-| add      | : | 9 | >     | 7 |  6 | 5 | 4 | 3 | 2 | 1 | 0 |
-| add      | : | 9 | >     | 1 |  0 | 7 | 6 | 5 | 4 | 3 | 2 |
-| nislands | = | 1 | phase | = | -1 |   |   |   |   |   |   |
+| add      | : | 0 | >     | 0 | 0 | 0 | 1 | 1 | 1 |
+| add      | : | 1 | >     | 0 | 0 | 1 | 0 | 1 | 1 |
+| add      | : | 1 | >     | 5 | 4 | 3 | 2 | 1 | 0 |
+| add      | : | 1 | >     | 5 | 2 | 1 | 4 | 3 | 0 |
+| nislands | = | 2 | phase | = | 1 |   |   |   |   |
 
 
 ** Calculate the orthogonalization matrix
@@ -586,6 +587,10 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
         //    printf("%d ",BF2copy[j]);
     }
 
+    // Garbage collection
+    free(IdxListBF1);
+    free(IdxListBF2);
+
 }
 #+end_src
 
@@ -615,7 +620,7 @@ BF2 : 0    1    0    0    0    1    1    1
                 --------------------------
 #+end_example
 
-kkk**** Open chains (O)
+**** Open chains (O)
 
 The open chains are constituted of open polygons which have an odd number of
 sides. These are made up of BFs which consist of un-paired spins such as
@@ -624,7 +629,7 @@ sides. These are made up of BFs which consist of un-paired spins such as
 \right]\) for \(V_s\) respectively. These contribute a factor of \(1\) to the
 MEs.
 
-kkk**** E type chains
+**** E type chains
 
 The E type chains originate from BFs which contain different indices which are
 mutually exclusive. The presence of mutually exclusive indices results in a
@@ -643,7 +648,7 @@ respectively and \(s\) represents the total number of pairs in \(V_r\) and
 \(V_s\). The total number of pairs are the same in \(V_r\) and \(V_s\) if they
 belong to the same spin subspace.
 
-kkk**** TODO [1/4] Make the orthonormalization matrix
+**** TODO [1/4] Make the orthonormalization matrix
 
 - [X] Calculate the number of SOMOs in the input CFG.
 
@@ -674,30 +679,37 @@ void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOM
 
 #+name: getOrthoMatrix
 #+begin_src c :main no :tangle cfgCI_utils.c
-void getOrthoMatrix(int64_t Isomo, int64_t MS, double *orthoMatrix){
+void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *rows, int *cols){
 
     int64_t NBF = 0;
     int64_t NSOMO = 0;
 
     Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
-    bftree.rootNode = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    bftree.rootNode = malloc(sizeof(Node));
+    (*bftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
 
-    printTreeDriver(&bftree, NSOMO);
+    //printTreeDriver(&bftree, NSOMO);
 
+    // Initialize orthonormalization matrix
+    (*orthoMatrixptr) = malloc(NBF*NBF*sizeof(double));
+    (*rows) = NBF;
+    (*cols) = NBF;
 
-    // initialize Matrix
-    for(int i = 0; i < NBF; i++)
-        for(int j = 0; j < NBF; j++)
-            orthoMatrix[i*NBF + j] = 0.0;
+    double *orthoMatrix = (*orthoMatrixptr);
+
+    //// initialize Matrix
+    //for(int i = 0; i < NBF; i++)
+    //    for(int j = 0; j < NBF; j++)
+    //        orthoMatrix[i*NBF + j] = 0.0;
 
     int addI = 0;
     int addJ = 0;
-    int *BF1 = malloc(NSOMO * sizeof(int));
-    int *BF2 = malloc(NSOMO * sizeof(int));
-    int *IdxListBF1 = malloc(NSOMO * sizeof(int));
-    int *IdxListBF2 = malloc(NSOMO * sizeof(int));
+    int *BF1 = malloc(MAX_SOMO * sizeof(int));
+    int *BF2 = malloc(MAX_SOMO * sizeof(int));
+    int *IdxListBF1 = malloc(MAX_SOMO * sizeof(int));
+    int *IdxListBF2 = malloc(MAX_SOMO * sizeof(int));
 
     int g = 0;
     g = (NSOMO - MS)/2;
@@ -726,12 +738,11 @@ void getOrthoMatrix(int64_t Isomo, int64_t MS, double *orthoMatrix){
         for(int j = 0; j < NBF; j++){
             addJ = j;
             getIthBFDriver(&bftree, NSOMO, addJ, BF2);
+            getBFIndexList(NSOMO, BF2, IdxListBF2);
             //printf("addJ : %d > ",addI);
             //for(int k=0;k<NSOMO;k++)
             //    printf("%d ",BF2[k]);
             //printf("\n");
-
-            getBFIndexList(NSOMO, BF2, IdxListBF2);
 
             // Get the i and r factors
             getIslands(NSOMO, BF1, BF2, &nislands, &phasefactor);
@@ -741,6 +752,12 @@ void getOrthoMatrix(int64_t Isomo, int64_t MS, double *orthoMatrix){
             orthoMatrix[i*NBF + j] = -1.0*phasefactor / (1 << (g - nislands));
         }
     }
+
+    // Garbage collection
+    free(BF1);
+    free(IdxListBF1);
+    free(BF2);
+    free(IdxListBF2);
 
 }
 #+end_src
@@ -768,10 +785,10 @@ void getOrthoMatrix(int64_t Isomo, int64_t MS, double *orthoMatrix){
 <<getOrthoMatrix>>
 
 void main(){
-    int rows = 5;
-    int cols = 5;
+
+    int rows = 0;
+    int cols = 0;
     double *orthoMatrix;
-    orthoMatrix = malloc(rows*cols * sizeof(double));
 
     int64_t MS=0;
 
@@ -783,7 +800,7 @@ void main(){
     Isomo += 1 << 1;
     Isomo += 1 << 0;
 
-    Isomo = (1 << 6) - 1;
+    Isomo = (1 << 8) - 1;
 
     //int digit[MAX_SOMO];
     //int_to_bin_digit(Isomo, MAX_SOMO, digit);
@@ -792,7 +809,7 @@ void main(){
     //printf("\n");
 
     // Fill matrix
-    getOrthoMatrix(Isomo, MS, orthoMatrix);
+    getOrthoMatrix(Isomo, MS, &orthoMatrix, &rows, &cols);
 
     printRealMatrix(orthoMatrix, rows, cols);
 
@@ -804,18 +821,22 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| add  | :    |    0 | >      |    0 | 0 |  0 | 1 | 1 | 1 |   |   |
-| add  | :    |    1 | >      |    0 | 0 |  1 | 0 | 1 | 1 |   |   |
-| add  | :    |    2 | >      |    0 | 0 |  1 | 1 | 0 | 1 |   |   |
-| add  | :    |    3 | >      |    0 | 1 |  0 | 0 | 1 | 1 |   |   |
-| add  | :    |    4 | >      |    0 | 1 |  0 | 1 | 0 | 1 |   |   |
-| NBFs | =    |    5 | NSOMOs |    = | 6 | MS | = | 0 | g | = | 3 |
-|      |      |      |        |      |   |    |   |   |   |   |   |
-| 1.0  | -0.5 | 0.25 | 0.25   | -0.5 |   |    |   |   |   |   |   |
-| -0.5 | 1.0  | -0.5 | -0.5   | 0.25 |   |    |   |   |   |   |   |
-| 0.25 | -0.5 |  1.0 | 0.25   | -0.5 |   |    |   |   |   |   |   |
-| 0.25 | -0.5 | 0.25 | 1.0    | -0.5 |   |    |   |   |   |   |   |
-| -0.5 | 0.25 | -0.5 | -0.5   |  1.0 |   |    |   |   |   |   |   |
+|  NBFs |     = |    14 | NSOMOs |     = |     8 |    MS |     = |     0 |     g |     = |     4 |       |       |
+|       |       |       |        |       |       |       |       |       |       |       |       |       |       |
+|  -1.0 |   0.5 | -0.25 |  0.125 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 |
+|   0.5 |  -1.0 |   0.5 |  -0.25 |   0.5 | -0.25 | 0.125 | 0.125 | -0.25 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |
+| -0.25 |   0.5 |  -1.0 |    0.5 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 | 0.125 | -0.25 | 0.125 |   0.5 | -0.25 |
+| 0.125 | -0.25 |   0.5 |   -1.0 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |
+| -0.25 |   0.5 | -0.25 |  0.125 |  -1.0 |   0.5 | -0.25 | -0.25 |   0.5 |   0.5 | -0.25 | 0.125 | 0.125 | -0.25 |
+|   0.5 | -0.25 |   0.5 |  -0.25 |   0.5 |  -1.0 |   0.5 |   0.5 | -0.25 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 |
+| -0.25 | 0.125 | -0.25 |    0.5 | -0.25 |   0.5 |  -1.0 | -0.25 |   0.5 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 |
+| -0.25 | 0.125 | -0.25 |  0.125 | -0.25 |   0.5 | -0.25 |  -1.0 |   0.5 | 0.125 | -0.25 | 0.125 |   0.5 | -0.25 |
+| 0.125 | -0.25 | 0.125 |  -0.25 |   0.5 | -0.25 |   0.5 |   0.5 |  -1.0 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |
+| 0.125 | -0.25 | 0.125 |  -0.25 |   0.5 | -0.25 | 0.125 | 0.125 | -0.25 |  -1.0 |   0.5 | -0.25 | -0.25 |   0.5 |
+| -0.25 | 0.125 | -0.25 |  0.125 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 |   0.5 |  -1.0 |   0.5 |   0.5 | -0.25 |
+|   0.5 | -0.25 | 0.125 |  -0.25 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 | -0.25 |   0.5 |  -1.0 | -0.25 |   0.5 |
+| 0.125 | -0.25 |   0.5 |  -0.25 | 0.125 | -0.25 | 0.125 |   0.5 | -0.25 | -0.25 |   0.5 | -0.25 |  -1.0 |   0.5 |
+| -0.25 |   0.5 | -0.25 |    0.5 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |   0.5 | -0.25 |   0.5 |   0.5 |  -1.0 |
 
 
 ** Make the prototype matrices
