@@ -184,7 +184,7 @@ void getIthBF(Node *node, int isomo, bool foundBF, int NSOMOMax, int getaddr, in
 void getIthBFDriver(Tree *bftree, int NSOMOMax, int getaddr, int *vecBF);
 
 void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1);
-void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands);
+void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor);
 #+end_src
 
 #+name: treefuncmain
@@ -348,7 +348,7 @@ void main(){
     int *BF1 = malloc(NSOMO * sizeof(int));
     int *BF2 = malloc(NSOMO * sizeof(int));
 
-    int getaddr = 1;
+    int getaddr = 0;
     getIthBFDriver(&bftree, NSOMO, getaddr, BF1);
 
     printf("add : %d > ",getaddr);
@@ -380,9 +380,10 @@ void main(){
     printf("\n");
 
     int nislands;
+    int phasefactor;
 
-    getIslands(NSOMO, BF1, BF2, &nislands);
-    printf("nislands = %d\n",nislands);
+    getIslands(NSOMO, BF1, BF2, &nislands, &phasefactor);
+    printf("nislands = %d phase = %d\n",nislands,phasefactor);
 
 
     // Garbage collection
@@ -395,11 +396,11 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| add      | : | 1 | > | 0 | 0 | 0 | 1 | 0 | 1 | 1 | 1 |
-| add      | : | 9 | > | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 |
-| add      | : | 9 | > | 7 | 6 | 3 | 2 | 5 | 4 | 1 | 0 |
-| add      | : | 9 | > | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 |
-| nislands | = | 2 |   |   |   |   |   |   |   |   |   |
+| add      | : | 0 | >     | 0 |  0 | 0 | 0 | 1 | 1 | 1 | 1 |
+| add      | : | 9 | >     | 0 |  1 | 0 | 0 | 0 | 1 | 1 | 1 |
+| add      | : | 9 | >     | 7 |  6 | 5 | 4 | 3 | 2 | 1 | 0 |
+| add      | : | 9 | >     | 1 |  0 | 7 | 6 | 5 | 4 | 3 | 2 |
+| nislands | = | 1 | phase | = | -1 |   |   |   |   |   |   |
 
 
 ** Calculate the orthogonalization matrix
@@ -508,7 +509,7 @@ void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1){
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdio.h>
 
-void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands){
+void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
 
     // Get BF ids
     int *IdxListBF1 = malloc(NSOMO * sizeof(int));
@@ -519,6 +520,7 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands){
 
     int maxcount=0;
     ,*nislands = 0;
+    ,*phasefactor = 1;
 
     int BF1copy[NSOMO];
     for(int i = 0; i < NSOMO; i++)
@@ -533,6 +535,7 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands){
         maxcount = 0;
         while(BF1copy[thisId] != -1 && maxcount < 20){
             if(maxcount==0) *nislands += 1;
+            if(maxcount==19) *nislands -= 1;
 
             maxcount++;
 
@@ -542,11 +545,18 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands){
             BF1copy[nextId] = -1;
             //printf("\n(%d) %d> %d -> %d\n",i,maxcount,thisId,nextId);
 
+            // Get the phase factor bra
+            if(nextId < thisId) *phasefactor *= -1;
+
             // Then the ket
             thisId = BF2copy[nextId];
             BF2copy[thisId] = -1;
             BF2copy[nextId] = -1;
             //printf("\n(%d) %d> %d -> %d\n",i,maxcount,nextId,thisId);
+
+            // Get the phase factor bra
+            if(nextId > thisId) *phasefactor *= -1;
+
         }
         //printf("\nBF1\n");
         //for(int j = 0; j < NSOMO; j++)
