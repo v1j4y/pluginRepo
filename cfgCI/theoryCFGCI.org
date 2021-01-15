@@ -19,7 +19,7 @@ There are three main aspects while using configuration based representation
 Convert input CFG to an array of bits containing 0's and 1's representing
 the position of SOMOs and DOMOs.
 
-#+name: printCFGlist
+#+name: inttobindigit
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdint.h>
 
@@ -31,6 +31,16 @@ void int_to_bin_digit(int64_t in, int count, int* out)
     for (i = 0; i < count; i++) {
         out[i] = (in & mask) ? 1 : 0;
         in <<= 1;
+    }
+}
+
+void printRealMatrix(double *orthoMatrix, int rows, int cols){
+
+    for(int i = 0; i < rows; i++){
+        printf("\n");
+        for(int j = 0; j < cols; j++){
+            printf("%10.15f ",orthoMatrix[i*rows + j]);
+        }
     }
 }
 #+end_src
@@ -86,11 +96,12 @@ The only input required is the selected list of CFGs at a given CIPSI iteration 
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdio.h>
 #include <stdint.h>
+#include "tree_utils.h"
 
 void printCFGList(int32_t *inpNint, int32_t *inpNcfgs, int64_t *cfglist){
     int Ncfgs    = *inpNcfgs;
     int N_int    = *inpNint;
-    int digit[18];
+    int digit[MAX_SOMO];
     int64_t cfg1,cfg2;
     int nsomo=4;
     int ms=0;
@@ -173,6 +184,9 @@ struct bin_tree {
 
 #+name: treefuncdefs
 #+begin_src c :main no :tangle tree_utils.h
+
+#define MAX_SOMO 16
+
 void buildTreeDriver(Tree *bftree, int NSOMO, int MS, int *NBF);
 
 void buildTree(Tree *bftree, Node *inode, int isomo, int izeros, int icpl, int NSOMOMax, int MSmax);
@@ -185,6 +199,15 @@ void getIthBFDriver(Tree *bftree, int NSOMOMax, int getaddr, int *vecBF);
 
 void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1);
 void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor);
+
+void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOMO);
+void getSetBits(int64_t n, int *nsetbits);
+void getOrthoMatrix(int64_t Isomo, int64_t MS, double *orthoMatrix);
+
+
+// Misc utils
+void int_to_bin_digit(int64_t in, int count, int* out);
+void printRealMatrix(double *orthoMatrix, int rows, int cols);
 #+end_src
 
 #+name: treefuncmain
@@ -319,14 +342,11 @@ void getIthBFDriver(Tree *bftree, int NSOMOMax, int getaddr, int *vecBF){
 
 - [X] Test Build BF
 
-#+begin_src C :main no :noweb yes :tangle main.c
+#+begin_src C :main no :noweb yes
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
-<<nodedef>>
-
-<<treefuncdefs>>
+#include "/home/vijay/Documents/codes/qp2/plugins/local/pluginRepo/cfgCI/tree_utils.h"
 
 <<treefuncmain>>
 
@@ -570,6 +590,7 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
 #+end_src
 
 
+
 **** Phase factor (r)
 
 The phase factor is calculated according to the following rule. The connecting
@@ -594,7 +615,7 @@ BF2 : 0    1    0    0    0    1    1    1
                 --------------------------
 #+end_example
 
-**** Open chains (O)
+kkk**** Open chains (O)
 
 The open chains are constituted of open polygons which have an odd number of
 sides. These are made up of BFs which consist of un-paired spins such as
@@ -603,7 +624,7 @@ sides. These are made up of BFs which consist of un-paired spins such as
 \right]\) for \(V_s\) respectively. These contribute a factor of \(1\) to the
 MEs.
 
-**** E type chains
+kkk**** E type chains
 
 The E type chains originate from BFs which contain different indices which are
 mutually exclusive. The presence of mutually exclusive indices results in a
@@ -612,6 +633,7 @@ vanishing ME between such BFs.
 
 Finally, the BFs contribute to the ME as follows:
 
+#+name: EqCalcOvlp
 \(
 \braket{V_r | V_s} = \delta_{SS'}\delta_{E} 2^{i-s}(-1)^r
 \)
@@ -621,11 +643,180 @@ respectively and \(s\) represents the total number of pairs in \(V_r\) and
 \(V_s\). The total number of pairs are the same in \(V_r\) and \(V_s\) if they
 belong to the same spin subspace.
 
+kkk**** TODO [1/4] Make the orthonormalization matrix
+
+- [X] Calculate the number of SOMOs in the input CFG.
+
+#+name: getNsomo
+#+begin_src C :main no :tangle cfgCI_utils.c
+void getSetBits(int64_t n, int *nsetbits){
+    int count = 0;
+    while(n){
+        count += n & 1;
+        n >>= 1;
+    }
+    *nsetbits = count;
+}
+#+end_src
+
+- [ ] Generate all the BF for the SOMOs in the CFG
+
+#+name: generateAllBFs
+#+begin_src C :main no :tangle cfgCI_utils.c
+void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOMO){
+    getSetBits(Isomo, NSOMO);
+    buildTreeDriver(bftree, *NSOMO, MS, NBF);
+}
+#+end_src
+
+- [ ] Fill the matrix using Eq:[[EqCalcOvlp]]
+
 
 #+name: getOrthoMatrix
-#+begin_src c
-void getOrthoMatrix(int *cfg, Matrix &orthoMat);
+#+begin_src c :main no :tangle cfgCI_utils.c
+void getOrthoMatrix(int64_t Isomo, int64_t MS, double *orthoMatrix){
+
+    int64_t NBF = 0;
+    int64_t NSOMO = 0;
+
+    Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    bftree.rootNode = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
+
+    printTreeDriver(&bftree, NSOMO);
+
+
+    // initialize Matrix
+    for(int i = 0; i < NBF; i++)
+        for(int j = 0; j < NBF; j++)
+            orthoMatrix[i*NBF + j] = 0.0;
+
+    int addI = 0;
+    int addJ = 0;
+    int *BF1 = malloc(NSOMO * sizeof(int));
+    int *BF2 = malloc(NSOMO * sizeof(int));
+    int *IdxListBF1 = malloc(NSOMO * sizeof(int));
+    int *IdxListBF2 = malloc(NSOMO * sizeof(int));
+
+    int g = 0;
+    g = (NSOMO - MS)/2;
+    printf("NBFs = %d NSOMOs = %d MS = %d g = %d\n",NBF,NSOMO,MS,g);
+
+    int nislands; // Note that nislands < g always
+    int phasefactor;
+
+    int dictPhase[2];
+
+    dictPhase[0] = 1;
+    dictPhase[1] =-1;
+
+
+    // Set block elements
+    for(int i = 0; i < NBF; i++){
+        addI = i;
+        getIthBFDriver(&bftree, NSOMO, addI, BF1);
+        getBFIndexList(NSOMO, BF1, IdxListBF1);
+
+        //printf("addI : %d > ",addI);
+        //for(int k=0;k<NSOMO;k++)
+        //    printf("%d ",BF1[k]);
+        //printf("\n");
+
+        for(int j = 0; j < NBF; j++){
+            addJ = j;
+            getIthBFDriver(&bftree, NSOMO, addJ, BF2);
+            //printf("addJ : %d > ",addI);
+            //for(int k=0;k<NSOMO;k++)
+            //    printf("%d ",BF2[k]);
+            //printf("\n");
+
+            getBFIndexList(NSOMO, BF2, IdxListBF2);
+
+            // Get the i and r factors
+            getIslands(NSOMO, BF1, BF2, &nislands, &phasefactor);
+
+            //printf("(%d, %d) is=%d ph=%d fac=%10.15f\n",addI, addJ, nislands, phasefactor, phasefactor*1.0/(1 << (g-nislands)));
+
+            orthoMatrix[i*NBF + j] = -1.0*phasefactor / (1 << (g - nislands));
+        }
+    }
+
+}
 #+end_src
+
+- [ ] Testing everything
+
+#+begin_src C :main no :noweb yes :tangle main.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include "/home/vijay/Documents/codes/qp2/plugins/local/pluginRepo/cfgCI/tree_utils.h"
+
+<<inttobindigit>>
+
+<<treefuncmain>>
+
+<<indexlist>>
+
+<<calculateislands>>
+
+<<getNsomo>>
+
+<<generateAllBFs>>
+
+<<getOrthoMatrix>>
+
+void main(){
+    int rows = 5;
+    int cols = 5;
+    double *orthoMatrix;
+    orthoMatrix = malloc(rows*cols * sizeof(double));
+
+    int64_t MS=0;
+
+    int64_t Isomo;
+    Isomo = 1 << 5;
+    Isomo += 1 << 4;
+    Isomo += 1 << 3;
+    Isomo += 1 << 2;
+    Isomo += 1 << 1;
+    Isomo += 1 << 0;
+
+    Isomo = (1 << 6) - 1;
+
+    //int digit[MAX_SOMO];
+    //int_to_bin_digit(Isomo, MAX_SOMO, digit);
+    //for(int j=0;j<MAX_SOMO;j++)
+    //    printf("%d ",digit[j]);
+    //printf("\n");
+
+    // Fill matrix
+    getOrthoMatrix(Isomo, MS, orthoMatrix);
+
+    printRealMatrix(orthoMatrix, rows, cols);
+
+    // Garbage collection
+    free(orthoMatrix);
+
+    return;
+}
+#+end_src
+
+#+RESULTS:
+| add  | :    |    0 | >      |    0 | 0 |  0 | 1 | 1 | 1 |   |   |
+| add  | :    |    1 | >      |    0 | 0 |  1 | 0 | 1 | 1 |   |   |
+| add  | :    |    2 | >      |    0 | 0 |  1 | 1 | 0 | 1 |   |   |
+| add  | :    |    3 | >      |    0 | 1 |  0 | 0 | 1 | 1 |   |   |
+| add  | :    |    4 | >      |    0 | 1 |  0 | 1 | 0 | 1 |   |   |
+| NBFs | =    |    5 | NSOMOs |    = | 6 | MS | = | 0 | g | = | 3 |
+|      |      |      |        |      |   |    |   |   |   |   |   |
+| 1.0  | -0.5 | 0.25 | 0.25   | -0.5 |   |    |   |   |   |   |   |
+| -0.5 | 1.0  | -0.5 | -0.5   | 0.25 |   |    |   |   |   |   |   |
+| 0.25 | -0.5 |  1.0 | 0.25   | -0.5 |   |    |   |   |   |   |   |
+| 0.25 | -0.5 | 0.25 | 1.0    | -0.5 |   |    |   |   |   |   |   |
+| -0.5 | 0.25 | -0.5 | -0.5   |  1.0 |   |    |   |   |   |   |   |
+
 
 ** Make the prototype matrices
 
