@@ -797,14 +797,7 @@ void main(){
     int64_t MS=0;
 
     int64_t Isomo;
-    Isomo = 1 << 5;
-    Isomo += 1 << 4;
-    Isomo += 1 << 3;
-    Isomo += 1 << 2;
-    Isomo += 1 << 1;
-    Isomo += 1 << 0;
-
-    Isomo = (1 << 6) - 1;
+    Isomo = (1 << 8) - 1;
 
     //int digit[MAX_SOMO];
     //int_to_bin_digit(Isomo, MAX_SOMO, digit);
@@ -825,18 +818,27 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| NBFs |    = |    5 | NSOMOs |    = | 6 | MS | = | 0 | g | = | 3 |
-|      |      |      |        |      |   |    |   |   |   |   |   |
-|  1.0 | -0.5 | 0.25 |   0.25 | -0.5 |   |    |   |   |   |   |   |
-| -0.5 |  1.0 | -0.5 |   -0.5 | 0.25 |   |    |   |   |   |   |   |
-| 0.25 | -0.5 |  1.0 |   0.25 | -0.5 |   |    |   |   |   |   |   |
-| 0.25 | -0.5 | 0.25 |    1.0 | -0.5 |   |    |   |   |   |   |   |
-| -0.5 | 0.25 | -0.5 |   -0.5 |  1.0 |   |    |   |   |   |   |   |
+|  NBFs |     = |    14 | NSOMOs |     = |     8 |    MS |     = |     0 |     g |     = |     4 |       |       |
+|       |       |       |        |       |       |       |       |       |       |       |       |       |       |
+|  -1.0 |   0.5 | -0.25 |  0.125 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 |
+|   0.5 |  -1.0 |   0.5 |  -0.25 |   0.5 | -0.25 | 0.125 | 0.125 | -0.25 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |
+| -0.25 |   0.5 |  -1.0 |    0.5 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 | 0.125 | -0.25 | 0.125 |   0.5 | -0.25 |
+| 0.125 | -0.25 |   0.5 |   -1.0 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |
+| -0.25 |   0.5 | -0.25 |  0.125 |  -1.0 |   0.5 | -0.25 | -0.25 |   0.5 |   0.5 | -0.25 | 0.125 | 0.125 | -0.25 |
+|   0.5 | -0.25 |   0.5 |  -0.25 |   0.5 |  -1.0 |   0.5 |   0.5 | -0.25 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 |
+| -0.25 | 0.125 | -0.25 |    0.5 | -0.25 |   0.5 |  -1.0 | -0.25 |   0.5 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 |
+| -0.25 | 0.125 | -0.25 |  0.125 | -0.25 |   0.5 | -0.25 |  -1.0 |   0.5 | 0.125 | -0.25 | 0.125 |   0.5 | -0.25 |
+| 0.125 | -0.25 | 0.125 |  -0.25 |   0.5 | -0.25 |   0.5 |   0.5 |  -1.0 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |
+| 0.125 | -0.25 | 0.125 |  -0.25 |   0.5 | -0.25 | 0.125 | 0.125 | -0.25 |  -1.0 |   0.5 | -0.25 | -0.25 |   0.5 |
+| -0.25 | 0.125 | -0.25 |  0.125 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 |   0.5 |  -1.0 |   0.5 |   0.5 | -0.25 |
+|   0.5 | -0.25 | 0.125 |  -0.25 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 | -0.25 |   0.5 |  -1.0 | -0.25 |   0.5 |
+| 0.125 | -0.25 |   0.5 |  -0.25 | 0.125 | -0.25 | 0.125 |   0.5 | -0.25 | -0.25 |   0.5 | -0.25 |  -1.0 |   0.5 |
+| -0.25 |   0.5 | -0.25 |    0.5 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |   0.5 | -0.25 |   0.5 |   0.5 |  -1.0 |
 
 
 ** Make the prototype matrices
 
-jThe prototype matrices give the matrix-elements (MEs) for a given type
+The prototype matrices give the matrix-elements (MEs) for a given type
 of excitation \(p->q\) of a specific type between two CFGs \(I,J\).
 
 These matrices are independent of the MOs and only depend on the total number of
@@ -849,6 +851,72 @@ void makePrototypeMatrices(int nel, int norb, double spin);
 
 ** Functions required for calculating MEs
 
+*** TODO [0/2] Table of matrix-elements
+
+The first step twoards the evaluation of MEs between bonded-functions is
+the tabulation of the effect of the application of the operator on BFs.
+
+There are four type of cases depending on the type of orbitals for the excitaton
+i.e. for \(\hat{E}_{ji}\), the type of orbitals possible for \(i\) are DOMO or
+SOMO and the type of orbitals possible for \(j\) are SOMO or VMO respectively.
+The table of MEs will be different in each case
+
+Here is a table which lists the action of E_{j,i} on all the various
+cases of BFs that can arise.
+
+- [ ] SOMO -> VMO type
+
+  This is the simplest type. The \(i\) th SOMO is simply replaced
+  by the \(j\) th one.
+
+#+name: SOMO -> VMO
+| BF (ket) | Type | Operator         | BF (bra) |
+|          |      | \(\hat{E}_{ji}\) |          |
+|          |      |                  |          |
+| (i       | C-C  | \(1\)            | (j       |
+|          |      |                  |          |
+
+- [ ] SOMO -> SOMO type
+
+This is slightly involved depending on the type of SOMO \(i\)
+and type of SOMO \(j\) and to which islands they belong to.
+
+#+name: SOMO -> SOMO
+| BF (ket)    | Type | Operator                    | BF (bra) |
+|             |      | \(\hat{E}_{ji}\)            |          |
+|             |      |                             |          |
+| (i j)       | C-C  | \(\sqrt{2}\)                | -        |
+| (i k) (j l) | C-C' | \(-\frac{1}{\sqrt{2}}\)(kl) | (kl)     |
+| (i k) (j    | C-O  | \(-\frac{1}{\sqrt{2}}\)(k   | (k       |
+| (i (j k)    | O-C  | \(-\frac{1}{\sqrt{2}}\)(k   | (k       |
+| (i (j       | O-C  | \(0\)                       | -        |
+|             |      |                             |          |
+
+- [ ] DOMO -> VMO
+
+  Here two extra SOMOs will be created and the MEs of
+  the operator will form a rectangular matrix.
+
+#+name: DOMO -> SOMO
+| BF (ket) | Type | Operator         | BF (bra)   |
+|          |      | \(\hat{E}_{ji}\) |            |
+|          |      |                  |            |
+| (ii)     | O    | \(\sqrt{2}\)     | (i j)      |
+| (ii)     | C    | \(0\)            | (i k)(j l) |
+|          |      |                  |            |
+
+- [ ] DOMO -> SOMO
+
+  Here the total number of SOMOs is kept the same therefore,
+  there is no change in the BFs for bra and ket functions.
+
+#+name: DOMO -> SOMO
+| BF (ket) | Type | Operator         | BF (bra) |
+|          |      | \(\hat{E}_{ji}\) |          |
+|          |      |                  |          |
+| (ii      | O    | \( 1\)           | (j       |
+| (i k)    | C    | \(-1\)           | (j k)    |
+|          |      |                  |          |
 
 ** Calculate the Operator MEs
 
