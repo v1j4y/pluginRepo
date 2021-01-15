@@ -620,6 +620,10 @@ BF2 : 0    1    0    0    0    1    1    1
                 --------------------------
 #+end_example
 
+#+name: illustration islands
+#+ATTR_ORG: :width 400
+[[./illustration_islands.jpg]]
+
 **** Open chains (O)
 
 The open chains are constituted of open polygons which have an odd number of
