@@ -205,6 +205,9 @@ void getSetBits(int64_t n, int *nsetbits);
 void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *rows, int *cols);
 
 
+void calculateMETypeSOMOSOMO(int *BF1, int *BF2, int moi, int moj, double *factor, int *phasefactor);
+void getOneElMETypeSOMOSOMO(int64_t Isomo, int64_t Jsomos, int moi, int moj, int MS, double **oneElMatrixElementsptr, int *rows, int *cols);
+
 // Misc utils
 void int_to_bin_digit(int64_t in, int count, int* out);
 void printRealMatrix(double *orthoMatrix, int rows, int cols);
@@ -768,7 +771,7 @@ void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *row
 
 - [ ] Testing everything
 
-#+begin_src C :main no :noweb yes :tangle main.c
+#+begin_src C :main no :noweb yes 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -882,15 +885,14 @@ This is slightly involved depending on the type of SOMO \(i\)
 and type of SOMO \(j\) and to which islands they belong to.
 
 #+name: SOMO -> SOMO
-| BF (ket)    | Type | Operator                | BF (bra) |
-|             |      | \(\hat{E}_{ji}\)        |          |
-|             |      |                         |          |
-| (i j)       | C-C  | \(\sqrt{2}\)            | -        |
-| (i k) (j l) | C-C' | \(-\frac{1}{\sqrt{2}}\) | (kl)     |
-| (i k) (j    | C-O  | \(-\frac{1}{\sqrt{2}}\) | (k       |
-| (i (j k)    | O-C  | \(-\frac{1}{\sqrt{2}}\) | (k       |
-| (i (j       | O-C  | \(0\)                   | -        |
-|             |      |                         |          |
+|   | BF (ket)    | Type | Operator                | BF (bra) |
+|   |             |      | \(\hat{E}_{ji}\)        |          |
+|   |             |      |                         |          |
+| 1 | (i j)       | C-C  | \(\sqrt{2}\)            | -        |
+| 2 | (i k) (j l) | C-C' | \(-\frac{1}{\sqrt{2}}\) | (kl)     |
+| 3 | (i k) (j    | C-O  | \(-\frac{1}{\sqrt{2}}\) | (k       |
+| 4 | (i (j k)    | O-C  | \(-\frac{1}{\sqrt{2}}\) | (k       |
+| 5 | (i (j       | O-C  | \(0\)                   | -        |
 
 - [ ] DOMO -> VMO
 
@@ -950,17 +952,36 @@ specified type which is one of the four:
 
 #+name: calculateMETypeSOMOSOMO
 #+begin_src C :main no :tangle cfgCI_utils.c
-void calculateMETypeSOMOSOMO(int NSOMO, int *BF1, int *BF2, double *factor, int *phasefactor){
+void calculateMETypeSOMOSOMO(int *BF1, int *BF2, int moi, int moj, double *factor, int *phasefactor){
 
     // Calculate the factor following rules in the table
     // find the type
 
+    if(BF1[moi] == moj){
+        // Type I
+        (*factor) = sqrt(2.0);
+        (*phasefactor) = 1;
+    }
+    else{
+        if(BF1[moi] != moi || BF1[moj] != moj){
+            // Type II, III and IV
+            (*factor) = 1.0/sqrt(2.0);
+            (*phasefactor) =-1;
+        }
+        else{
+            // Type V
+            (*factor) = 0.0;
+            (*phasefactor) = 1;
+        }
+    }
+
+
 }
 #+end_src
 
-#+name: METypeSOMOVMO
+#+name: getOneElMETypeSOMOSOMO
 #+begin_src C :main no :tangle cfgCI_utils.c
-void getOneElMETypeSOMOVMO(int64_t Isomo, int64_t Jsomos, int MS, double **oneElMatrixElementsptr, int *rows, int *cols){
+void getOneElMETypeSOMOSOMO(int64_t Isomo, int64_t Jsomo, int moi, int moj, int MS, double **oneElMatrixElementsptr, int *rows, int *cols){
 
     // Icfg
 
@@ -1003,11 +1024,15 @@ void getOneElMETypeSOMOVMO(int64_t Isomo, int64_t Jsomos, int MS, double **oneEl
     int *IdxListBF2 = malloc(MAX_SOMO * sizeof(int));
 
     int g = 0;
-    g = (NSOMO - MS)/2;
-    printf("NBFs = %d NSOMOs = %d MS = %d g = %d\n",NBF,NSOMO,MS,g);
+    g = (INSOMO - MS)/2;
+    printf("NBFs = %d NSOMOs = %d MS = %d g = %d\n",INBF,INSOMO,MS,g);
 
     int nislands; // Note that nislands < g always
     int phasefactor;
+    double factor;
+    nislands = 0;
+    phasefactor = 1;
+    factor = 0.0;
 
     int dictPhase[2];
 
@@ -1018,8 +1043,8 @@ void getOneElMETypeSOMOVMO(int64_t Isomo, int64_t Jsomos, int MS, double **oneEl
     // Set block elements
     for(int i = 0; i < INBF; i++){
         addI = i;
-        getIthBFDriver(&Ibftree, NSOMO, addI, BF1);
-        getBFIndexList(NSOMO, BF1, IdxListBF1);
+        getIthBFDriver(&Ibftree, INSOMO, addI, BF1);
+        getBFIndexList(INSOMO, BF1, IdxListBF1);
 
         //printf("addI : %d > ",addI);
         //for(int k=0;k<NSOMO;k++)
@@ -1028,15 +1053,15 @@ void getOneElMETypeSOMOVMO(int64_t Isomo, int64_t Jsomos, int MS, double **oneEl
 
         for(int j = 0; j < JNBF; j++){
             addJ = j;
-            getIthBFDriver(&Jbftree, NSOMO, addJ, BF2);
-            getBFIndexList(NSOMO, BF2, IdxListBF2);
+            getIthBFDriver(&Jbftree, JNSOMO, addJ, BF2);
+            getBFIndexList(JNSOMO, BF2, IdxListBF2);
             //printf("addJ : %d > ",addI);
             //for(int k=0;k<NSOMO;k++)
             //    printf("%d ",BF2[k]);
             //printf("\n");
 
             // Get the i and r factors
-            calculateMETypeSOMOSOMO(NSOMO, IdxListBF1, IdxListBF2, &factor, &phasefactor);
+            calculateMETypeSOMOSOMO(IdxListBF1, IdxListBF2, moi, moj, &factor, &phasefactor);
 
             //printf("(%d, %d) is=%d ph=%d fac=%10.15f\n",addI, addJ, nislands, phasefactor, phasefactor*1.0/(1 << (g-nislands)));
 
@@ -1052,9 +1077,76 @@ void getOneElMETypeSOMOVMO(int64_t Isomo, int64_t Jsomos, int MS, double **oneEl
 }
 #+end_src
 
+#+RESULTS: METypeSOMOSOMO
+
 - [ ] DOMO -> VMO type
 
 - [ ] DOMO -> SOMO type
+
+- [ ] Testing
+
+
+#+begin_src C :main no :noweb yes :tangle main.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <math.h>
+#include "/home/vijay/Documents/codes/qp2/plugins/local/pluginRepo/cfgCI/tree_utils.h"
+
+<<inttobindigit>>
+
+<<treefuncmain>>
+
+<<indexlist>>
+
+<<calculateislands>>
+
+<<getNsomo>>
+
+<<generateAllBFs>>
+
+<<getOrthoMatrix>>
+
+<<calculateMETypeSOMOSOMO>>
+
+<<getOneElMETypeSOMOSOMO>>
+
+void main(){
+
+    int rows = 0;
+    int cols = 0;
+    double *oneElMatrixElementsptr;
+
+    int64_t MS=0;
+
+    int64_t Isomo;
+    Isomo = (1 << 8) - 1;
+
+    int64_t Jsomo;
+    Jsomo = (1 << 6) - 1;
+
+    int moi = 6;
+    int moj = 7;
+
+    //int digit[MAX_SOMO];
+    //int_to_bin_digit(Isomo, MAX_SOMO, digit);
+    //for(int j=0;j<MAX_SOMO;j++)
+    //    printf("%d ",digit[j]);
+    //printf("\n");
+
+    // Fill matrix
+    getOneElMETypeSOMOSOMO(Isomo, Jsomo, moi, moj, MS, &oneElMatrixElementsptr, &rows, &cols);
+
+    printRealMatrix(oneElMatrixElementsptr, rows, cols);
+
+    // Garbage collection
+    free(oneElMatrixElementsptr);
+
+    return;
+}
+#+end_src
+
+#+RESULTS:
 
 
 #+name: getOneElOperatorMatrix
