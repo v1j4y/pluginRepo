@@ -851,7 +851,7 @@ void makePrototypeMatrices(int nel, int norb, double spin);
 
 ** Functions required for calculating MEs
 
-*** TODO [0/2] Table of matrix-elements
+*** TODO [1/4] Table of matrix-elements
 
 The first step twoards the evaluation of MEs between bonded-functions is
 the tabulation of the effect of the application of the operator on BFs.
@@ -876,21 +876,21 @@ cases of BFs that can arise.
 | (i       | C-C  | \(1\)            | (j       |
 |          |      |                  |          |
 
-- [ ] SOMO -> SOMO type
+- [X] SOMO -> SOMO type
 
 This is slightly involved depending on the type of SOMO \(i\)
 and type of SOMO \(j\) and to which islands they belong to.
 
 #+name: SOMO -> SOMO
-| BF (ket)    | Type | Operator                    | BF (bra) |
-|             |      | \(\hat{E}_{ji}\)            |          |
-|             |      |                             |          |
-| (i j)       | C-C  | \(\sqrt{2}\)                | -        |
-| (i k) (j l) | C-C' | \(-\frac{1}{\sqrt{2}}\)(kl) | (kl)     |
-| (i k) (j    | C-O  | \(-\frac{1}{\sqrt{2}}\)(k   | (k       |
-| (i (j k)    | O-C  | \(-\frac{1}{\sqrt{2}}\)(k   | (k       |
-| (i (j       | O-C  | \(0\)                       | -        |
-|             |      |                             |          |
+| BF (ket)    | Type | Operator                | BF (bra) |
+|             |      | \(\hat{E}_{ji}\)        |          |
+|             |      |                         |          |
+| (i j)       | C-C  | \(\sqrt{2}\)            | -        |
+| (i k) (j l) | C-C' | \(-\frac{1}{\sqrt{2}}\) | (kl)     |
+| (i k) (j    | C-O  | \(-\frac{1}{\sqrt{2}}\) | (k       |
+| (i (j k)    | O-C  | \(-\frac{1}{\sqrt{2}}\) | (k       |
+| (i (j       | O-C  | \(0\)                   | -        |
+|             |      |                         |          |
 
 - [ ] DOMO -> VMO
 
@@ -918,7 +918,7 @@ and type of SOMO \(j\) and to which islands they belong to.
 | (i k)    | C    | \(-1\)           | (j k)    |
 |          |      |                  |          |
 
-** Calculate the Operator MEs
+** TODO [0/4] Calculate the Operator MEs
 
 The operator matrix-elements are calculated using the bonded-function (or
 determinant) basis and are called \( A^{pq}_{IK} \), where \(p,q\) are the two
@@ -932,6 +932,129 @@ specified type which is one of the four:
 2. SOMO \(->\) SOMO
 3. DOMO \(->\) VMO
 4. DOMO \(->\) SOMO
+
+
+
+
+- [ ] SOMO -> VMO type
+
+  This case is the simplest and there is only one
+  non-vanising ME as shown in Table:[[SOMO -> VMO]].
+  Therefore, the one-electron operator MEs are
+  that of the identity matrix.
+
+- [ ] SOMO -> SOMO type
+
+  The MEs for the various types are given in Table:[[SOMO -> SOMO]].
+  Here we implement the rules.
+
+#+name: calculateMETypeSOMOSOMO
+#+begin_src C :main no :tangle cfgCI_utils.c
+void calculateMETypeSOMOSOMO(int NSOMO, int *BF1, int *BF2, double *factor, int *phasefactor){
+
+    // Calculate the factor following rules in the table
+    // find the type
+
+}
+#+end_src
+
+#+name: METypeSOMOVMO
+#+begin_src C :main no :tangle cfgCI_utils.c
+void getOneElMETypeSOMOVMO(int64_t Isomo, int64_t Jsomos, int MS, double **oneElMatrixElementsptr, int *rows, int *cols){
+
+    // Icfg
+
+    int64_t INBF = 0;
+    int64_t INSOMO = 0;
+
+    Tree Ibftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    Ibftree.rootNode = malloc(sizeof(Node));
+    (*Ibftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    generateAllBFs(Isomo, MS, &Ibftree, &INBF, &INSOMO);
+
+    // Jcfg
+
+    int64_t JNBF = 0;
+    int64_t JNSOMO = 0;
+
+    Tree Jbftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    Jbftree.rootNode = malloc(sizeof(Node));
+    (*Jbftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    generateAllBFs(Jsomo, MS, &Jbftree, &JNBF, &JNSOMO);
+
+
+    // Initialize orthonormalization matrix
+
+    (*oneElMatrixElementsptr) = malloc(INBF*JNBF*sizeof(double));
+    (*rows) = INBF;
+    (*cols) = JNBF;
+
+    double *oneElMatrixElements = (*oneElMatrixElementsptr);
+
+    // Calculate Matrix
+
+    int addI = 0;
+    int addJ = 0;
+    int *BF1 = malloc(MAX_SOMO * sizeof(int));
+    int *BF2 = malloc(MAX_SOMO * sizeof(int));
+    int *IdxListBF1 = malloc(MAX_SOMO * sizeof(int));
+    int *IdxListBF2 = malloc(MAX_SOMO * sizeof(int));
+
+    int g = 0;
+    g = (NSOMO - MS)/2;
+    printf("NBFs = %d NSOMOs = %d MS = %d g = %d\n",NBF,NSOMO,MS,g);
+
+    int nislands; // Note that nislands < g always
+    int phasefactor;
+
+    int dictPhase[2];
+
+    dictPhase[0] = 1;
+    dictPhase[1] =-1;
+
+
+    // Set block elements
+    for(int i = 0; i < INBF; i++){
+        addI = i;
+        getIthBFDriver(&Ibftree, NSOMO, addI, BF1);
+        getBFIndexList(NSOMO, BF1, IdxListBF1);
+
+        //printf("addI : %d > ",addI);
+        //for(int k=0;k<NSOMO;k++)
+        //    printf("%d ",BF1[k]);
+        //printf("\n");
+
+        for(int j = 0; j < JNBF; j++){
+            addJ = j;
+            getIthBFDriver(&Jbftree, NSOMO, addJ, BF2);
+            getBFIndexList(NSOMO, BF2, IdxListBF2);
+            //printf("addJ : %d > ",addI);
+            //for(int k=0;k<NSOMO;k++)
+            //    printf("%d ",BF2[k]);
+            //printf("\n");
+
+            // Get the i and r factors
+            calculateMETypeSOMOSOMO(NSOMO, IdxListBF1, IdxListBF2, &factor, &phasefactor);
+
+            //printf("(%d, %d) is=%d ph=%d fac=%10.15f\n",addI, addJ, nislands, phasefactor, phasefactor*1.0/(1 << (g-nislands)));
+
+            oneElMatrixElements[i*INBF + j] = -1.0*phasefactor*factor;
+        }
+    }
+
+    // Garbage collection
+    free(BF1);
+    free(IdxListBF1);
+    free(BF2);
+    free(IdxListBF2);
+}
+#+end_src
+
+- [ ] DOMO -> VMO type
+
+- [ ] DOMO -> SOMO type
 
 
 #+name: getOneElOperatorMatrix
