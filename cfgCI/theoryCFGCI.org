@@ -933,6 +933,50 @@ void getIthDetDriver(Tree *dettree, int NSOMOMax, int getaddr, int *vecBF){
     getIthDet((dettree->rootNode), isomo, foundBF, NSOMOMax, getaddr, vecBF);
 }
 
+void findAddofDet(Node *inode, int isomo, bool foundDet, int NSOMOMax, int *inpdet, int *addr){
+    // Exit condition
+    if(foundDet) return;
+    if(isomo == NSOMOMax){
+        foundDet = true;
+        ,*addr = inode->addr;
+        return;
+    }
+    //printf("%d | %d (%d)\n",isomo,inpdet[isomo],inode->addr);
+
+
+    // Recurse to C0
+    if(inpdet[isomo] == 0){
+        if(inode->C0 != -1){
+            findAddofDet(inode->C0, isomo+1, foundDet, NSOMOMax, inpdet, addr);
+        }
+        else{
+            ,*addr = -1;
+            return;
+        }
+    }
+    else{
+        // Recurse to C1
+        if(inode->C1 != -1){
+            findAddofDet(inode->C1, isomo+1, foundDet, NSOMOMax, inpdet, addr);
+        }
+        else{
+            ,*addr = -1;
+            return;
+        }
+    }
+
+    return;
+}
+
+void findAddofDetDriver(Tree *dettree, int NSOMOMax, int *inpdet, int *addr){
+    ,*addr = -1;
+    int isomo = 0;
+    bool foundDet = false;
+    // for(int i=0;i<NSOMOMax;i++)
+    //    printf("%d ",inpdet[i]);
+    findAddofDet((dettree->rootNode), isomo, foundDet, NSOMOMax, inpdet, addr);
+}
+
 void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets){
 
     int NSOMO=0;
@@ -949,6 +993,23 @@ void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets){
 
 #+name: convertBFtoDetbasis
 #+begin_src C :main no :noweb yes
+
+void getbftodetfunction(int NSOMO, int MS, int *BF1, int *rowvec){
+    int npairs = 1 << ((NSOMO - MS)/2);
+    int idxp = 0;
+    int idxq = 0;
+    int detslist = malloc(NSOMO*npairs*sizeof(int));
+    int shft = npairs/2;
+    for(int i = 0; i < npairs; i++){
+        idxp = BF1[i];
+        idxq = BF[idxp];
+        for(int j = 0; j < npairs; j = j + shft){
+            for(int k = 0; k < shft; k++){
+            }
+        }
+    }
+}
+
 void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, int *rows, int *cols, int *ndetout){
 
     int NSOMO=0;
@@ -968,8 +1029,71 @@ void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, i
     //printTreeDriver(&dettree, NSOMO);
     printf("Ndets = %d\n",ndets);
 
+    int addr = -1;
+    int inpdet[NSOMO];
+    inpdet[0] = 1;
+    inpdet[1] = 1;
+    inpdet[2] = 1;
+    inpdet[3] = 0;
+    inpdet[4] = 0;
+    inpdet[5] = 0;
+
+    findAddofDetDriver(&dettree, NSOMO, inpdet, &addr);
+
+    printf("addr of det=%d\n",addr);
+
+    // Prepare BFs
+    Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    bftree.rootNode = malloc(sizeof(Node));
+    (*bftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
+
+    // Initialize transformation matrix
+    (*bftodetmatrixptr) = malloc(NBF*ndets*sizeof(double));
+    (*rows) = NBF;
+    (*cols) = ndets;
+
+    double *bftodetmatrix = (*bftodetmatrixptr);
+
+    // Build BF to det matrix
+    int addI = 0;
+    int addJ = 0;
+    int rowvec[ndets];
+    int *BF1 = malloc(MAX_SOMO * sizeof(int));
+    int *BF2 = malloc(MAX_SOMO * sizeof(int));
+    int *IdxListBF1 = malloc(MAX_SOMO * sizeof(int));
+    int *IdxListBF2 = malloc(MAX_SOMO * sizeof(int));
+
+    for(int i = 0; i < NBF; i++){
+        addI = i;
+        getIthBFDriver(&bftree, NSOMO, addI, BF1);
+        getBFIndexList(NSOMO, BF1, IdxListBF1);
+
+        //printf("addI : %d > ",addI);
+        //for(int k=0;k<NSOMO;k++)
+        //    printf("%d ",BF1[k]);
+        //printf("\n");
+
+        // Get ith row
+        getBFtodetfunction(NSOMO, BF1, rowvec);
+
+        //printf("(%d, %d) is=%d ph=%d fac=%10.15f\n",addI, addJ, nislands, phasefactor, phasefactor*1.0/(1 << (g-nislands)));
+
+        for(int j = 0; j < ndets; j++)
+            overlapMatrix[i*NBF + j] = rowvec[j];
+    }
+
+    // Garbage collection
+    free(BF1);
+    free(IdxListBF1);
+    free(BF2);
+    free(IdxListBF2);
+
 }
 #+end_src
+
+#+RESULTS: convertBFtoDetbasis
 
 - [ ] Testing everything
 
@@ -1057,16 +1181,17 @@ void main(){
 #+end_src
 
 #+RESULTS:
-|  NBFs |    = |     5 | NSOMOs |     = | 6 | MS | = | 0 | g | = | 3 |
-|       |      |       |        |       |   |    |   |   |   |   |   |
-|  0.88 | 0.16 |   0.0 |    0.0 |  0.44 |   |    |   |   |   |   |   |
-|   0.0 | 0.88 |   0.3 |    0.3 | -0.22 |   |    |   |   |   |   |   |
-|   0.0 |  0.0 |  0.89 |    0.0 |  0.45 |   |    |   |   |   |   |   |
-|   0.0 |  0.0 |   0.0 |   0.89 |  0.45 |   |    |   |   |   |   |   |
-|   0.0 |  0.0 |   0.0 |    0.0 |   1.0 |   |    |   |   |   |   |   |
-|   Gen |  det | basis |        |       |   |    |   |   |   |   |   |
-| Ndets |    = |    20 |        |       |   |    |   |   |   |   |   |
-| Ndets |    = |    20 |        |       |   |    |   |   |   |   |   |
+|  NBFs |    = |      5 | NSOMOs |     = | 6 | MS | = | 0 | g | = | 3 |
+|       |      |        |        |       |   |    |   |   |   |   |   |
+|  0.88 | 0.16 |    0.0 |    0.0 |  0.44 |   |    |   |   |   |   |   |
+|   0.0 | 0.88 |    0.3 |    0.3 | -0.22 |   |    |   |   |   |   |   |
+|   0.0 |  0.0 |   0.89 |    0.0 |  0.45 |   |    |   |   |   |   |   |
+|   0.0 |  0.0 |    0.0 |   0.89 |  0.45 |   |    |   |   |   |   |   |
+|   0.0 |  0.0 |    0.0 |    0.0 |   1.0 |   |    |   |   |   |   |   |
+|   Gen |  det |  basis |        |       |   |    |   |   |   |   |   |
+| Ndets |    = |     20 |        |       |   |    |   |   |   |   |   |
+| Ndets |    = |     20 |        |       |   |    |   |   |   |   |   |
+|  addr |   of | det=19 |        |       |   |    |   |   |   |   |   |
 
 
 ** Make the prototype matrices
