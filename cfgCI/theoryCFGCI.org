@@ -682,7 +682,7 @@ respectively and \(s\) represents the total number of pairs in \(V_r\) and
 \(V_s\). The total number of pairs are the same in \(V_r\) and \(V_s\) if they
 belong to the same spin subspace.
 
-**** TODO [2/6] Make the orthonormalization matrix
+**** TODO [3/7] Make the orthonormalization matrix
 
 - [X] Calculate the number of SOMOs in the input CFG.
 
@@ -978,6 +978,42 @@ void findAddofDetDriver(Tree *dettree, int NSOMOMax, int *inpdet, int *addr){
     findAddofDet((dettree->rootNode), isomo, foundDet, NSOMOMax, inpdet, addr);
 }
 
+void getDetlist(Node *inode, int isomo, int NSOMOMax, int *vecBF, int *detlist){
+    // Exit condition
+    if(isomo > NSOMOMax) return;
+    if(inode == -1) return;
+
+    if(isomo == NSOMOMax){
+        int idet=0;
+        for(int k=0;k<NSOMOMax;k++){
+            if(vecBF[k] == 1) idet = idet | (1<<(NSOMOMax-1-k));
+        }
+        detlist[inode->addr]=idet;
+        return;
+    }
+    //printf("%d | %d (%d)\n",isomo,sizeof(inode),inode->C1);
+
+
+    // Recurse to C0
+    if(inode->C0 != -1){
+        vecBF[isomo] = 0;
+        getDetlist(inode->C0, isomo+1, NSOMOMax, vecBF, detlist);
+    }
+    // Recurse to C1
+    if(inode->C1 != -1){
+        vecBF[isomo] = 1;
+        getDetlist(inode->C1, isomo+1, NSOMOMax, vecBF, detlist);
+    }
+
+    return;
+}
+
+void getDetlistDriver(Tree *dettree, int NSOMOMax, int *detlist){
+    int isomo = 0;
+    int vecBF[NSOMOMax];
+    getDetlist((dettree->rootNode), isomo, NSOMOMax, vecBF, detlist);
+}
+
 void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets){
 
     int NSOMO=0;
@@ -987,7 +1023,7 @@ void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets){
 }
 #+end_src
 
-- [ ] Generate BF to Det matrix
+- [X] Generate BF to Det matrix
 
   Here we generate the matrix of transformation from BF basis to
   determinant basis.
@@ -1075,6 +1111,14 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
     inpdet[5] = 0;
 
     findAddofDetDriver(&dettree, NSOMO, inpdet, &addr);
+
+    int detlist[ndets];
+    getDetlistDriver(&dettree, NSOMO, detlist);
+
+    printf("\n");
+    for(int i=0;i<ndets;i++)
+        printf("%d ",detlist[i]);
+    printf("\n");
 
     //printf("addr of det=%d\n",addr);
 
@@ -1220,6 +1264,7 @@ void main(){
 
     printRealMatrix(bftodetmatrix, rows, cols);
 
+
     // Garbage collection
     free(overlapMatrix);
     free(orthoMatrix);
@@ -1232,6 +1277,8 @@ void main(){
 | NBFs |     = |     5 | NSOMOs |     = |    6 |    MS |     = |     0 |     g |    = |     3 |       |       |       |      |       |       |      |       |
 |      |       |       |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
 |  Gen |   det | basis |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
+|      |       |       |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
+|    7 |    11 |    13 |     14 |    19 |   21 |    22 |    25 |    26 |    28 |   35 |    37 |    38 |    41 |    42 |   44 |    49 |    50 |   52 |    56 |
 |      |       |       |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
 | 0.35 | -0.35 |   0.0 |    0.0 |   0.0 |  0.0 |  0.35 | -0.35 |   0.0 | -0.35 |  0.0 |   0.0 |  0.35 | -0.35 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |  0.35 |
 |  0.0 |  0.35 | -0.35 |    0.0 | -0.35 |  0.0 |   0.0 |  0.35 | -0.35 |   0.0 |  0.0 |   0.0 |   0.0 |   0.0 |  0.35 |  0.0 |   0.0 |   0.0 |  0.0 |   0.0 |
@@ -1254,6 +1301,18 @@ void makePrototypeMatrices(int nel, int norb, double spin);
 #+end_src
 
 ** Functions required for calculating MEs
+
+*** TODO [0/2] Calculate MEs in Det basis
+
+- [ ] Calculate one-electron ME between two dets
+
+#+name: calcMEdetpair
+#+begin_src C :main no :tangle tree_utils.c
+void calcMEdetpair(int *detI, int *detJ, int NSOMOI, int NSOMOJ, int ndetI, int ndetJ, double **matelemdetbasisptr){
+}
+#+end_src
+
+- [ ] Calculate batch of MEs between CFGs
 
 *** TODO [1/4] Table of matrix-elements
 
