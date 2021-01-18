@@ -202,16 +202,41 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor);
 
 void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOMO);
 void getSetBits(int64_t n, int *nsetbits);
-void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols);
+void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols, int *NSOMOout);
 void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix);
 
 
 void calculateMETypeSOMOSOMO(int *BF1, int *BF2, int moi, int moj, double *factor, int *phasefactor);
 void getOneElMETypeSOMOSOMO(int64_t Isomo, int64_t Jsomos, int moi, int moj, int MS, double **oneElMatrixElementsptr, int *rows, int *cols);
 
+/***********************
+
+Determinant Tree utils
+,***********************/
+
+
+void genDets(Tree *dettree,
+               Node **inode,
+               int isomo,
+               int izeros,
+               int icpl,
+               int NSOMOMax,
+               int MSmax);
+void genDetsDriver(Tree *dettree, int NSOMO, int MS, int *Ndets);
+
+void getIthDet(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, int *vecBF);
+void getIthDetDriver(Tree *dettree, int NSOMOMax, int getaddr, int *vecBF);
+
+
+/************************/
+
+void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets);
+void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, int *rows, int *cols, int *ndetout);
+
 // Misc utils
 void int_to_bin_digit(int64_t in, int count, int* out);
 void printRealMatrix(double *orthoMatrix, int rows, int cols);
+
 #+end_src
 
 #+name: treefuncmain
@@ -656,7 +681,7 @@ respectively and \(s\) represents the total number of pairs in \(V_r\) and
 \(V_s\). The total number of pairs are the same in \(V_r\) and \(V_s\) if they
 belong to the same spin subspace.
 
-**** TODO [1/5] Make the orthonormalization matrix
+**** TODO [2/6] Make the orthonormalization matrix
 
 - [X] Calculate the number of SOMOs in the input CFG.
 
@@ -687,7 +712,7 @@ void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOM
 
 #+name: getOverlapMatrix
 #+begin_src c :main no :tangle cfgCI_utils.c
-void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols){
+void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols, int *NSOMOout){
 
     int64_t NBF = 0;
     int64_t NSOMO = 0;
@@ -697,6 +722,8 @@ void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int 
     (*bftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
+
+    *NSOMOout = NSOMO;
 
     //printTreeDriver(&bftree, NSOMO);
 
@@ -809,7 +836,140 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
 }
 #+end_src
 
+- [X] Generate det basis
 
+  Generate the determinant representation of the BFs.
+
+#+name: genDetBasis
+#+begin_src C :main no
+
+void genDets(Tree *dettree,
+               Node **inode,
+               int isomo,
+               int izeros,
+               int icpl,
+               int NSOMOMax,
+               int MSmax){
+
+    // Find the maximum parallel couplings 0
+    //      the maximum anti-parallel couplings 1
+    int zeromax = MSmax + (NSOMOMax-MSmax)/2;
+    int onemax = NSOMOMax - zeromax;
+
+    // Exit condition
+    if(isomo > NSOMOMax || izeros > zeromax || abs(icpl) > onemax) return;
+
+    // If we find a valid BF assign its address
+    if(isomo == NSOMOMax){
+        (*inode)->addr = dettree->rootNode->addr;
+        dettree->rootNode->addr += 1;
+        return;
+    }
+
+    // Call 0 branch
+    if(((*inode)->C0) == -1 && izeros+1 <= zeromax){
+        ((*inode)->C0) = malloc(sizeof(Node));
+        (*(*inode)->C0) = (Node){ .C0 = -1, .C1 = -1, .PREV = *inode, .addr = -1, .cpl = 0, .iSOMO = isomo };
+        genDets(dettree, &(*inode)->C0, isomo+1, izeros+1, icpl+0, NSOMOMax, MSmax);
+    }
+    else genDets(dettree, &(*inode)->C0, isomo+1, izeros+1, icpl+0, NSOMOMax, MSmax);
+
+    // Call 1 branch
+    if(((*inode)->C1) == -1 && abs(icpl+1) <= onemax){
+        ((*inode)->C1) = malloc(sizeof(Node));
+        (*(*inode)->C1) = (Node){ .C0 = -1, .C1 = -1, .PREV = *inode, .addr = -1, .cpl = 1, .iSOMO = isomo };
+        genDets(dettree, &(*inode)->C1, isomo+1, izeros+0, icpl+1, NSOMOMax, MSmax);
+    }
+    else genDets(dettree, &(*inode)->C1, isomo+1, izeros+0, icpl+1, NSOMOMax, MSmax);
+
+    return;
+}
+
+void genDetsDriver(Tree *dettree, int NSOMO, int MS, int *Ndets){
+    int isomo = 0; // counts the total number of SOMO's
+    int izeros= 0; // Counts the total number of parallel coupings (i.e. 0's)
+    int icpl  = 0; // keep track of the ith ms (cannot be -ve)
+    int addr  = 0; // Counts the total BF's
+
+    genDets(dettree, &(dettree->rootNode), isomo, izeros, icpl, NSOMO, MS);
+
+    ,*Ndets = dettree->rootNode->addr;
+}
+
+void getIthDet(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, int *vecBF){
+    // Exit condition
+    if(foundBF) return;
+    if(isomo > NSOMOMax) return;
+    if(inode == -1) return;
+
+    if(isomo == NSOMOMax){
+        if(inode->addr == getaddr){
+            for(int i = NSOMOMax-1; i > -1; i--){
+                vecBF[i] = inode->cpl;
+                inode = inode->PREV;
+            }
+            foundBF = true;
+            return;
+        }
+    }
+    //printf("%d | %d (%d)\n",isomo,sizeof(inode),inode->C1);
+
+
+    // Recurse to C0
+    if(inode->C0 != -1){
+        getIthDet(inode->C0, isomo+1, foundBF, NSOMOMax, getaddr, vecBF);
+    }
+    // Recurse to C1
+    if(inode->C1 != -1){
+        getIthDet(inode->C1, isomo+1, foundBF, NSOMOMax, getaddr, vecBF);
+    }
+
+    return;
+}
+
+void getIthDetDriver(Tree *dettree, int NSOMOMax, int getaddr, int *vecBF){
+    int isomo = 0;
+    bool foundBF = false;
+    getIthDet((dettree->rootNode), isomo, foundBF, NSOMOMax, getaddr, vecBF);
+}
+
+void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets){
+
+    int NSOMO=0;
+    getSetBits(Isomo, &NSOMO);
+    genDetsDriver(dettree, NSOMO, MS, ndets);
+
+}
+#+end_src
+
+- [ ] Generate BF to Det matrix
+
+  Here we generate the matrix of transformation from BF basis to
+  determinant basis.
+
+#+name: convertBFtoDetbasis
+#+begin_src C :main no :noweb yes
+void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, int *rows, int *cols, int *ndetout){
+
+    int NSOMO=0;
+    getSetBits(Isomo, &NSOMO);
+    int ndets = 0;
+    double dNSOMO = NSOMO*1.0;
+    double nalpha = (NSOMO + MS)/2.0;
+    ndets = (int)binom(dNSOMO, nalpha);
+    printf("Ndets = %d\n",ndets);
+
+    Tree dettree = (Tree){  .rootNode = -1, .NBF = -1 };
+    dettree.rootNode = malloc(sizeof(Node));
+    (*dettree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    genDetBasis(&dettree, Isomo, MS, &ndets);
+
+    //printTreeDriver(&dettree, NSOMO);
+    printf("Ndets = %d\n",ndets);
+
+}
+#+end_src
 
 - [ ] Testing everything
 
@@ -819,6 +979,14 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
 #include <stdbool.h>
 #include <math.h>
 #include "/home/vijay/Documents/codes/qp2/plugins/local/pluginRepo/cfgCI/tree_utils.h"
+
+double logbinom(double n, double k) {
+    return lgamma(n+1)-lgamma(n-k+1)-lgamma(k+1);
+}
+
+double binom(double n, double k) {
+    return exp(logbinom(n,k));
+}
 
 <<inttobindigit>>
 
@@ -836,6 +1004,10 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
 
 <<gramSchmidt>>
 
+<<genDetBasis>>
+
+<<convertBFtoDetBasis>>
+
 void main(){
 
     int rows = 0;
@@ -844,6 +1016,7 @@ void main(){
     double *orthoMatrix;
 
     int64_t MS=0;
+    int NSOMO=0;
 
     int64_t Isomo;
     Isomo = (1 << 6) - 1;
@@ -855,7 +1028,7 @@ void main(){
     //printf("\n");
 
     // Fill matrix
-    getOverlapMatrix(Isomo, MS, &overlapMatrix, &rows, &cols);
+    getOverlapMatrix(Isomo, MS, &overlapMatrix, &rows, &cols, &NSOMO);
 
     //printRealMatrix(overlapMatrix, rows, cols);
 
@@ -867,6 +1040,14 @@ void main(){
 
     printRealMatrix(orthoMatrix, rows, cols);
 
+    printf("\nGen det basis\n");
+
+    int *detlist;
+    int ndetout;
+    int *bftodetmatrix;
+
+    convertBFtoDetBasis(Isomo, MS, &bftodetmatrix, &rows, &cols, &ndetout);
+
     // Garbage collection
     free(overlapMatrix);
     free(orthoMatrix);
@@ -876,13 +1057,16 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| NBFs |    = |    5 | NSOMOs |     = | 6 | MS | = | 0 | g | = | 3 |
-|      |      |      |        |       |   |    |   |   |   |   |   |
-| 0.88 | 0.16 |  0.0 |    0.0 |  0.44 |   |    |   |   |   |   |   |
-|  0.0 | 0.88 |  0.3 |    0.3 | -0.22 |   |    |   |   |   |   |   |
-|  0.0 |  0.0 | 0.89 |    0.0 |  0.45 |   |    |   |   |   |   |   |
-|  0.0 |  0.0 |  0.0 |   0.89 |  0.45 |   |    |   |   |   |   |   |
-|  0.0 |  0.0 |  0.0 |    0.0 |   1.0 |   |    |   |   |   |   |   |
+|  NBFs |    = |     5 | NSOMOs |     = | 6 | MS | = | 0 | g | = | 3 |
+|       |      |       |        |       |   |    |   |   |   |   |   |
+|  0.88 | 0.16 |   0.0 |    0.0 |  0.44 |   |    |   |   |   |   |   |
+|   0.0 | 0.88 |   0.3 |    0.3 | -0.22 |   |    |   |   |   |   |   |
+|   0.0 |  0.0 |  0.89 |    0.0 |  0.45 |   |    |   |   |   |   |   |
+|   0.0 |  0.0 |   0.0 |   0.89 |  0.45 |   |    |   |   |   |   |   |
+|   0.0 |  0.0 |   0.0 |    0.0 |   1.0 |   |    |   |   |   |   |   |
+|   Gen |  det | basis |        |       |   |    |   |   |   |   |   |
+| Ndets |    = |    20 |        |       |   |    |   |   |   |   |   |
+| Ndets |    = |    20 |        |       |   |    |   |   |   |   |   |
 
 
 ** Make the prototype matrices
