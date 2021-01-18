@@ -39,7 +39,7 @@ void printRealMatrix(double *orthoMatrix, int rows, int cols){
     for(int i = 0; i < rows; i++){
         printf("\n");
         for(int j = 0; j < cols; j++){
-            printf("%10.15f ",orthoMatrix[i*rows + j]);
+            printf("%10.2f ",orthoMatrix[i*rows + j]);
         }
     }
 }
@@ -202,7 +202,8 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor);
 
 void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOMO);
 void getSetBits(int64_t n, int *nsetbits);
-void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *rows, int *cols);
+void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols);
+void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix);
 
 
 void calculateMETypeSOMOSOMO(int *BF1, int *BF2, int moi, int moj, double *factor, int *phasefactor);
@@ -655,7 +656,7 @@ respectively and \(s\) represents the total number of pairs in \(V_r\) and
 \(V_s\). The total number of pairs are the same in \(V_r\) and \(V_s\) if they
 belong to the same spin subspace.
 
-**** TODO [1/4] Make the orthonormalization matrix
+**** TODO [1/5] Make the orthonormalization matrix
 
 - [X] Calculate the number of SOMOs in the input CFG.
 
@@ -684,9 +685,9 @@ void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOM
 - [ ] Fill the matrix using Eq:[[EqCalcOvlp]]
 
 
-#+name: getOrthoMatrix
+#+name: getOverlapMatrix
 #+begin_src c :main no :tangle cfgCI_utils.c
-void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *rows, int *cols){
+void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols){
 
     int64_t NBF = 0;
     int64_t NSOMO = 0;
@@ -699,17 +700,17 @@ void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *row
 
     //printTreeDriver(&bftree, NSOMO);
 
-    // Initialize orthonormalization matrix
-    (*orthoMatrixptr) = malloc(NBF*NBF*sizeof(double));
+    // Initialize overlap matrix
+    (*overlapMatrixptr) = malloc(NBF*NBF*sizeof(double));
     (*rows) = NBF;
     (*cols) = NBF;
 
-    double *orthoMatrix = (*orthoMatrixptr);
+    double *overlapMatrix = (*overlapMatrixptr);
 
     //// initialize Matrix
     //for(int i = 0; i < NBF; i++)
     //    for(int j = 0; j < NBF; j++)
-    //        orthoMatrix[i*NBF + j] = 0.0;
+    //        overlapMatrix[i*NBF + j] = 0.0;
 
     int addI = 0;
     int addJ = 0;
@@ -756,7 +757,7 @@ void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *row
 
             //printf("(%d, %d) is=%d ph=%d fac=%10.15f\n",addI, addJ, nislands, phasefactor, phasefactor*1.0/(1 << (g-nislands)));
 
-            orthoMatrix[i*NBF + j] = -1.0*phasefactor / (1 << (g - nislands));
+            overlapMatrix[i*NBF + j] = -1.0*phasefactor / (1 << (g - nislands));
         }
     }
 
@@ -769,12 +770,54 @@ void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *row
 }
 #+end_src
 
+- [ ] Generate orthonormalization matrix
+
+  A Gram-Schmidt orthogonalization will generate the CSFs from the BFs.
+
+#+name: gramSchmidt
+#+begin_src C :main no :noweb yes
+void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix){
+
+    // vector
+    double norm = 0.0;
+    orthoMatrix[(rows-1)*cols + cols-1] = 1.0;
+    for(int i = cols-2; i > -1; i--){
+        orthoMatrix[(rows-1)*cols + i] = 0.0;
+    }
+
+    // Gram-Schmidt loop
+    for(int i = rows-2; i > -1; i--){
+        orthoMatrix[i*cols + i] = 1.0;
+        for(int j = rows-1; j > i; j--){
+            for(int k = rows-1; k >= j; k--){
+                orthoMatrix[i*cols + j] += -1.0*orthoMatrix[j*cols + k]*overlapMatrix[i*cols + k];
+            }
+        }
+
+        // Normalization
+        norm = 0.0;
+        for(int j = rows-1; j >= i; j--){
+            norm += orthoMatrix[i*cols + j]*orthoMatrix[i*cols + j];
+        }
+        norm = sqrt(norm);
+        for(int j = rows-1; j >= i; j--){
+            orthoMatrix[i*cols + j] /= norm;
+        }
+
+    }
+
+}
+#+end_src
+
+
+
 - [ ] Testing everything
 
-#+begin_src C :main no :noweb yes 
+#+begin_src C :main no :noweb yes :libs "-lm" :tangle main.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <math.h>
 #include "/home/vijay/Documents/codes/qp2/plugins/local/pluginRepo/cfgCI/tree_utils.h"
 
 <<inttobindigit>>
@@ -789,18 +832,21 @@ void getOrthoMatrix(int64_t Isomo, int64_t MS, double **orthoMatrixptr, int *row
 
 <<generateAllBFs>>
 
-<<getOrthoMatrix>>
+<<getOverlapMatrix>>
+
+<<gramSchmidt>>
 
 void main(){
 
     int rows = 0;
     int cols = 0;
+    double *overlapMatrix;
     double *orthoMatrix;
 
     int64_t MS=0;
 
     int64_t Isomo;
-    Isomo = (1 << 8) - 1;
+    Isomo = (1 << 6) - 1;
 
     //int digit[MAX_SOMO];
     //int_to_bin_digit(Isomo, MAX_SOMO, digit);
@@ -809,11 +855,20 @@ void main(){
     //printf("\n");
 
     // Fill matrix
-    getOrthoMatrix(Isomo, MS, &orthoMatrix, &rows, &cols);
+    getOverlapMatrix(Isomo, MS, &overlapMatrix, &rows, &cols);
+
+    //printRealMatrix(overlapMatrix, rows, cols);
+
+    orthoMatrix = malloc(rows*cols*sizeof(double));
+
+    gramSchmidt(overlapMatrix, rows, cols, orthoMatrix);
+
+    //printf("\nDone Gram-Schmidt orthonormalization\n");
 
     printRealMatrix(orthoMatrix, rows, cols);
 
     // Garbage collection
+    free(overlapMatrix);
     free(orthoMatrix);
 
     return;
@@ -821,22 +876,13 @@ void main(){
 #+end_src
 
 #+RESULTS:
-|  NBFs |     = |    14 | NSOMOs |     = |     8 |    MS |     = |     0 |     g |     = |     4 |       |       |
-|       |       |       |        |       |       |       |       |       |       |       |       |       |       |
-|  -1.0 |   0.5 | -0.25 |  0.125 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 |
-|   0.5 |  -1.0 |   0.5 |  -0.25 |   0.5 | -0.25 | 0.125 | 0.125 | -0.25 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |
-| -0.25 |   0.5 |  -1.0 |    0.5 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 | 0.125 | -0.25 | 0.125 |   0.5 | -0.25 |
-| 0.125 | -0.25 |   0.5 |   -1.0 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |
-| -0.25 |   0.5 | -0.25 |  0.125 |  -1.0 |   0.5 | -0.25 | -0.25 |   0.5 |   0.5 | -0.25 | 0.125 | 0.125 | -0.25 |
-|   0.5 | -0.25 |   0.5 |  -0.25 |   0.5 |  -1.0 |   0.5 |   0.5 | -0.25 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 |
-| -0.25 | 0.125 | -0.25 |    0.5 | -0.25 |   0.5 |  -1.0 | -0.25 |   0.5 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 |
-| -0.25 | 0.125 | -0.25 |  0.125 | -0.25 |   0.5 | -0.25 |  -1.0 |   0.5 | 0.125 | -0.25 | 0.125 |   0.5 | -0.25 |
-| 0.125 | -0.25 | 0.125 |  -0.25 |   0.5 | -0.25 |   0.5 |   0.5 |  -1.0 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |
-| 0.125 | -0.25 | 0.125 |  -0.25 |   0.5 | -0.25 | 0.125 | 0.125 | -0.25 |  -1.0 |   0.5 | -0.25 | -0.25 |   0.5 |
-| -0.25 | 0.125 | -0.25 |  0.125 | -0.25 |   0.5 | -0.25 | -0.25 | 0.125 |   0.5 |  -1.0 |   0.5 |   0.5 | -0.25 |
-|   0.5 | -0.25 | 0.125 |  -0.25 | 0.125 | -0.25 |   0.5 | 0.125 | -0.25 | -0.25 |   0.5 |  -1.0 | -0.25 |   0.5 |
-| 0.125 | -0.25 |   0.5 |  -0.25 | 0.125 | -0.25 | 0.125 |   0.5 | -0.25 | -0.25 |   0.5 | -0.25 |  -1.0 |   0.5 |
-| -0.25 |   0.5 | -0.25 |    0.5 | -0.25 | 0.125 | -0.25 | -0.25 |   0.5 |   0.5 | -0.25 |   0.5 |   0.5 |  -1.0 |
+| NBFs |    = |    5 | NSOMOs |     = | 6 | MS | = | 0 | g | = | 3 |
+|      |      |      |        |       |   |    |   |   |   |   |   |
+| 0.88 | 0.16 |  0.0 |    0.0 |  0.44 |   |    |   |   |   |   |   |
+|  0.0 | 0.88 |  0.3 |    0.3 | -0.22 |   |    |   |   |   |   |   |
+|  0.0 |  0.0 | 0.89 |    0.0 |  0.45 |   |    |   |   |   |   |   |
+|  0.0 |  0.0 |  0.0 |   0.89 |  0.45 |   |    |   |   |   |   |   |
+|  0.0 |  0.0 |  0.0 |    0.0 |   1.0 |   |    |   |   |   |   |   |
 
 
 ** Make the prototype matrices
@@ -980,7 +1026,7 @@ void calculateMETypeSOMOSOMO(int *BF1, int *BF2, int moi, int moj, double *facto
 #+end_src
 
 #+name: getOneElMETypeSOMOSOMO
-#+begin_src C :main no :tangle cfgCI_utils.c
+#+begin_src C :main no
 void getOneElMETypeSOMOSOMO(int64_t Isomo, int64_t Jsomo, int moi, int moj, int MS, double **oneElMatrixElementsptr, int *rows, int *cols){
 
     // Icfg
@@ -1086,7 +1132,7 @@ void getOneElMETypeSOMOSOMO(int64_t Isomo, int64_t Jsomo, int moi, int moj, int 
 - [ ] Testing
 
 
-#+begin_src C :main no :noweb yes :tangle main.c
+#+begin_src C :main no :noweb yes
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
