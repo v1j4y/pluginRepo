@@ -231,7 +231,8 @@ void getIthDetDriver(Tree *dettree, int NSOMOMax, int getaddr, int *vecBF);
 /************************/
 
 void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets);
-void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, int *rows, int *cols, int *ndetout);
+void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowvec);
+void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *rows, int *cols, int *ndetout);
 
 // Misc utils
 void int_to_bin_digit(int64_t in, int count, int* out);
@@ -994,31 +995,66 @@ void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets){
 #+name: convertBFtoDetbasis
 #+begin_src C :main no :noweb yes
 
-void getbftodetfunction(int NSOMO, int MS, int *BF1, int *rowvec){
+void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowvec){
     int npairs = 1 << ((NSOMO - MS)/2);
     int idxp = 0;
     int idxq = 0;
-    int detslist = malloc(NSOMO*npairs*sizeof(int));
-    int shft = npairs/2;
-    for(int i = 0; i < npairs; i++){
+    int *detslist = malloc(npairs*NSOMO*sizeof(int));
+    double *phaselist = malloc(npairs*sizeof(double));
+    for(int i=0;i<npairs;i++)
+        phaselist[i] = 1.0;
+    int shft = npairs;
+    int donepq[NSOMO];
+    double fac = 1.0;
+    for(int i = 0; i < NSOMO; i++)
+        donepq[i] = 0.0;
+    //for(int i = 0; i < NSOMO; i++)
+    //    printf("%d) %d\n",i,BF1[i]);
+
+    for(int i = 0; i < NSOMO; i++){
         idxp = BF1[i];
-        idxq = BF[idxp];
+        idxq = BF1[idxp];
+        //printf("idxp=%d idxq=%d\n",idxp,idxq);
+        // Do one pair only once
+        if(donepq[idxp] > 0.0 || donepq[idxq] > 0.0) continue;
+        fac *= 2.0;
+        donepq[idxp] = 1.0;
+        donepq[idxq] = 1.0;
         for(int j = 0; j < npairs; j = j + shft){
-            for(int k = 0; k < shft; k++){
+            for(int k = 0; k < shft/2; k++){
+                detslist[(k+j)*NSOMO + idxp] = 1;
+                detslist[(k+j)*NSOMO + idxq] = 0;
+            }
+            for(int k = shft/2; k < shft; k++){
+                detslist[(k+j)*NSOMO + idxp] = 0;
+                detslist[(k+j)*NSOMO + idxq] = 1;
+                phaselist[k+j] *=-1;
             }
         }
+        shft /= 2;
+    }
+
+    // Now get the addresses
+    int inpdet[NSOMO];
+    int addr = -1;
+    for(int i = 0; i < npairs; i++){
+        for(int j = 0; j < NSOMO; j++)
+            inpdet[j] = detslist[i*NSOMO + j];
+        findAddofDetDriver(dettree, NSOMO, inpdet, &addr);
+        rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
     }
 }
 
-void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, int *rows, int *cols, int *ndetout){
+void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *rows, int *cols, int *ndetout){
 
     int NSOMO=0;
     getSetBits(Isomo, &NSOMO);
     int ndets = 0;
+    int NBF = 0;
     double dNSOMO = NSOMO*1.0;
     double nalpha = (NSOMO + MS)/2.0;
     ndets = (int)binom(dNSOMO, nalpha);
-    printf("Ndets = %d\n",ndets);
+    //printf("Ndets = %d\n",ndets);
 
     Tree dettree = (Tree){  .rootNode = -1, .NBF = -1 };
     dettree.rootNode = malloc(sizeof(Node));
@@ -1027,7 +1063,7 @@ void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, i
     genDetBasis(&dettree, Isomo, MS, &ndets);
 
     //printTreeDriver(&dettree, NSOMO);
-    printf("Ndets = %d\n",ndets);
+    //printf("Ndets = %d\n",ndets);
 
     int addr = -1;
     int inpdet[NSOMO];
@@ -1040,7 +1076,7 @@ void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, i
 
     findAddofDetDriver(&dettree, NSOMO, inpdet, &addr);
 
-    printf("addr of det=%d\n",addr);
+    //printf("addr of det=%d\n",addr);
 
     // Prepare BFs
     Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
@@ -1048,6 +1084,8 @@ void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, i
     (*bftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
+
+    //printf("NBFs = %d\n",NBF);
 
     // Initialize transformation matrix
     (*bftodetmatrixptr) = malloc(NBF*ndets*sizeof(double));
@@ -1059,7 +1097,9 @@ void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, i
     // Build BF to det matrix
     int addI = 0;
     int addJ = 0;
-    int rowvec[ndets];
+    double rowvec[ndets];
+    for(int i=0;i<ndets;i++)
+        rowvec[i]=0.0;
     int *BF1 = malloc(MAX_SOMO * sizeof(int));
     int *BF2 = malloc(MAX_SOMO * sizeof(int));
     int *IdxListBF1 = malloc(MAX_SOMO * sizeof(int));
@@ -1070,18 +1110,26 @@ void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, i
         getIthBFDriver(&bftree, NSOMO, addI, BF1);
         getBFIndexList(NSOMO, BF1, IdxListBF1);
 
+
         //printf("addI : %d > ",addI);
         //for(int k=0;k<NSOMO;k++)
         //    printf("%d ",BF1[k]);
         //printf("\n");
 
         // Get ith row
-        getBFtodetfunction(NSOMO, BF1, rowvec);
+        getbftodetfunction(&dettree, NSOMO, MS, IdxListBF1, rowvec);
+
+        //for(int k=0;k<ndets;k++)
+        //    printf("%10.4f ",rowvec[k]);
+        //printf("\n");
 
         //printf("(%d, %d) is=%d ph=%d fac=%10.15f\n",addI, addJ, nislands, phasefactor, phasefactor*1.0/(1 << (g-nislands)));
 
         for(int j = 0; j < ndets; j++)
-            overlapMatrix[i*NBF + j] = rowvec[j];
+            bftodetmatrix[i*NBF + j] = rowvec[j];
+
+        for(int k=0;k<ndets;k++)
+            rowvec[k]=0.0;
     }
 
     // Garbage collection
@@ -1092,8 +1140,6 @@ void convertBFtoDetBasis(int64_t Isomo, int64_t MS, double **bftodetmatrixptr, i
 
 }
 #+end_src
-
-#+RESULTS: convertBFtoDetbasis
 
 - [ ] Testing everything
 
@@ -1162,15 +1208,17 @@ void main(){
 
     //printf("\nDone Gram-Schmidt orthonormalization\n");
 
-    printRealMatrix(orthoMatrix, rows, cols);
+    //printRealMatrix(orthoMatrix, rows, cols);
 
     printf("\nGen det basis\n");
 
     int *detlist;
     int ndetout;
-    int *bftodetmatrix;
+    double *bftodetmatrix;
 
     convertBFtoDetBasis(Isomo, MS, &bftodetmatrix, &rows, &cols, &ndetout);
+
+    printRealMatrix(bftodetmatrix, rows, cols);
 
     // Garbage collection
     free(overlapMatrix);
@@ -1181,17 +1229,15 @@ void main(){
 #+end_src
 
 #+RESULTS:
-|  NBFs |    = |      5 | NSOMOs |     = | 6 | MS | = | 0 | g | = | 3 |
-|       |      |        |        |       |   |    |   |   |   |   |   |
-|  0.88 | 0.16 |    0.0 |    0.0 |  0.44 |   |    |   |   |   |   |   |
-|   0.0 | 0.88 |    0.3 |    0.3 | -0.22 |   |    |   |   |   |   |   |
-|   0.0 |  0.0 |   0.89 |    0.0 |  0.45 |   |    |   |   |   |   |   |
-|   0.0 |  0.0 |    0.0 |   0.89 |  0.45 |   |    |   |   |   |   |   |
-|   0.0 |  0.0 |    0.0 |    0.0 |   1.0 |   |    |   |   |   |   |   |
-|   Gen |  det |  basis |        |       |   |    |   |   |   |   |   |
-| Ndets |    = |     20 |        |       |   |    |   |   |   |   |   |
-| Ndets |    = |     20 |        |       |   |    |   |   |   |   |   |
-|  addr |   of | det=19 |        |       |   |    |   |   |   |   |   |
+| NBFs |     = |     5 | NSOMOs |     = |    6 |    MS |     = |     0 |     g |    = |     3 |       |       |       |      |       |       |      |       |
+|      |       |       |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
+|  Gen |   det | basis |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
+|      |       |       |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
+| 0.35 | -0.35 |   0.0 |    0.0 |   0.0 |  0.0 |  0.35 | -0.35 |   0.0 | -0.35 |  0.0 |   0.0 |  0.35 | -0.35 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |  0.35 |
+|  0.0 |  0.35 | -0.35 |    0.0 | -0.35 |  0.0 |   0.0 |  0.35 | -0.35 |   0.0 |  0.0 |   0.0 |   0.0 |   0.0 |  0.35 |  0.0 |   0.0 |   0.0 |  0.0 |   0.0 |
+|  0.0 |   0.0 |  0.35 |  -0.35 |   0.0 |  0.0 |   0.0 |   0.0 |   0.0 |  0.35 |  0.0 |   0.0 |   0.0 |   0.0 |   0.0 | 0.35 | -0.35 | -0.35 | 0.35 |   0.0 |
+|  0.0 |   0.0 |   0.0 |    0.0 |  0.35 |  0.0 |   0.0 |   0.0 |   0.0 |   0.0 | 0.35 | -0.35 | -0.35 |  0.35 |   0.0 |  0.0 | -0.35 |  0.35 | 0.35 | -0.35 |
+|  0.0 |   0.0 |   0.0 |    0.0 |   0.0 | 0.35 | -0.35 | -0.35 |  0.35 |   0.0 |  0.0 | -0.35 |  0.35 |  0.35 | -0.35 |  0.0 |   0.0 |   0.0 |  0.0 |   0.0 |
 
 
 ** Make the prototype matrices
