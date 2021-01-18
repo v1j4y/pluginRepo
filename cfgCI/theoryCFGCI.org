@@ -39,7 +39,7 @@ void printRealMatrix(double *orthoMatrix, int rows, int cols){
     for(int i = 0; i < rows; i++){
         printf("\n");
         for(int j = 0; j < cols; j++){
-            printf("%10.2f ",orthoMatrix[i*rows + j]);
+            printf("%10.2f ",orthoMatrix[i*cols + j]);
         }
     }
 }
@@ -1222,6 +1222,10 @@ double binom(double n, double k) {
 
 <<convertBFtoDetBasis>>
 
+<<calcMEdetpair>>
+
+<<callcalcMEdetpair>>
+
 void main(){
 
     int rows = 0;
@@ -1233,7 +1237,13 @@ void main(){
     int NSOMO=0;
 
     int64_t Isomo;
-    Isomo = (1 << 6) - 1;
+    Isomo = (1 << 4) - 1;
+
+    int64_t Jsomo;
+    Jsomo = (1 << 6) - 1;
+
+    int orbI = 0;
+    int orbJ = 5;
 
     //int digit[MAX_SOMO];
     //int_to_bin_digit(Isomo, MAX_SOMO, digit);
@@ -1254,7 +1264,7 @@ void main(){
 
     //printRealMatrix(orthoMatrix, rows, cols);
 
-    printf("\nGen det basis\n");
+    printf("\nGen det basis \n");
 
     int *detlist;
     int ndetout;
@@ -1265,6 +1275,8 @@ void main(){
     printRealMatrix(bftodetmatrix, rows, cols);
 
 
+    callcalcMEij(Isomo, Jsomo, orbI, orbJ, MS);
+
     // Garbage collection
     free(overlapMatrix);
     free(orthoMatrix);
@@ -1274,17 +1286,21 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| NBFs |     = |     5 | NSOMOs |     = |    6 |    MS |     = |     0 |     g |    = |     3 |       |       |       |      |       |       |      |       |
-|      |       |       |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
-|  Gen |   det | basis |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
-|      |       |       |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
-|    7 |    11 |    13 |     14 |    19 |   21 |    22 |    25 |    26 |    28 |   35 |    37 |    38 |    41 |    42 |   44 |    49 |    50 |   52 |    56 |
-|      |       |       |        |       |      |       |       |       |       |      |       |       |       |       |      |       |       |      |       |
-| 0.35 | -0.35 |   0.0 |    0.0 |   0.0 |  0.0 |  0.35 | -0.35 |   0.0 | -0.35 |  0.0 |   0.0 |  0.35 | -0.35 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |  0.35 |
-|  0.0 |  0.35 | -0.35 |    0.0 | -0.35 |  0.0 |   0.0 |  0.35 | -0.35 |   0.0 |  0.0 |   0.0 |   0.0 |   0.0 |  0.35 |  0.0 |   0.0 |   0.0 |  0.0 |   0.0 |
-|  0.0 |   0.0 |  0.35 |  -0.35 |   0.0 |  0.0 |   0.0 |   0.0 |   0.0 |  0.35 |  0.0 |   0.0 |   0.0 |   0.0 |   0.0 | 0.35 | -0.35 | -0.35 | 0.35 |   0.0 |
-|  0.0 |   0.0 |   0.0 |    0.0 |  0.35 |  0.0 |   0.0 |   0.0 |   0.0 |   0.0 | 0.35 | -0.35 | -0.35 |  0.35 |   0.0 |  0.0 | -0.35 |  0.35 | 0.35 | -0.35 |
-|  0.0 |   0.0 |   0.0 |    0.0 |   0.0 | 0.35 | -0.35 | -0.35 |  0.35 |   0.0 |  0.0 | -0.35 |  0.35 |  0.35 | -0.35 |  0.0 |   0.0 |   0.0 |  0.0 |   0.0 |
+| NBFs |    = |     2 | NSOMOs |    = |    4 |      MS |        = |   0 |   g |   = |   2 |     |     |     |     |     |     |     |     |
+|      |      |       |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
+|  Gen |  det | basis |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
+|      |      |       |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
+|    3 |    5 |     6 |      9 |   10 |   12 |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
+|      |      |       |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
+|  0.5 | -0.5 |   0.0 |    0.5 | -0.5 | -0.5 |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
+|  0.5 |  0.0 |   0.0 |    0.0 |  0.0 |  0.0 | ndetI=6 | ndetJ=20 |     |     |     |     |     |     |     |     |     |     |     |     |
+|      |      |       |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
+|  1.0 |  0.0 |   0.0 |    0.0 |  0.0 |  0.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+|  0.0 |  1.0 |   0.0 |    0.0 |  0.0 |  0.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+|  0.0 |  0.0 |   1.0 |    0.0 |  0.0 |  0.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+|  0.0 |  0.0 |   0.0 |    0.0 |  1.0 |  0.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.0 |
+|  0.0 |  0.0 |   0.0 |    0.0 |  0.0 |  1.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 |
+|  0.0 |  0.0 |   0.0 |    0.0 |  0.0 |  0.0 |     0.0 |      1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 |
 
 
 ** Make the prototype matrices
@@ -1307,12 +1323,128 @@ void makePrototypeMatrices(int nel, int norb, double spin);
 - [ ] Calculate one-electron ME between two dets
 
 #+name: calcMEdetpair
-#+begin_src C :main no :tangle tree_utils.c
-void calcMEdetpair(int *detI, int *detJ, int NSOMOI, int NSOMOJ, int ndetI, int ndetJ, double **matelemdetbasisptr){
+#+begin_src C :main no
+void calcMEdetpair(int *detlistI, int *detlistJ, int orbI, int orbJ, int NSOMOI, int NSOMOJ, int ndetI, int ndetJ, double *matelemdetbasis){
+    int mask = 0;
+    double sgn[2];
+    sgn[0] = 1.0;
+    sgn[1] =-1.0;
+    if(ndetI > ndetJ){
+        // SOMO -> SOMO
+        for(int i=0;i<NSOMOI;i++)
+            mask = mask | (1 << i);
+        mask = mask - 1;
+        mask = mask ^ (1 << (NSOMOI-1));
+        for(int i=0;i<ndetI;i++){
+            int idet = (mask & detlistI[i]) >> 1;
+            for(int j=0;j<ndetJ;j++){
+                int jdet = (detlistJ[j]);
+                double phase = 1.0*sgn[NSOMOJ%2];
+                if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0;
+            }
+        }
+    }
+    else if (ndetJ > ndetI){
+        // DOMO -> VMO
+        for(int i=0;i<NSOMOJ;i++)
+            mask = mask | (1 << i);
+        mask = mask - 1;
+        mask = mask ^ (1 << (NSOMOJ-1));
+        for(int i=0;i<ndetJ;i++){
+            int idet = (mask & detlistJ[i]) >> 1;
+            for(int j=0;j<ndetI;j++){
+                int jdet = (detlistI[j]);
+                double phase = 1.0*sgn[__builtin_popcount(jdet)%2];
+                if(idet == jdet) matelemdetbasis[j*ndetJ + i] = 1.0*phase;
+            }
+        }
+    }
+    else{
+        int maskI=0;
+        int maskJ=0;
+        // DOMO -> SOMO
+        if(orbI > orbJ){
+            // 2 1 1 1 1 -> 1 1 1 1 2
+            // mask
+            // 0 1 1 1 0 -> 0 1 1 1 0
+            for(int i=0;i<ndetJ;i++){
+                int idet = detlistJ[i];
+                for(int j=0;j<ndetI;j++){
+                    int jdet = (detlistI[j]);
+                    double phase = 1.0*sgn[__builtin_popcount(jdet)%2];
+                    if(idet == jdet) matelemdetbasis[j*ndetJ + i] = 1.0*phase;
+                }
+            }
+        }
+        else{
+            // 1 1 1 1 2 -> 2 1 1 1 1
+            // mask
+            // 0 1 1 1 0 -> 0 1 1 1 0
+            for(int i=0;i<ndetJ;i++){
+                int idet = detlistJ[i];
+                for(int j=0;j<ndetI;j++){
+                    int jdet = (detlistI[j]);
+                    double phase = 1.0*sgn[__builtin_popcount(jdet)%2];
+                    if(idet == jdet) matelemdetbasis[j*ndetJ + i] = 1.0*phase;
+                }
+            }
+        }
+    }
 }
 #+end_src
 
 - [ ] Calculate batch of MEs between CFGs
+
+  Calculate the ME betwee two somos
+
+#+name: callcalcMEdetpair
+#+begin_src C :main no
+void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS){
+    // Get dets for I
+    int ndetI;
+    int ndetJ;
+
+    // Get detlist
+    int NSOMOI=0;
+    int NSOMOJ=0;
+    getSetBits(Isomo, &NSOMOI);
+    getSetBits(Jsomo, &NSOMOJ);
+
+    Tree dettreeI = (Tree){  .rootNode = -1, .NBF = -1 };
+    dettreeI.rootNode = malloc(sizeof(Node));
+    (*dettreeI.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    genDetBasis(&dettreeI, Isomo, MS, &ndetI);
+
+    Tree dettreeJ = (Tree){  .rootNode = -1, .NBF = -1 };
+    dettreeJ.rootNode = malloc(sizeof(Node));
+    (*dettreeJ.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    genDetBasis(&dettreeJ, Jsomo, MS, &ndetJ);
+
+    int detlistI[ndetI];
+    int detlistJ[ndetJ];
+
+    // Get detlist
+    getDetlistDriver(&dettreeI, NSOMOI, detlistI);
+    getDetlistDriver(&dettreeJ, NSOMOJ, detlistJ);
+
+    double *matelemdetbasis = malloc(ndetI*ndetJ*sizeof(double));
+    printf("ndetI=%d ndetJ=%d\n",ndetI,ndetJ);
+
+    for(int i=0;i<ndetI;i++)
+        for(int j=0;j<ndetJ;j++)
+            matelemdetbasis[i*ndetJ + j]=0.0;
+
+    // Garbage collection
+    calcMEdetpair(detlistI, detlistJ, orbI, orbJ, NSOMOI, NSOMOJ, ndetI, ndetJ, matelemdetbasis);
+
+    printRealMatrix(matelemdetbasis, ndetI, ndetJ);
+
+    // Garbage collection
+    free(matelemdetbasis);
+}
+#+end_src
 
 *** TODO [1/4] Table of matrix-elements
 
