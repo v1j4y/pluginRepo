@@ -1,0 +1,79 @@
+# -*- mode:org -*-
+#+TITLE: Theory CFGCI
+#+AUTHOR: Vijay Gopal Chilkuri
+#+EMAIL: vijay.gopal.c@gmail.com
+#+OPTIONS: toc:t
+#+LATEX_CLASS: article
+#+LATEX_HEADER: \usepackage{tabularx}
+#+LATEX_HEADER: \usepackage{braket}
+#+LATEX_HEADER: \usepackage{minted}
+
+* Main Fortran code
+
+#+name: mainf90
+#+begin_src fortran :main no :tangle cfgCI.irp.f
+
+      program cfgCI
+      use cfunctions
+      implicit none
+      BEGIN_DOC
+!     TODO : Put the documentation of the program here
+      END_DOC
+      character*32 cc
+      integer i, j
+      integer orbp, orbq
+      integer rows, cols
+      print *, N_int
+      call debug_det(psi_det(1,1,1),N_int)
+      call debug_det(psi_det(1,1,2),N_int)
+      call debug_spindet(psi_det(1,1,1),N_int)
+      call debug_spindet(psi_det(1,1,2),N_int)
+      print *,N_int
+      cc = "Hello"
+      print *,psi_det_size
+      do i = 1, 15
+         print *, psi_configuration(1,1,i), psi_configuration(1,2,i)
+      end do
+      call printCFGlist(N_int, psi_det_size, psi_configuration)
+
+      integer Nint
+      integer(bit_kind), dimension(1,2,100) :: singles
+      integer n_singles
+      Nint=1
+      do i = 1, 1
+         call generate_all_singles_cfg(psi_configuration(:,:,i), singles,&
+         n_singles, Nint)
+         print *,"Number of singles=",n_singles
+         do j = 1, 20
+            print *, singles(1,1,j), singles(1,2,j)
+            orbp = 0
+            orbq = 5
+            call getApqIJMatrixDims(singles(1,2,j),           &
+                                    psi_configuration(1,2,i), &
+                                    orbp,                     &
+                                    orbq,                     &
+                                    MS,                       &
+                                    rows,                     &
+                                    cols)
+                                    print *, rows, cols
+
+         end do
+         call printCFGlist(Nint, n_singles, singles)
+      end do
+      print *, 'Hello world Tangled'
+      end
+#+end_src
+
+* Running QP
+
+#+name: runqp
+#+begin_src bash
+cd ~/Documents/codes/qp2/
+source quantum_package.rc
+cd src/cfgCI
+qp set_file n2.ezfio
+ninja
+#qp run cfgCI
+#+end_src
+
+#+RESULTS: runqp
