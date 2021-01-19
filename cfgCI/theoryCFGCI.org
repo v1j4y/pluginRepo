@@ -184,6 +184,7 @@ struct bin_tree {
 
 #+name: treefuncdefs
 #+begin_src c :main no :tangle tree_utils.h
+#include "/usr/include/x86_64-linux-gnu/cblas.h"
 
 #define MAX_SOMO 32
 
@@ -1185,14 +1186,55 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
 }
 #+end_src
 
+- [ ] Calling Blas
+
+  Call CBLAS routines
+
+#+name: callingblas
+#+begin_src C :main no tangle tree_utils.c
+void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int colB, double *C, bool transA, bool transB){
+    int m = rowA;
+    int k = colA;
+    int n = colB;
+    double alpha = 1.0;
+    double beta  = 0.0;
+    int val = 0;
+    if (transA) val |= 0x1;
+    if (transB) val |= 0x2;
+
+    switch (val) {
+        case 0: // Both trans
+            cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans,
+                        m, n, k, alpha, A, k, B, n, beta, C, n);
+            break;
+        case 1: // transA, notransB
+            cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
+                        m, n, k, alpha, A, k, B, n, beta, C, n);
+            break;
+        case 2: // notransA, transB
+            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+                        m, n, k, alpha, A, k, B, n, beta, C, n);
+            break;
+        case 3: // notransA, notransB
+            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                        m, n, k, alpha, A, k, B, n, beta, C, n);
+            break;
+        default:
+            printf("Impossible !!!!\n");
+            break;
+    }
+}
+#+end_src
+
 - [ ] Testing everything
 
-#+begin_src C :main no :noweb yes :libs "-lm" :tangle main.c
+#+begin_src C :main no :noweb yes :libs "-lm -lblas" :tangle main.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
 #include "/home/vijay/Documents/codes/qp2/plugins/local/pluginRepo/cfgCI/tree_utils.h"
+#include "/usr/include/x86_64-linux-gnu/cblas.h"
 
 double logbinom(double n, double k) {
     return lgamma(n+1)-lgamma(n-k+1)-lgamma(k+1);
@@ -1226,12 +1268,19 @@ double binom(double n, double k) {
 
 <<callcalcMEdetpair>>
 
+<<callingblas>>
+
 void main(){
 
     int rows = 0;
     int cols = 0;
-    double *overlapMatrix;
-    double *orthoMatrix;
+    double *overlapMatrixI;
+    double *overlapMatrixJ;
+    double *orthoMatrixI;
+    double *orthoMatrixJ;
+    double *bftodetmatrixI;
+    double *bftodetmatrixJ;
+    double *ApqIJ;
 
     int64_t MS=0;
     int NSOMO=0;
@@ -1242,8 +1291,8 @@ void main(){
     int64_t Jsomo;
     Jsomo = (1 << 6) - 1;
 
-    int orbI = 0;
-    int orbJ = 5;
+    int orbp = 0;
+    int orbq = 5;
 
     //int digit[MAX_SOMO];
     //int_to_bin_digit(Isomo, MAX_SOMO, digit);
@@ -1251,56 +1300,158 @@ void main(){
     //    printf("%d ",digit[j]);
     //printf("\n");
 
+
+    /***********************************
+                   Doing I
+    ,************************************/
     // Fill matrix
-    getOverlapMatrix(Isomo, MS, &overlapMatrix, &rows, &cols, &NSOMO);
+    int rowsI = 0;
+    int colsI = 0;
+
+    getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
 
     //printRealMatrix(overlapMatrix, rows, cols);
 
-    orthoMatrix = malloc(rows*cols*sizeof(double));
+    orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
 
-    gramSchmidt(overlapMatrix, rows, cols, orthoMatrix);
+    gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
 
-    //printf("\nDone Gram-Schmidt orthonormalization\n");
+    printf("\nDone Gram-Schmidt orthonormalization\n");
 
-    //printRealMatrix(orthoMatrix, rows, cols);
+    printRealMatrix(orthoMatrixI, rowsI, colsI);
 
     printf("\nGen det basis \n");
 
     int *detlist;
     int ndetout;
-    double *bftodetmatrix;
+    int rowsbftodetI, colsbftodetI;
 
-    convertBFtoDetBasis(Isomo, MS, &bftodetmatrix, &rows, &cols, &ndetout);
+    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI, &ndetout);
 
-    printRealMatrix(bftodetmatrix, rows, cols);
+    printRealMatrix(bftodetmatrixI, rowsbftodetI, colsbftodetI);
 
+    /***********************************
+                   Doing J
+    ,************************************/
 
-    callcalcMEij(Isomo, Jsomo, orbI, orbJ, MS);
+    int rowsJ = 0;
+    int colsJ = 0;
+    // Fill matrix
+    getOverlapMatrix(Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
+
+    //printRealMatrix(overlapMatrix, rows, cols);
+
+    orthoMatrixJ = malloc(rowsJ*colsJ*sizeof(double));
+
+    gramSchmidt(overlapMatrixJ, rowsJ, colsJ, orthoMatrixJ);
+
+    printf("\nDone Gram-Schmidt orthonormalization\n");
+
+    printRealMatrix(orthoMatrixJ, rowsJ, colsJ);
+
+    printf("\nGen det basis \n");
+
+    int rowsbftodetJ, colsbftodetJ;
+
+    convertBFtoDetBasis(Jsomo, MS, &bftodetmatrixJ, &rowsbftodetJ, &colsbftodetJ, &ndetout);
+
+    printRealMatrix(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ);
+
+    int rowsA = 0;
+    int colsA = 0;
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, &ApqIJ, &rowsA, &colsA);
+
+    printf("Done MEij\n");
+    printRealMatrix(ApqIJ, rowsA, colsA);
+
+    // Final ME in BF basis
+
+    // First transform I in bf basis
+    double *bfIApqIJ = malloc(rowsbftodetI*colsA*sizeof(double));
+
+    int transA=false;
+    int transB=false;
+    callBlasMatxMat(bftodetmatrixI, colsI, colsbftodetI, ApqIJ, rowsA, colsA, bfIApqIJ, transA, transB);
+
+    printf("Done blas BFI\n");
+    printRealMatrix(bfIApqIJ, colsI, colsA);
+
+    // now transform I in csf basis
+    double *CSFIApqIJ = malloc(colsI*colsA*sizeof(double));
+    transA = true;
+    transB = false;
+    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bfIApqIJ, colsI, colsA, bfIApqIJ, transA, transB);
+
+    printf("Done blas CSFI\n");
+    printRealMatrix(CSFIApqIJ, rowsI, colsA);
+
 
     // Garbage collection
-    free(overlapMatrix);
-    free(orthoMatrix);
+    free(overlapMatrixI);
+    free(overlapMatrixJ);
+    free(orthoMatrixI);
+    free(orthoMatrixJ);
+    free(bftodetmatrixI);
+    free(bftodetmatrixJ);
+    free(ApqIJ);
+    free(bfIApqIJ);
+    //free(bfIbfJApqIJ);
 
     return;
 }
 #+end_src
 
 #+RESULTS:
-| NBFs |    = |     2 | NSOMOs |    = |    4 |      MS |        = |   0 |   g |   = |   2 |     |     |     |     |     |     |     |     |
-|      |      |       |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
-|  Gen |  det | basis |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
-|      |      |       |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
-|    3 |    5 |     6 |      9 |   10 |   12 |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
-|      |      |       |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
-|  0.5 | -0.5 |   0.0 |    0.5 | -0.5 | -0.5 |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
-|  0.5 |  0.0 |   0.0 |    0.0 |  0.0 |  0.0 | ndetI=6 | ndetJ=20 |     |     |     |     |     |     |     |     |     |     |     |     |
-|      |      |       |        |      |      |         |          |     |     |     |     |     |     |     |     |     |     |     |     |
-|  1.0 |  0.0 |   0.0 |    0.0 |  0.0 |  0.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-|  0.0 |  1.0 |   0.0 |    0.0 |  0.0 |  0.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-|  0.0 |  0.0 |   1.0 |    0.0 |  0.0 |  0.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-|  0.0 |  0.0 |   0.0 |    0.0 |  1.0 |  0.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.0 |
-|  0.0 |  0.0 |   0.0 |    0.0 |  0.0 |  1.0 |     0.0 |      0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 |
-|  0.0 |  0.0 |   0.0 |    0.0 |  0.0 |  0.0 |     0.0 |      1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 |
+| NBFs |            = |                  2 | NSOMOs |     = |    4 |    MS |     = |    0 |      g |   = |     2 |      |       |       |     |     |     |     |      |         |          |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+| Done | Gram-Schmidt | orthonormalization |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+| 0.89 |        -0.45 |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  0.0 |          1.0 |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  Gen |          det |              basis |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|    3 |            5 |                  6 |      9 |    10 |   12 |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  0.5 |         -0.5 |                0.0 |    0.5 |  -0.5 | -0.5 |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  0.5 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |  NBFs |     = |    5 | NSOMOs |   = |     6 |   MS |     = |     0 |   g |   = |   3 |     |      |         |          |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+| Done | Gram-Schmidt | orthonormalization |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+| 0.88 |         0.16 |                0.0 |    0.0 |  0.44 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  0.0 |         0.88 |                0.3 |    0.3 | -0.22 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  0.0 |          0.0 |               0.89 |    0.0 |  0.45 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  0.0 |          0.0 |                0.0 |   0.89 |  0.45 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   1.0 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  Gen |          det |              basis |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|    7 |           11 |                 13 |     14 |    19 |   21 |    22 |    25 |   26 |     28 |  35 |    37 |   38 |    41 |    42 |  44 |  49 |  50 |  52 |   56 |         |          |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+| 0.35 |        -0.35 |                0.0 |    0.0 |   0.0 |  0.0 |  0.35 | -0.35 |  0.0 |  -0.35 | 0.0 |   0.0 | 0.35 | -0.35 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.35 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 | 0.35 | -0.35 | -0.35 | 0.35 |    0.0 | 0.0 | -0.35 | 0.35 |  0.35 | -0.35 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 | ndetI=6 | ndetJ=20 |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  1.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  1.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          1.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   1.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                1.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 1.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   1.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 1.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  1.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 1.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   1.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  1.0 | Done    | MEij     |      |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  1.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  1.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          1.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   1.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                1.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 1.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   1.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 1.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  1.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 1.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   1.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  1.0 | Done    | blas     | BFI  |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  0.5 |          0.5 |                0.0 |    1.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+| -0.5 |          0.0 |                0.0 |   -1.0 |   0.0 |  0.0 |   0.0 |  -0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 | Done    | blas     | CSFI |
+|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
 
 
 ** Make the prototype matrices
@@ -1318,9 +1469,9 @@ void makePrototypeMatrices(int nel, int norb, double spin);
 
 ** Functions required for calculating MEs
 
-*** TODO [0/2] Calculate MEs in Det basis
+*** TODO [2/2] Calculate MEs in Det basis
 
-- [ ] Calculate one-electron ME between two dets
+- [X] Calculate one-electron ME between two dets
 
 #+name: calcMEdetpair
 #+begin_src C :main no
@@ -1393,13 +1544,13 @@ void calcMEdetpair(int *detlistI, int *detlistJ, int orbI, int orbJ, int NSOMOI,
 }
 #+end_src
 
-- [ ] Calculate batch of MEs between CFGs
+- [X] Calculate batch of MEs between CFGs
 
   Calculate the ME betwee two somos
 
 #+name: callcalcMEdetpair
 #+begin_src C :main no
-void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS){
+void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, double **ApqIJptr, int *rowsA, int *colsA){
     // Get dets for I
     int ndetI;
     int ndetJ;
@@ -1429,8 +1580,12 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS){
     getDetlistDriver(&dettreeI, NSOMOI, detlistI);
     getDetlistDriver(&dettreeJ, NSOMOJ, detlistJ);
 
-    double *matelemdetbasis = malloc(ndetI*ndetJ*sizeof(double));
+    (*ApqIJptr) = malloc(ndetI*ndetJ*sizeof(double));
+    (*rowsA) = ndetI;
+    (*colsA) = ndetJ;
     printf("ndetI=%d ndetJ=%d\n",ndetI,ndetJ);
+
+    double *matelemdetbasis = (*ApqIJptr);
 
     for(int i=0;i<ndetI;i++)
         for(int j=0;j<ndetJ;j++)
@@ -1442,7 +1597,6 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS){
     printRealMatrix(matelemdetbasis, ndetI, ndetJ);
 
     // Garbage collection
-    free(matelemdetbasis);
 }
 #+end_src
 
