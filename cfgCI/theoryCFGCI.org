@@ -86,6 +86,19 @@ The only input required is the selected list of CFGs at a given CIPSI iteration 
          integer(kind=C_INT64_T) :: cfglist(nint,2,ncfgs)
          end subroutine printcfglist
       end interface
+      interface
+         subroutine getApqIJMatrixDims(Isomo, Jsomo, orbp, orbq,  &
+         MS, rowApqIJ, colAqpIJ) bind(C, name='getApqIJMatrixDims')
+         import C_INT32_T, C_INT64_T
+         integer(kind=C_INT64_T) :: Isomo
+         integer(kind=C_INT64_T) :: Jsomo
+         integer(kind=C_INT32_T) :: orbp
+         integer(kind=C_INT32_T) :: orbq
+         integer(kind=C_INT32_T) :: MS
+         integer(kind=C_INT32_T) :: rowApqIJ
+         integer(kind=C_INT32_T) :: colApqIJ
+         end subroutine getApqIJMatrixDims
+      end interface
       end module cfunctions
   #+end_src
 
@@ -111,8 +124,9 @@ void printCFGList(int32_t *inpNint, int32_t *inpNcfgs, int64_t *cfglist){
     printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
     for(int i = 0; i < 15; i++){
         cfg1 = cfglist[1 + i*2];
+        cfg2 = cfglist[0 + i*2];
         printf("%d> domo=%d somo=%d\n",i,cfg1,cfg2);
-        int_to_bin_digit(cfg1,18,digit);
+        int_to_bin_digit(cfg2,18,digit);
         for(int j=0;j<18;j++)
             printf("%d ",digit[j]);
         printf("\n");
@@ -121,6 +135,16 @@ void printCFGList(int32_t *inpNint, int32_t *inpNcfgs, int64_t *cfglist){
     printf("Nsomos = %d\n",ncsfs);
 }
 #+end_src
+
+** Generate all singly excited CFGs
+
+Generate all singly excited CFGs with respect to a given CFG.
+
+#+name: genallSingly
+#+begin_src fortran
+#+end_src
+
+
 
 ** Generate BFs for a given number of SOMOs
 
@@ -158,6 +182,8 @@ associated with the path traversed upon going back from the leaf to the root nod
 
 #+name: nodedef
 #+begin_src c :main no :tangle tree_utils.h
+#include <stdbool.h>
+
 typedef struct bin_node Node;
 typedef struct bin_tree Tree;
 struct bin_node {
@@ -233,7 +259,7 @@ void getIthDetDriver(Tree *dettree, int NSOMOMax, int getaddr, int *vecBF);
 
 void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets);
 void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowvec);
-void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *rows, int *cols, int *ndetout);
+void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *rows, int *cols);
 
 // Misc utils
 void int_to_bin_digit(int64_t in, int count, int* out);
@@ -518,7 +544,7 @@ BF2 : 0    1    0    0    0    1    1    1
 - [X] Get Index list
 
 #+name: indexlist
-#+begin_src c :main no :tangle cfgCI_utils.c
+#+begin_src c :main no #:tangle cfgCI_utils.c
 #include <stdio.h>
 
 void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1){
@@ -558,7 +584,7 @@ void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1){
 
 
 #+name: calculateIslands
-#+begin_src c :main no :tangle cfgCI_utils.c
+#+begin_src c :main no #:tangle cfgCI_utils.c
 #include <stdio.h>
 
 void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
@@ -688,7 +714,7 @@ belong to the same spin subspace.
 - [X] Calculate the number of SOMOs in the input CFG.
 
 #+name: getNsomo
-#+begin_src C :main no :tangle cfgCI_utils.c
+#+begin_src C :main no #:tangle cfgCI_utils.c
 void getSetBits(int64_t n, int *nsetbits){
     int count = 0;
     while(n){
@@ -702,7 +728,7 @@ void getSetBits(int64_t n, int *nsetbits){
 - [ ] Generate all the BF for the SOMOs in the CFG
 
 #+name: generateAllBFs
-#+begin_src C :main no :tangle cfgCI_utils.c
+#+begin_src C :main no #:tangle cfgCI_utils.c
 void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOMO){
     getSetBits(Isomo, NSOMO);
     buildTreeDriver(bftree, *NSOMO, MS, NBF);
@@ -713,7 +739,7 @@ void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOM
 
 
 #+name: getOverlapMatrix
-#+begin_src c :main no :tangle cfgCI_utils.c
+#+begin_src c :main no #:tangle cfgCI_utils.c
 void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols, int *NSOMOout){
 
     int64_t NBF = 0;
@@ -1082,7 +1108,7 @@ void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowv
     }
 }
 
-void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *rows, int *cols, int *ndetout){
+void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *rows, int *cols){
 
     int NSOMO=0;
     getSetBits(Isomo, &NSOMO);
@@ -1130,7 +1156,7 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
 
     generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
 
-    //printf("NBFs = %d\n",NBF);
+    //printf("in convert NBFs = %d ndets=%d\n",NBF,ndets);
 
     // Initialize transformation matrix
     (*bftodetmatrixptr) = malloc(NBF*ndets*sizeof(double));
@@ -1164,6 +1190,7 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
         // Get ith row
         getbftodetfunction(&dettree, NSOMO, MS, IdxListBF1, rowvec);
 
+        //printf("---%d---\n",i);
         //for(int k=0;k<ndets;k++)
         //    printf("%10.4f ",rowvec[k]);
         //printf("\n");
@@ -1171,7 +1198,7 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
         //printf("(%d, %d) is=%d ph=%d fac=%10.15f\n",addI, addJ, nislands, phasefactor, phasefactor*1.0/(1 << (g-nislands)));
 
         for(int j = 0; j < ndets; j++)
-            bftodetmatrix[i*NBF + j] = rowvec[j];
+            bftodetmatrix[i*ndets + j] = rowvec[j];
 
         for(int k=0;k<ndets;k++)
             rowvec[k]=0.0;
@@ -1322,11 +1349,9 @@ void main(){
 
     printf("\nGen det basis \n");
 
-    int *detlist;
-    int ndetout;
     int rowsbftodetI, colsbftodetI;
 
-    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI, &ndetout);
+    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
 
     printRealMatrix(bftodetmatrixI, rowsbftodetI, colsbftodetI);
 
@@ -1353,7 +1378,9 @@ void main(){
 
     int rowsbftodetJ, colsbftodetJ;
 
-    convertBFtoDetBasis(Jsomo, MS, &bftodetmatrixJ, &rowsbftodetJ, &colsbftodetJ, &ndetout);
+    convertBFtoDetBasis(Jsomo, MS, &bftodetmatrixJ, &rowsbftodetJ, &colsbftodetJ);
+
+    printf("dims BFtoDetJ rowsbftodetJ=%d colsbftodetJ=%d\n",rowsbftodetJ,colsbftodetJ);
 
     printRealMatrix(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ);
 
@@ -1368,22 +1395,26 @@ void main(){
     // Final ME in BF basis
 
     // First transform I in bf basis
-    double *bfIApqIJ = malloc(rowsbftodetI*colsA*sizeof(double));
+    double *bfIApqIJ = malloc(colsbftodetI*colsA*sizeof(double));
 
-    int transA=false;
+    int transA=true;
     int transB=false;
-    callBlasMatxMat(bftodetmatrixI, colsI, colsbftodetI, ApqIJ, rowsA, colsA, bfIApqIJ, transA, transB);
+    callBlasMatxMat(bftodetmatrixI, rowsbftodetI, colsbftodetI, ApqIJ, rowsA, colsA, bfIApqIJ, transA, transB);
 
     printf("Done blas BFI\n");
     printRealMatrix(bfIApqIJ, colsI, colsA);
 
     // now transform I in csf basis
-    double *CSFIApqIJ = malloc(colsI*colsA*sizeof(double));
+    double *CSFIApqIJ = malloc(rowsI*colsA*sizeof(double));
     transA = true;
-    transB = false;
-    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bfIApqIJ, colsI, colsA, bfIApqIJ, transA, transB);
+    transB = true;
+    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bfIApqIJ, colsI, colsA, CSFIApqIJ, transA, transB);
 
     printf("Done blas CSFI\n");
+    printRealMatrix(orthoMatrixI, rowsI, colsI);
+    printf("----------\n");
+    printRealMatrix(bfIApqIJ, colsI, colsA);
+    printf("----------\n");
     printRealMatrix(CSFIApqIJ, rowsI, colsA);
 
 
@@ -1403,55 +1434,56 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| NBFs |            = |                  2 | NSOMOs |     = |    4 |    MS |     = |    0 |      g |   = |     2 |      |       |       |     |     |     |     |      |         |          |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-| Done | Gram-Schmidt | orthonormalization |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-| 0.89 |        -0.45 |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  0.0 |          1.0 |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  Gen |          det |              basis |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|    3 |            5 |                  6 |      9 |    10 |   12 |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  0.5 |         -0.5 |                0.0 |    0.5 |  -0.5 | -0.5 |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  0.5 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |  NBFs |     = |    5 | NSOMOs |   = |     6 |   MS |     = |     0 |   g |   = |   3 |     |      |         |          |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-| Done | Gram-Schmidt | orthonormalization |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-| 0.88 |         0.16 |                0.0 |    0.0 |  0.44 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  0.0 |         0.88 |                0.3 |    0.3 | -0.22 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  0.0 |          0.0 |               0.89 |    0.0 |  0.45 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  0.0 |          0.0 |                0.0 |   0.89 |  0.45 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   1.0 |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  Gen |          det |              basis |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|    7 |           11 |                 13 |     14 |    19 |   21 |    22 |    25 |   26 |     28 |  35 |    37 |   38 |    41 |    42 |  44 |  49 |  50 |  52 |   56 |         |          |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-| 0.35 |        -0.35 |                0.0 |    0.0 |   0.0 |  0.0 |  0.35 | -0.35 |  0.0 |  -0.35 | 0.0 |   0.0 | 0.35 | -0.35 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.35 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 | 0.35 | -0.35 | -0.35 | 0.35 |    0.0 | 0.0 | -0.35 | 0.35 |  0.35 | -0.35 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 | ndetI=6 | ndetJ=20 |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  1.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  1.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          1.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   1.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                1.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 1.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   1.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 1.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  1.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 1.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   1.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  1.0 | Done    | MEij     |      |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  1.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  1.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          1.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   1.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                1.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 1.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   1.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 1.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  1.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 1.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   1.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  1.0 | Done    | blas     | BFI  |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  0.5 |          0.5 |                0.0 |    1.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-| -0.5 |          0.0 |                0.0 |   -1.0 |   0.0 |  0.0 |   0.0 |  -0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 | Done    | blas     | CSFI |
-|      |              |                    |        |       |      |       |       |      |        |     |       |      |       |       |     |     |     |     |      |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
-|  0.0 |          0.0 |                0.0 |    0.0 |   0.0 |  0.0 |   0.0 |   0.0 |  0.0 |    0.0 | 0.0 |   0.0 |  0.0 |   0.0 |   0.0 | 0.0 | 0.0 | 0.0 | 0.0 |  0.0 |         |          |      |
+| NBFs |            = |                  2 |          NSOMOs |     = |     4 |    MS |     = |     0 |      g |     = |     2 |       |       |       |       |      |       |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+| Done | Gram-Schmidt | orthonormalization |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+| 0.89 |        -0.45 |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.0 |          1.0 |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  Gen |          det |              basis |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|    3 |            5 |                  6 |               9 |    10 |    12 |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.5 |         -0.5 |                0.0 |             0.0 |  -0.5 |   0.5 |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.0 |          0.5 |               -0.5 |            -0.5 |   0.5 |   0.0 |  NBFs |     = |     5 | NSOMOs |     = |     6 |    MS |     = |     0 |     g |    = |     3 |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+| Done | Gram-Schmidt | orthonormalization |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+| 0.88 |         0.16 |                0.0 |             0.0 |  0.44 |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.0 |         0.88 |                0.3 |             0.3 | -0.22 |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.0 |          0.0 |               0.89 |             0.0 |  0.45 |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.0 |          0.0 |                0.0 |            0.89 |  0.45 |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.0 |          0.0 |                0.0 |             0.0 |   1.0 |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  Gen |          det |              basis |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|    7 |           11 |                 13 |              14 |    19 |    21 |    22 |    25 |    26 |     28 |    35 |    37 |    38 |    41 |    42 |    44 |   49 |    50 |    52 |    56 |            |          |      |
+| dims |     BFtoDetJ |     rowsbftodetJ=5 | colsbftodetJ=20 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+| 0.35 |        -0.35 |                0.0 |             0.0 |   0.0 | -0.35 |   0.0 |  0.35 |   0.0 |    0.0 |   0.0 |   0.0 | -0.35 |   0.0 |  0.35 |   0.0 |  0.0 |   0.0 |  0.35 | -0.35 |            |          |      |
+|  0.0 |         0.35 |              -0.35 |             0.0 | -0.35 |  0.35 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |   0.0 |   0.0 | -0.35 |  0.35 |  0.0 |  0.35 | -0.35 |   0.0 |            |          |      |
+|  0.0 |          0.0 |               0.35 |           -0.35 |   0.0 | -0.35 |  0.35 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |   0.0 | -0.35 |  0.35 |   0.0 | 0.35 | -0.35 |   0.0 |   0.0 |            |          |      |
+|  0.0 |          0.0 |                0.0 |             0.0 |  0.35 | -0.35 |   0.0 |   0.0 | -0.35 |   0.35 | -0.35 |  0.35 |   0.0 |   0.0 |  0.35 | -0.35 |  0.0 |   0.0 |   0.0 |   0.0 |            |          |      |
+|  0.0 |          0.0 |                0.0 |             0.0 |   0.0 |  0.35 | -0.35 | -0.35 |  0.35 |    0.0 |   0.0 | -0.35 |  0.35 |  0.35 | -0.35 |   0.0 |  0.0 |   0.0 |   0.0 |   0.0 | ndetI=6    | ndetJ=20 |      |
+| Done |         MEij |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  1.0 |          0.0 |                0.0 |             0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |   1.0 |   0.0 |   0.0 |   0.0 |  0.0 |   0.0 |   0.0 |   0.0 |            |          |      |
+|  0.0 |          1.0 |                0.0 |             0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   1.0 |   0.0 |  0.0 |   0.0 |   0.0 |   0.0 |            |          |      |
+|  0.0 |          0.0 |                1.0 |             0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   1.0 |  0.0 |   0.0 |   0.0 |   0.0 |            |          |      |
+|  0.0 |          0.0 |                0.0 |             0.0 |   1.0 |   0.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |  0.0 |   1.0 |   0.0 |   0.0 |            |          |      |
+|  0.0 |          0.0 |                0.0 |             0.0 |   0.0 |   1.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |  0.0 |   0.0 |   1.0 |   0.0 |            |          |      |
+|  0.0 |          0.0 |                0.0 |             0.0 |   0.0 |   0.0 |   0.0 |   1.0 |   0.0 |    0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |   0.0 |  0.0 |   0.0 |   0.0 |   1.0 | Done       | blas     | BFI  |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.5 |          0.0 |                0.0 |             0.0 |   0.0 |   1.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |   0.5 |   0.0 |   0.0 |   0.0 |  0.0 |   0.0 |   1.0 |   0.0 |            |          |      |
+| -0.5 |          0.5 |                0.0 |             0.0 |   0.0 |  -1.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |  -0.5 |   0.0 |   0.5 |   0.0 |  0.0 |   0.0 |  -1.0 |   0.0 | Done       | blas     | CSFI |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+| 0.89 |        -0.45 |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.0 |          1.0 |         ---------- |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+|  0.5 |          0.0 |                0.0 |             0.0 |   0.0 |   1.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |   0.5 |   0.0 |   0.0 |   0.0 |  0.0 |   0.0 |   1.0 |   0.0 |            |          |      |
+| -0.5 |          0.5 |                0.0 |             0.0 |   0.0 |  -1.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |  -0.5 |   0.0 |   0.5 |   0.0 |  0.0 |   0.0 |  -1.0 |   0.0 | ---------- |          |      |
+|      |              |                    |                 |       |       |       |       |       |        |       |       |       |       |       |       |      |       |       |       |            |          |      |
+| 0.67 |        -0.22 |               -0.0 |             0.0 |   0.0 |  1.34 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |  0.67 |   0.0 | -0.22 |  -0.0 |  0.0 |   0.0 |  1.34 |   0.0 |            |          |      |
+| -0.5 |          0.5 |                0.0 |             0.0 |   0.0 |  -1.0 |   0.0 |   0.0 |   0.0 |    0.0 |   0.0 |   0.0 |  -0.5 |   0.0 |   0.5 |   0.0 |  0.0 |   0.0 |  -1.0 |   0.0 |            |          |      |
 
 
 ** Make the prototype matrices
@@ -1491,7 +1523,7 @@ void calcMEdetpair(int *detlistI, int *detlistJ, int orbI, int orbJ, int NSOMOI,
             for(int j=0;j<ndetJ;j++){
                 int jdet = (detlistJ[j]);
                 double phase = 1.0*sgn[NSOMOJ%2];
-                if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0;
+                if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
             }
         }
     }
@@ -1594,7 +1626,7 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, double **Apq
     // Garbage collection
     calcMEdetpair(detlistI, detlistJ, orbI, orbJ, NSOMOI, NSOMOJ, ndetI, ndetJ, matelemdetbasis);
 
-    printRealMatrix(matelemdetbasis, ndetI, ndetJ);
+    //printRealMatrix(matelemdetbasis, ndetI, ndetJ);
 
     // Garbage collection
 }
@@ -1697,7 +1729,7 @@ specified type which is one of the four:
   Here we implement the rules.
 
 #+name: calculateMETypeSOMOSOMO
-#+begin_src C :main no :tangle cfgCI_utils.c
+#+begin_src C :main no #:tangle cfgCI_utils.c
 void calculateMETypeSOMOSOMO(int *BF1, int *BF2, int moi, int moj, double *factor, int *phasefactor){
 
     // Calculate the factor following rules in the table
@@ -1912,8 +1944,8 @@ The two-electron part \(\frac{1}{2} \sum_{pq,rs} g(pq,rs) <\Psi|\hat{E}_{pq}\hat
 
 #+name: calcSigmaFunction
 #+begin_src c :results output
-<<getOrthoMatrix>>
-void calcSigma(double *coeff, double *Gpqrs);
+void calcSigma(double *coeff, double *Gpqrs){
+}
 #+end_src
 
 * Bibliography
