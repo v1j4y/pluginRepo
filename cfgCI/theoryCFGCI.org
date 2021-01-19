@@ -61,11 +61,19 @@ inline double binom(double n, double k) {
     return exp(logbinom(n,k));
 }
 
-void getncsfs(int *inpnsomo, int *inpms, int *outncsfs){
+void getncsfs1(int *inpnsomo, int *inpms, int *outncsfs){
     int nsomo = *inpnsomo;
     int ms = *inpms;
     int nparcoupl = (nsomo + ms)/2;
-    *outncsfs = binom(nsomo, nparcoupl);
+    ,*outncsfs = binom(nsomo, nparcoupl);
+}
+
+void getncsfs(int NSOMO, int MS, int *outncsfs){
+    int nparcoupl = (NSOMO + MS)/2;
+    int nparcouplp1 = (NSOMO + MS+2)/2;
+    int tmpndets=0;
+    tmpndets = binom(nsomo, nparcoupl);
+    (*outncsfs) = tmpndets - binom(nsomo, nparcouplp1);
 }
 #+end_src
 
@@ -90,13 +98,28 @@ The only input required is the selected list of CFGs at a given CIPSI iteration 
          subroutine getApqIJMatrixDims(Isomo, Jsomo, orbp, orbq,  &
          MS, rowApqIJ, colAqpIJ) bind(C, name='getApqIJMatrixDims')
          import C_INT32_T, C_INT64_T
-         integer(kind=C_INT64_T) :: Isomo
-         integer(kind=C_INT64_T) :: Jsomo
-         integer(kind=C_INT32_T) :: orbp
-         integer(kind=C_INT32_T) :: orbq
-         integer(kind=C_INT32_T) :: MS
-         integer(kind=C_INT32_T) :: rowApqIJ
-         integer(kind=C_INT32_T) :: colApqIJ
+         integer(kind=C_INT64_T),value :: Isomo
+         integer(kind=C_INT64_T),value :: Jsomo
+         integer(kind=C_INT32_T),value :: orbp
+         integer(kind=C_INT32_T),value :: orbq
+         integer(kind=C_INT32_T),value :: MS
+         integer(kind=C_INT32_T),intent(out) :: rowApqIJ
+         integer(kind=C_INT32_T),intent(out) :: colApqIJ
+         end subroutine getApqIJMatrixDims
+      end interface
+      interface
+         subroutine getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq,  &
+         MS, rowApqIJ, colAqpIJ) bind(C, name='getApqIJMatrixDriver')
+         import C_INT32_T, C_INT64_T
+         integer(kind=C_INT64_T),value :: Isomo
+         integer(kind=C_INT64_T),value :: Jsomo
+         integer(kind=C_INT32_T),value :: orbp
+         integer(kind=C_INT32_T),value :: orbq
+         integer(kind=C_INT32_T),value :: MS
+         integer(kind=C_INT32_T),intent(out) :: rowApqIJ
+         integer(kind=C_INT32_T),intent(out) :: colApqIJ
+         integer(kind=C_INT32_T),dimension(rowApqIJ,colApqIJ), &
+         intent(out) :: ApqIJ
          end subroutine getApqIJMatrixDims
       end interface
       end module cfunctions
@@ -131,7 +154,7 @@ void printCFGList(int32_t *inpNint, int32_t *inpNcfgs, int64_t *cfglist){
             printf("%d ",digit[j]);
         printf("\n");
     }
-    getncsfs(&nsomo,&ms,&ncsfs);
+    getncsfs1(&nsomo,&ms,&ncsfs);
     printf("Nsomos = %d\n",ncsfs);
 }
 #+end_src
@@ -713,7 +736,7 @@ belong to the same spin subspace.
 
 - [X] Calculate the number of SOMOs in the input CFG.
 
-#+name: getNsomo
+#+name:getNsomo
 #+begin_src C :main no #:tangle cfgCI_utils.c
 void getSetBits(int64_t n, int *nsetbits){
     int count = 0;
@@ -1297,16 +1320,18 @@ double binom(double n, double k) {
 
 <<callingblas>>
 
+<<getApqIJMatrix>>
+
 void main(){
 
     int rows = 0;
     int cols = 0;
-    double *overlapMatrixI;
-    double *overlapMatrixJ;
-    double *orthoMatrixI;
-    double *orthoMatrixJ;
-    double *bftodetmatrixI;
-    double *bftodetmatrixJ;
+    //double *overlapMatrixI;
+    //double *overlapMatrixJ;
+    //double *orthoMatrixI;
+    //double *orthoMatrixJ;
+    //double *bftodetmatrixI;
+    //double *bftodetmatrixJ;
     double *ApqIJ;
 
     int64_t MS=0;
@@ -1325,6 +1350,10 @@ void main(){
     orbq = 6-1;
     //orbq = 8-1;
 
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, &ApqIJ, &rows, &cols);
+    printf("ME CSF basis\n");
+    printRealMatrix(ApqIJ, rows, cols);
+
     //int digit[MAX_SOMO];
     //int_to_bin_digit(Isomo, MAX_SOMO, digit);
     //for(int j=0;j<MAX_SOMO;j++)
@@ -1332,123 +1361,123 @@ void main(){
     //printf("\n");
 
 
-    /***********************************
-                   Doing I
-    ,************************************/
-    // Fill matrix
-    int rowsI = 0;
-    int colsI = 0;
+    ///***********************************
+    //               Doing I
+    //,************************************/
+    //// Fill matrix
+    //int rowsI = 0;
+    //int colsI = 0;
 
-    getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+    //getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
 
-    //printRealMatrix(overlapMatrix, rows, cols);
+    ////printRealMatrix(overlapMatrix, rows, cols);
 
-    orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
+    //orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
 
-    gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
+    //gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
 
-    //printf("\nDone Gram-Schmidt orthonormalization\n");
+    ////printf("\nDone Gram-Schmidt orthonormalization\n");
 
-    //printRealMatrix(orthoMatrixI, rowsI, colsI);
+    ////printRealMatrix(orthoMatrixI, rowsI, colsI);
 
-    //printf("\nGen det basis \n");
+    ////printf("\nGen det basis \n");
 
-    int rowsbftodetI, colsbftodetI;
+    //int rowsbftodetI, colsbftodetI;
 
-    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
+    //convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
 
-    //printRealMatrix(bftodetmatrixI, rowsbftodetI, colsbftodetI);
+    ////printRealMatrix(bftodetmatrixI, rowsbftodetI, colsbftodetI);
 
-    /***********************************
-                   Doing J
-    ,************************************/
+    ///***********************************
+    //               Doing J
+    //,************************************/
 
-    int rowsJ = 0;
-    int colsJ = 0;
-    // Fill matrix
-    getOverlapMatrix(Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
+    //int rowsJ = 0;
+    //int colsJ = 0;
+    //// Fill matrix
+    //getOverlapMatrix(Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
 
-    //printRealMatrix(overlapMatrix, rows, cols);
+    ////printRealMatrix(overlapMatrix, rows, cols);
 
-    orthoMatrixJ = malloc(rowsJ*colsJ*sizeof(double));
+    //orthoMatrixJ = malloc(rowsJ*colsJ*sizeof(double));
 
-    gramSchmidt(overlapMatrixJ, rowsJ, colsJ, orthoMatrixJ);
+    //gramSchmidt(overlapMatrixJ, rowsJ, colsJ, orthoMatrixJ);
 
-    //printf("\nDone Gram-Schmidt orthonormalization\n");
+    ////printf("\nDone Gram-Schmidt orthonormalization\n");
 
-    //printRealMatrix(orthoMatrixJ, rowsJ, colsJ);
+    ////printRealMatrix(orthoMatrixJ, rowsJ, colsJ);
 
-    //printf("\nGen det basis \n");
+    ////printf("\nGen det basis \n");
 
-    int rowsbftodetJ, colsbftodetJ;
+    //int rowsbftodetJ, colsbftodetJ;
 
-    convertBFtoDetBasis(Jsomo, MS, &bftodetmatrixJ, &rowsbftodetJ, &colsbftodetJ);
+    //convertBFtoDetBasis(Jsomo, MS, &bftodetmatrixJ, &rowsbftodetJ, &colsbftodetJ);
 
-    //printf("dims BFtoDetJ rowsbftodetJ=%d colsbftodetJ=%d\n",rowsbftodetJ,colsbftodetJ);
+    ////printf("dims BFtoDetJ rowsbftodetJ=%d colsbftodetJ=%d\n",rowsbftodetJ,colsbftodetJ);
 
-    //printRealMatrix(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ);
+    ////printRealMatrix(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ);
 
-    int rowsA = 0;
-    int colsA = 0;
+    //int rowsA = 0;
+    //int colsA = 0;
 
-    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, &ApqIJ, &rowsA, &colsA);
+    //callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, &ApqIJ, &rowsA, &colsA);
 
-    //printf("Done MEij\n");
-    //printRealMatrix(ApqIJ, rowsA, colsA);
+    ////printf("Done MEij\n");
+    ////printRealMatrix(ApqIJ, rowsA, colsA);
 
-    // Final ME in BF basis
+    //// Final ME in BF basis
 
-    // First transform I in bf basis
-    double *bfIApqIJ = malloc(colsbftodetI*colsA*sizeof(double));
+    //// First transform I in bf basis
+    //double *bfIApqIJ = malloc(colsbftodetI*colsA*sizeof(double));
 
-    int transA=true;
-    int transB=false;
-    callBlasMatxMat(bftodetmatrixI, rowsbftodetI, colsbftodetI, ApqIJ, rowsA, colsA, bfIApqIJ, transA, transB);
+    //int transA=true;
+    //int transB=false;
+    //callBlasMatxMat(bftodetmatrixI, rowsbftodetI, colsbftodetI, ApqIJ, rowsA, colsA, bfIApqIJ, transA, transB);
 
-    //printf("Done blas BFI\n");
-    //printRealMatrix(bfIApqIJ, colsI, colsA);
+    ////printf("Done blas BFI\n");
+    ////printRealMatrix(bfIApqIJ, colsI, colsA);
 
-    // now transform I in csf basis
-    double *CSFIApqIJ = malloc(rowsI*colsA*sizeof(double));
-    transA = true;
-    transB = true;
-    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bfIApqIJ, colsI, colsA, CSFIApqIJ, transA, transB);
+    //// now transform I in csf basis
+    //double *CSFIApqIJ = malloc(rowsI*colsA*sizeof(double));
+    //transA = true;
+    //transB = true;
+    //callBlasMatxMat(orthoMatrixI, rowsI, colsI, bfIApqIJ, colsI, colsA, CSFIApqIJ, transA, transB);
 
-    //printf("Done blas CSFI\n");
-    //printRealMatrix(CSFIApqIJ, rowsI, colsA);
+    ////printf("Done blas CSFI\n");
+    ////printRealMatrix(CSFIApqIJ, rowsI, colsA);
 
-    // now transform J in BF basis
-    double *CSFIbfJApqIJ = malloc(rowsI*rowsbftodetJ*sizeof(double));
-    transA = false;
-    transB = true;
-    callBlasMatxMat(CSFIApqIJ, rowsI, colsA, bftodetmatrixJ, rowsbftodetJ, colsbftodetJ, CSFIbfJApqIJ, transA, transB);
+    //// now transform J in BF basis
+    //double *CSFIbfJApqIJ = malloc(rowsI*rowsbftodetJ*sizeof(double));
+    //transA = false;
+    //transB = true;
+    //callBlasMatxMat(CSFIApqIJ, rowsI, colsA, bftodetmatrixJ, rowsbftodetJ, colsbftodetJ, CSFIbfJApqIJ, transA, transB);
 
-    //printf("Done blas BFJ\n");
-    //printRealMatrix(CSFIbfJApqIJ, rowsI, rowsbftodetJ);
+    ////printf("Done blas BFJ\n");
+    ////printRealMatrix(CSFIbfJApqIJ, rowsI, rowsbftodetJ);
 
-    // now transform J in CSF basis
-    double *CSFICSFJApqIJ = malloc(rowsI*rowsJ*sizeof(double));
-    transA = false;
-    transB = true;
-    callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, CSFICSFJApqIJ, transA, transB);
+    //// now transform J in CSF basis
+    //double *CSFICSFJApqIJ = malloc(rowsI*rowsJ*sizeof(double));
+    //transA = false;
+    //transB = true;
+    //callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, CSFICSFJApqIJ, transA, transB);
 
-    printf("ME CSF basis\n");
-    printRealMatrix(CSFICSFJApqIJ, rowsI, rowsJ);
+    //printf("ME CSF basis\n");
+    //printRealMatrix(CSFICSFJApqIJ, rowsI, rowsJ);
 
 
-    // Garbage collection
-    free(overlapMatrixI);
-    free(overlapMatrixJ);
-    free(orthoMatrixI);
-    free(orthoMatrixJ);
-    free(bftodetmatrixI);
-    free(bftodetmatrixJ);
+    //// Garbage collection
+    //free(overlapMatrixI);
+    //free(overlapMatrixJ);
+    //free(orthoMatrixI);
+    //free(orthoMatrixJ);
+    //free(bftodetmatrixI);
+    //free(bftodetmatrixJ);
+    //free(ApqIJ);
+    //free(bfIApqIJ);
+    //free(CSFIApqIJ);
+    //free(CSFIbfJApqIJ);
+    //free(CSFICSFJApqIJ);
     free(ApqIJ);
-    free(bfIApqIJ);
-    free(CSFIApqIJ);
-    free(CSFIbfJApqIJ);
-    free(CSFICSFJApqIJ);
-    //free(bfIbfJApqIJ);
 
     return;
 }
@@ -1478,7 +1507,7 @@ void makePrototypeMatrices(int nel, int norb, double spin);
 
 ** Functions required for calculating MEs
 
-*** TODO [2/2] Calculate MEs in Det basis
+*** TODO [3/3] Calculate MEs in Det basis
 
 - [X] Calculate one-electron ME between two dets
 
@@ -1606,6 +1635,158 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, double **Apq
     //printRealMatrix(matelemdetbasis, ndetI, ndetJ);
 
     // Garbage collection
+}
+#+end_src
+
+- [X] Transform the MEs in CSF basis
+
+  Transform the bra and ket indices to CSF basis from DET basis. The traonsformation
+  proceeds in two steps. In the first step, the DET basis is transformed to BF basis followed
+  by the transformation of the BF basis to CSF basis. Each of the transformation is carried out
+  using DGEMM calls.
+
+#+name: getApqIJMatrix
+#+begin_src C :main no
+void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_t MS, int *rowsout, int *colsout){
+    int NSOMOI=0;
+    int NSOMOJ=0;
+    getSetBits(Isomo, &NSOMOI);
+    getSetBits(Jsomo, &NSOMOJ);
+    int NBFI=0;
+    int NBFJ=0;
+    getncsfs(NSOMOI, MS, &NBFI);
+    getncsfs(NSOMOJ, MS, &NBFJ);
+}
+
+void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_t MS, double **CSFICSFJApqIJptr, int *rowsout, int *colsout){
+
+    double *overlapMatrixI;
+    double *overlapMatrixJ;
+    double *orthoMatrixI;
+    double *orthoMatrixJ;
+    double *bftodetmatrixI;
+    double *bftodetmatrixJ;
+    double *ApqIJ;
+    int NSOMO=0;
+
+    /***********************************
+                   Doing I
+    ,************************************/
+    // Fill matrix
+    int rowsI = 0;
+    int colsI = 0;
+
+    getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+
+    //printRealMatrix(overlapMatrix, rows, cols);
+
+    orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
+
+    gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
+
+    //printf("\nDone Gram-Schmidt orthonormalization\n");
+
+    //printRealMatrix(orthoMatrixI, rowsI, colsI);
+
+    //printf("\nGen det basis \n");
+
+    int rowsbftodetI, colsbftodetI;
+
+    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
+
+    //printRealMatrix(bftodetmatrixI, rowsbftodetI, colsbftodetI);
+
+    /***********************************
+                   Doing J
+    ,************************************/
+
+    int rowsJ = 0;
+    int colsJ = 0;
+    // Fill matrix
+    getOverlapMatrix(Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
+
+    //printRealMatrix(overlapMatrix, rows, cols);
+
+    orthoMatrixJ = malloc(rowsJ*colsJ*sizeof(double));
+
+    gramSchmidt(overlapMatrixJ, rowsJ, colsJ, orthoMatrixJ);
+
+    //printf("\nDone Gram-Schmidt orthonormalization\n");
+
+    //printRealMatrix(orthoMatrixJ, rowsJ, colsJ);
+
+    //printf("\nGen det basis \n");
+
+    int rowsbftodetJ, colsbftodetJ;
+
+    convertBFtoDetBasis(Jsomo, MS, &bftodetmatrixJ, &rowsbftodetJ, &colsbftodetJ);
+
+    //printf("dims BFtoDetJ rowsbftodetJ=%d colsbftodetJ=%d\n",rowsbftodetJ,colsbftodetJ);
+
+    //printRealMatrix(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ);
+
+    int rowsA = 0;
+    int colsA = 0;
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, &ApqIJ, &rowsA, &colsA);
+
+    //printf("Done MEij\n");
+    //printRealMatrix(ApqIJ, rowsA, colsA);
+
+    // Final ME in BF basis
+
+    // First transform I in bf basis
+    double *bfIApqIJ = malloc(colsbftodetI*colsA*sizeof(double));
+
+    int transA=true;
+    int transB=false;
+    callBlasMatxMat(bftodetmatrixI, rowsbftodetI, colsbftodetI, ApqIJ, rowsA, colsA, bfIApqIJ, transA, transB);
+
+    //printf("Done blas BFI\n");
+    //printRealMatrix(bfIApqIJ, colsI, colsA);
+
+    // now transform I in csf basis
+    double *CSFIApqIJ = malloc(rowsI*colsA*sizeof(double));
+    transA = true;
+    transB = true;
+    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bfIApqIJ, colsI, colsA, CSFIApqIJ, transA, transB);
+
+    //printf("Done blas CSFI\n");
+    //printRealMatrix(CSFIApqIJ, rowsI, colsA);
+
+    // now transform J in BF basis
+    double *CSFIbfJApqIJ = malloc(rowsI*rowsbftodetJ*sizeof(double));
+    transA = false;
+    transB = true;
+    callBlasMatxMat(CSFIApqIJ, rowsI, colsA, bftodetmatrixJ, rowsbftodetJ, colsbftodetJ, CSFIbfJApqIJ, transA, transB);
+
+    //printf("Done blas BFJ\n");
+    //printRealMatrix(CSFIbfJApqIJ, rowsI, rowsbftodetJ);
+
+    // now transform J in CSF basis
+    (*CSFICSFJApqIJptr) = malloc(rowsI*rowsJ*sizeof(double));
+    (*rowsout) = rowsI;
+    (*colsout) = rowsJ;
+    double *CSFICSFJApqIJ = (*CSFICSFJApqIJptr);
+    transA = false;
+    transB = true;
+    callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, CSFICSFJApqIJ, transA, transB);
+
+    //printf("ME CSF basis\n");
+    //printRealMatrix(CSFICSFJApqIJ, rowsI, rowsJ);
+
+
+    // Garbage collection
+    free(overlapMatrixI);
+    free(overlapMatrixJ);
+    free(orthoMatrixI);
+    free(orthoMatrixJ);
+    free(bftodetmatrixI);
+    free(bftodetmatrixJ);
+    free(ApqIJ);
+    free(bfIApqIJ);
+    free(CSFIApqIJ);
+    free(CSFIbfJApqIJ);
 }
 #+end_src
 
