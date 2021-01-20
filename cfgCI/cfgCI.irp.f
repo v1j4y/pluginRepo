@@ -6,6 +6,10 @@
       END_DOC
       character*32 cc
       integer i, j
+      integer orbp, orbq
+      integer rows
+      real cols
+      integer MS
       print *, N_int
       call debug_det(psi_det(1,1,1),N_int)
       call debug_det(psi_det(1,1,2),N_int)
@@ -29,6 +33,18 @@
          print *,"Number of singles=",n_singles
          do j = 1, 20
             print *, singles(1,1,j), singles(1,2,j)
+            orbp = 0
+            orbq = 5
+            MS = 0
+            call getApqIJMatrixDims(singles(1,2,j),           &
+                                    psi_configuration(1,2,i), &
+                                    orbp,                     &
+                                    orbq,                     &
+                                    MS,                       &
+                                    rows,                     &
+                                    cols)
+                                    print *, rows, cols
+
          end do
          call printCFGlist(Nint, n_singles, singles)
       end do
