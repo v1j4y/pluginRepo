@@ -1255,23 +1255,31 @@ void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int col
 
     switch (val) {
         case 0: // notransA, notransB
-            printf("type1\n");
+            m = rowA;
+            k = colA;
+            n = colB;
             cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                         m, n, k, alpha, A, k, B, n, beta, C, n);
             break;
         case 1: // transA, notransB
-            printf("type2\n");
-            cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
+            m = colA;
+            k = rowA;
+            n = colB;
+            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                         m, n, k, alpha, A, k, B, n, beta, C, n);
             break;
         case 2: // notransA, transB
-            printf("type3\n");
-            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+            m = rowA;
+            k = colA;
+            n = rowB;
+            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                         m, n, k, alpha, A, k, B, n, beta, C, n);
             break;
-        case 3: // notransA, notransB
-            printf("type4\n");
-            cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans,
+        case 3: // transA, transB
+            m = colA;
+            k = rowA;
+            n = colB;
+            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                         m, n, k, alpha, A, k, B, n, beta, C, n);
             break;
         default:
@@ -1401,20 +1409,16 @@ void main(){
 #+end_src
 
 #+RESULTS:
-| NBFs  |     = |     5 | NSOMOs |     = |     6 |    MS |     = |     0 |     g |     = |     3 |       |       |
-| NBFs  |     = |    14 | NSOMOs |     = |     8 |    MS |     = |     0 |     g |     = |     4 |       |       |
-| type1 |       |       |        |       |       |       |       |       |       |       |       |       |       |
-| type1 |       |       |        |       |       |       |       |       |       |       |       |       |       |
-| type1 |       |       |        |       |       |       |       |       |       |       |       |       |       |
-| type1 |       |       |        |       |       |       |       |       |       |       |       |       |       |
-| ME    |   CSF | basis |        |       |       |       |       |       |       |       |       |       |       |
+|  NBFs |     = |     5 | NSOMOs |     = |     6 |    MS |     = |     0 |     g |     = |     3 |       |       |
+|  NBFs |     = |    14 | NSOMOs |     = |     8 |    MS |     = |     0 |     g |     = |     4 |       |       |
+|    ME |   CSF | basis |        |       |       |       |       |       |       |       |       |       |       |
 |       |       |       |        |       |       |       |       |       |       |       |       |       |       |
 | -0.07 |  0.14 | -0.13 |   0.08 | -0.13 |  0.13 |  0.05 |  -0.1 |   0.2 |  0.05 | -0.08 |  0.13 |  0.16 | -0.26 |
-| 0.05  |  0.02 | -0.04 |   0.04 | -0.06 |  0.04 | -0.08 | -0.14 |  0.19 |  0.12 |  -0.1 |  0.04 |  0.22 | -0.09 |
-| 0.05  | -0.13 |  0.05 |   0.07 |  0.04 | -0.04 | -0.18 |  0.12 | -0.03 | -0.02 |  0.04 | -0.06 | -0.02 | -0.08 |
+|  0.05 |  0.02 | -0.04 |   0.04 | -0.06 |  0.04 | -0.08 | -0.14 |  0.19 |  0.12 |  -0.1 |  0.04 |  0.22 | -0.09 |
+|  0.05 | -0.13 |  0.05 |   0.07 |  0.04 | -0.04 | -0.18 |  0.12 | -0.03 | -0.02 |  0.04 | -0.06 | -0.02 | -0.08 |
 | -0.05 | -0.04 |  0.15 |   -0.1 |  0.04 | -0.09 |   0.1 |  0.17 | -0.22 | -0.16 |  0.18 | -0.09 | -0.22 |  0.03 |
 | -0.04 |  -0.0 |  0.01 |   0.08 | -0.06 |  0.02 |  0.03 | -0.03 | -0.04 |   0.1 | -0.13 |   0.1 |   0.1 | -0.25 |
-| ME    |   CSF | basis |        |       |       |       |       |       |       |       |       |       |       |
+|    ME |   CSF | basis |        |       |       |       |       |       |       |       |       |       |       |
 
 
 ** Make the prototype matrices
@@ -1692,8 +1696,8 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     double *CSFIbfJApqIJ = malloc(rowsI*rowsbftodetJ*sizeof(double));
     //printf("rowsI = %d colsA=%d | rowsbftodetJ=%d colsbftodetJ=%d\n",rowsI,colsA,rowsbftodetJ,colsbftodetJ);
     transA = false;
-    transB = false;
-    callBlasMatxMat(CSFIApqIJ, rowsI, colsA, bftodetmatrixJ, colsbftodetJ, rowsbftodetJ, CSFIbfJApqIJ, transA, transB);
+    transB = true;
+    callBlasMatxMat(CSFIApqIJ, rowsI, colsA, bftodetmatrixJ, rowsbftodetJ, colsbftodetJ, CSFIbfJApqIJ, transA, transB);
 
     //printf("Done blas BFJ\n");
     //printRealMatrix(CSFIbfJApqIJ, rowsI, rowsbftodetJ);
@@ -1706,8 +1710,8 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
 
     double *CSFICSFJApqIJ = (*CSFICSFJApqIJptr);
     transA = false;
-    transB = false;
-    callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, colsJ, rowsJ, CSFICSFJApqIJ, transA, transB);
+    transB = true;
+    callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, CSFICSFJApqIJ, transA, transB);
 
     //printf("ME CSF basis\n");
     //printRealMatrix(CSFICSFJApqIJ, rowsI, rowsJ);
