@@ -110,13 +110,14 @@ The only input required is the selected list of CFGs at a given CIPSI iteration 
       end interface
       interface
          subroutine getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq,  &
-         MS, rowsApqIJ, colsAqpIJ, ApqIJ) bind(C, name='getApqIJMatrixDriver')
+         MS, NMO, rowsApqIJ, colsAqpIJ, ApqIJ) bind(C, name='getApqIJMatrixDriver')
          import C_INT32_T, C_INT64_T
          integer(kind=C_INT64_T),value :: Isomo
          integer(kind=C_INT64_T),value :: Jsomo
          integer(kind=C_INT32_T),value :: orbp
          integer(kind=C_INT32_T),value :: orbq
          integer(kind=C_INT32_T),value :: MS
+         integer(kind=C_INT32_T),value :: NMO
          integer(kind=C_INT32_T),intent(out) :: rowsApqIJ
          integer(kind=C_INT32_T) :: colsApqIJ
          !integer(kind=C_INT32_T),dimension(rowApqIJ,colApqIJ) :: ApqIJ
@@ -1309,6 +1310,17 @@ double binom(double n, double k);
 //    return exp(logbinom(n,k));
 //}
 
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
 <<inttobindigit>>
 
 <<getncsfs>>
@@ -1353,27 +1365,41 @@ void main(){
 
     int64_t MS=0;
     int NSOMO=0;
+    int NMO=8;
 
     int64_t Isomo;
-    Isomo = (1 << 4) - 1;
+    //Isomo = ((1 << 4) - 1)<<1;
     Isomo = (1 << 6) - 1;
     //Isomo = (1 << 8) - 1;
 
+    int64_t Idomo;
+    Idomo = 0;
+
     int64_t Jsomo;
-    Jsomo = (1 << 6) - 1;
-    Jsomo = (1 << 8) - 1;
+    Jsomo = ((1 << 4) - 1)<<1;
+    //Jsomo = (1 << 6) - 1;
+    //Jsomo = (1 << 8) - 1;
     //Jsomo = (1 << 10) - 1;
+
+    int64_t Jdomo;
+    Jdomo = 0;
+
+    printf("\nIsomo- "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("\nJsomo- "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
 
     int orbp = 0;
     int orbq;
     orbq = 6-1;
-    orbq = 8-1;
+    //orbq = 8-1;
     //orbq = 10-1;
+    printf("%d %d\n",orbp,orbq);
 
-    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, &ApqIJ, &rows, &cols);
-    printf("ME CSF basis\n");
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &ApqIJ, &rows, &cols);
+    printf("1-ME CSF basis\n");
     printRealMatrix(ApqIJ, rows, cols);
-    printf("ME CSF basis\n");
+    printf("\n1-ME CSF basis\n");
 
 
     // Test cblas
@@ -1409,16 +1435,23 @@ void main(){
 #+end_src
 
 #+RESULTS:
-|  NBFs |     = |     5 | NSOMOs |     = |     6 |    MS |     = |     0 |     g |     = |     3 |       |       |
-|  NBFs |     = |    14 | NSOMOs |     = |     8 |    MS |     = |     0 |     g |     = |     4 |       |       |
-|    ME |   CSF | basis |        |       |       |       |       |       |       |       |       |       |       |
-|       |       |       |        |       |       |       |       |       |       |       |       |       |       |
-| -0.07 |  0.14 | -0.13 |   0.08 | -0.13 |  0.13 |  0.05 |  -0.1 |   0.2 |  0.05 | -0.08 |  0.13 |  0.16 | -0.26 |
-|  0.05 |  0.02 | -0.04 |   0.04 | -0.06 |  0.04 | -0.08 | -0.14 |  0.19 |  0.12 |  -0.1 |  0.04 |  0.22 | -0.09 |
-|  0.05 | -0.13 |  0.05 |   0.07 |  0.04 | -0.04 | -0.18 |  0.12 | -0.03 | -0.02 |  0.04 | -0.06 | -0.02 | -0.08 |
-| -0.05 | -0.04 |  0.15 |   -0.1 |  0.04 | -0.09 |   0.1 |  0.17 | -0.22 | -0.16 |  0.18 | -0.09 | -0.22 |  0.03 |
-| -0.04 |  -0.0 |  0.01 |   0.08 | -0.06 |  0.02 |  0.03 | -0.03 | -0.04 |   0.1 | -0.13 |   0.1 |   0.1 | -0.25 |
-|    ME |   CSF | basis |        |       |       |       |       |       |       |       |       |       |       |
+|           |        |       |        |   |   |    |   |   |   |   |   |
+| Isomo-    | 111111 |       |        |   |   |    |   |   |   |   |   |
+|           |        |       |        |   |   |    |   |   |   |   |   |
+| Jsomo-    |  11110 |       |        |   |   |    |   |   |   |   |   |
+| 0         |      5 |       |        |   |   |    |   |   |   |   |   |
+| NBFs      |      = |     5 | NSOMOs | = | 6 | MS | = | 0 | g | = | 3 |
+| NBFs      |      = |     2 | NSOMOs | = | 4 | MS | = | 0 | g | = | 2 |
+| DOMO->VMO |        |       |        |   |   |    |   |   |   |   |   |
+| 1-ME      |    CSF | basis |        |   |   |    |   |   |   |   |   |
+|           |        |       |        |   |   |    |   |   |   |   |   |
+| 0.0       |    0.0 |       |        |   |   |    |   |   |   |   |   |
+| 0.0       |    0.0 |       |        |   |   |    |   |   |   |   |   |
+| 0.0       |    0.0 |       |        |   |   |    |   |   |   |   |   |
+| 0.0       |    0.0 |       |        |   |   |    |   |   |   |   |   |
+| 0.0       |    0.0 |       |        |   |   |    |   |   |   |   |   |
+|           |        |       |        |   |   |    |   |   |   |   |   |
+| 1-ME      |    CSF | basis |        |   |   |    |   |   |   |   |   |
 
 
 ** Make the prototype matrices
@@ -1442,74 +1475,150 @@ void makePrototypeMatrices(int nel, int norb, double spin);
 
 #+name: calcMEdetpair
 #+begin_src C :main no
-void calcMEdetpair(int *detlistI, int *detlistJ, int orbI, int orbJ, int NSOMOI, int NSOMOJ, int ndetI, int ndetJ, double *matelemdetbasis){
-    int mask = 0;
-    double sgn[2];
-    sgn[0] = 1.0;
-    sgn[1] =-1.0;
-    if(ndetI > ndetJ){
-        // SOMO -> SOMO
-        for(int i=0;i<NSOMOI;i++)
-            mask = mask | (1 << i);
-        mask = mask - 1;
-        mask = mask ^ (1 << (NSOMOI-1));
-        for(int i=0;i<ndetI;i++){
-            int idet = (mask & detlistI[i]) >> 1;
-            for(int j=0;j<ndetJ;j++){
-                int jdet = (detlistJ[j]);
-                double phase = 1.0*sgn[NSOMOJ%2];
-                if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
-            }
-        }
-    }
-    else if (ndetJ > ndetI){
-        // DOMO -> VMO
-        for(int i=0;i<NSOMOJ;i++)
-            mask = mask | (1 << i);
-        mask = mask - 1;
-        mask = mask ^ (1 << (NSOMOJ-1));
-        for(int i=0;i<ndetJ;i++){
-            int idet = (mask & detlistJ[i]) >> 1;
-            for(int j=0;j<ndetI;j++){
-                int jdet = (detlistI[j]);
-                double phase = 1.0*sgn[__builtin_popcount(jdet)%2];
-                if(idet == jdet) matelemdetbasis[j*ndetJ + i] = 1.0*phase;
-            }
-        }
-    }
-    else{
-        int maskI=0;
-        int maskJ=0;
-        // DOMO -> SOMO
-        if(orbI > orbJ){
-            // 2 1 1 1 1 -> 1 1 1 1 2
-            // mask
-            // 0 1 1 1 0 -> 0 1 1 1 0
-            for(int i=0;i<ndetJ;i++){
-                int idet = detlistJ[i];
-                for(int j=0;j<ndetI;j++){
-                    int jdet = (detlistI[j]);
-                    double phase = 1.0*sgn[__builtin_popcount(jdet)%2];
-                    if(idet == jdet) matelemdetbasis[j*ndetJ + i] = 1.0*phase;
+
+unsigned int shftbit(int num, int p){
+    unsigned int maskleft = ~(0 | ((1<<p)-1));
+    unsigned int maskright = ((1<<p)-1);
+    int numleft = num & maskleft;
+    int numright = num & maskright;
+    numleft = numleft >> 1;
+    return(numleft | numright);
+};
+
+unsigned int getphase(int num, int p, int q, int nmo){
+    unsigned int maskleft = ~(0 | ((1<<q)-1));
+    unsigned int maskmo = ((1<<nmo)-1);
+    unsigned int maskright = ((1<<p)-1);
+    int numleft = num & maskleft;
+    int numleftright = numleft & maskright;
+    int nalpha = __builtin_popcount(numleftright & maskmo);
+    int nbeta = q-p-1 - nalpha;
+    int maskatq = (1<<q);
+    int nelecalphaatq = __builtin_popcount(num & maskatq);
+    int nfermions = nelecalphaatq == 0 ? nalpha : nbeta;
+    return(nfermions);
+};
+
+void calcMEdetpair(int *detlistI, int *detlistJ, int orbI, int orbJ, int Isomo, int Jsomo, int ndetI, int ndetJ, int NMO, double *matelemdetbasis){
+
+
+    int p,q; // The two orbitals p is always > q.
+    p = orbI >= orbJ ? orbI : orbJ;
+    q = orbI >= orbJ ? orbJ : orbI;
+
+    // Find the corresponding case
+    // 1. NdetI > NdetJ  (SOMO -> SOMO)
+    // 2. NdetI < NdetJ  (DOMO -> VMO)
+    // 3. NdetI == NdetJ (SOMO -> VMO and DOMO -> SOMO)
+
+    // Converting the above four cases into int:
+    int case_type = abs(ndetI - ndetJ) == 0 ? 3 : (ndetI > ndetJ ? 1 : 2);
+
+    switch (case_type){
+        case 1:
+            // SOMO -> SOMO
+            printf("SOMO->SOMO\n");
+            for(int i=0;i<ndetI;i++){
+                int idet = detlistI[i];
+                // Calculate phase
+                double phase = 1.0*getphase(idet,p,q,NMO);
+                // Shift bits for I
+                idet = shftbit(shftbit(detlistI[i],q),p-1);
+                for(int j=0;j<ndetJ;j++){
+                    int jdet = (detlistJ[j]);
+                    if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
                 }
             }
-        }
-        else{
-            // 1 1 1 1 2 -> 2 1 1 1 1
-            // mask
-            // 0 1 1 1 0 -> 0 1 1 1 0
-            for(int i=0;i<ndetJ;i++){
-                int idet = detlistJ[i];
-                for(int j=0;j<ndetI;j++){
-                    int jdet = (detlistI[j]);
-                    double phase = 1.0*sgn[__builtin_popcount(jdet)%2];
-                    if(idet == jdet) matelemdetbasis[j*ndetJ + i] = 1.0*phase;
+            break;
+        case 2:
+            // DOMO -> VMO
+            printf("DOMO->VMO\n");
+            for(int i=0;i<ndetI;i++){
+                // Get phase
+                int idet = detlistI[i];
+                for(int j=0;j<ndetJ;j++){
+                    int jdet = (detlistJ[j]);
+                    // Calculate phase
+                    // Note -1 phase difference wrt to SOMO->SOMO
+                    double phase = -1.0*getphase(jdet,p,q,NMO);
+                    // Shift bits for I
+                    jdet = shftbit(shftbit(detlistJ[i],q),p-1);
+                    if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
                 }
             }
-        }
-    }
+            break;
+        case 3:
+            // (SOMO -> VMO or DOMO -> SOMO)
+
+            printf("(S/D)OMO->VMO\n");
+            for(int i=0;i<ndetI;i++){
+                // Get phase
+                int idet = detlistI[i];
+                // Calculate phase
+                double phase = 1.0*getphase(idet,p,q,NMO);
+                for(int j=0;j<ndetJ;j++){
+                    int jdet = (detlistJ[j]);
+                    if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                }
+            }
+            break;
+        default:
+            printf("Something is wrong in calc ME\n");
+            break;
+    } // end select
+
 }
 #+end_src
+
+#+begin_src C
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+unsigned int shftbit(int num, int p){
+    unsigned int maskleft = ~(0 | ((1<<p)-1));
+    unsigned int maskright = ((1<<p)-1);
+    int numleft = num & maskleft;
+    int numright = num & maskright;
+    numleft = numleft >> 1;
+    return(numleft | numright);
+};
+
+unsigned int getphase(int num, int p, int q, int nmo){
+    unsigned int maskleft = ~(0 | ((1<<q)-1));
+    unsigned int maskmo = ((1<<nmo)-1);
+    unsigned int maskright = ((1<<p)-1);
+    int numleft = num & maskleft;
+    int numleftright = numleft & maskright;
+    return(__builtin_popcount(numleftright & maskmo));
+};
+//int a=12;
+//int b=44;
+//int c=a/b;
+////c = (a/b)/c;
+////c = a - b ? 0 : (1+(a/b)/(int)(a/b));
+//c = abs(a - b) == 0 ? 0 : (a > b ? 1 : 2);
+int d = 4;
+printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(27 + ( 3<<6)));
+printf("\nleading test %d",(27 + ( 3<<6)));
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(shftbit(shftbit(219,3),6-1)));
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(getphase(219,6,3,8)));
+printf("\n phase=%d\n",getphase(219,6,3,8));
+#+end_src
+
+#+RESULTS:
+| leading | test | 11011011 |
+| leading | test |      219 |
+| leading | test |   111111 |
+| leading | test |       10 |
+| phase=2 |      |          |
 
 - [X] Calculate batch of MEs between CFGs
 
@@ -1517,7 +1626,7 @@ void calcMEdetpair(int *detlistI, int *detlistJ, int orbI, int orbJ, int NSOMOI,
 
 #+name: callcalcMEdetpair
 #+begin_src C :main no
-void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, double **ApqIJptr, int *rowsA, int *colsA){
+void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, double **ApqIJptr, int *rowsA, int *colsA){
     // Get dets for I
     int ndetI;
     int ndetJ;
@@ -1559,7 +1668,7 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, double **Apq
             matelemdetbasis[i*ndetJ + j]=0.0;
 
     // Garbage collection
-    calcMEdetpair(detlistI, detlistJ, orbI, orbJ, NSOMOI, NSOMOJ, ndetI, ndetJ, matelemdetbasis);
+    calcMEdetpair(detlistI, detlistJ, orbI, orbJ, NSOMOI, NSOMOJ, ndetI, ndetJ, NMO, matelemdetbasis);
 
     //printRealMatrix(matelemdetbasis, ndetI, ndetJ);
 
@@ -1587,7 +1696,7 @@ void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_
     getncsfs(NSOMOJ, MS, &NBFJ);
 }
 
-void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_t MS, double **CSFICSFJApqIJptr, int *rowsout, int *colsout){
+void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_t MS, int64_t NMO, double **CSFICSFJApqIJptr, int *rowsout, int *colsout){
 
     double *overlapMatrixI;
     double *overlapMatrixJ;
@@ -1664,7 +1773,7 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     int rowsA = 0;
     int colsA = 0;
 
-    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, &ApqIJ, &rowsA, &colsA);
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &ApqIJ, &rowsA, &colsA);
 
     //printf("Done MEij\n");
     //printRealMatrix(ApqIJ, rowsA, colsA);
