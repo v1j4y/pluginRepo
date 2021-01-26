@@ -22,6 +22,7 @@ the position of SOMOs and DOMOs.
 #+name: inttobindigit
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdint.h>
+#include "tree_utils.h"
 
 void int_to_bin_digit(int64_t in, int count, int* out)
 {
@@ -86,46 +87,44 @@ The only input required is the selected list of CFGs at a given CIPSI iteration 
 - [X] Fortran module
 
   #+begin_src f90 :main no :tangle cfgCI_interface.f90
-      module cfunctions
-      use, intrinsic :: ISO_C_BINDING
+module cfunctions
+        use, intrinsic :: ISO_C_BINDING
       interface
          subroutine printcfglist(nint, ncfgs, cfglist) bind(C, name='printCFGList')
-         import C_INT32_T, C_INT64_T
+           import C_INT32_T, C_INT64_T
          integer(kind=C_INT32_T) :: nint
          integer(kind=C_INT32_T) :: ncfgs
          integer(kind=C_INT64_T) :: cfglist(nint,2,ncfgs)
-         end subroutine printcfglist
+       end subroutine printcfglist
       end interface
       interface
-         subroutine getApqIJMatrixDims(Isomo, Jsomo, orbp, orbq,  &
-         MS, rowApqIJ, colAqpIJ) bind(C, name='getApqIJMatrixDims')
-         import C_INT32_T, C_INT64_T
-         integer(kind=C_INT64_T),value :: Isomo ! CSFI
-         integer(kind=C_INT64_T),value :: Jsomo ! CSFJ
-         integer(kind=C_INT32_T),value :: orbp  ! Orbital p (changes in I)
-         integer(kind=C_INT32_T),value :: orbq  ! Orbital q (changes in J)
-         integer(kind=C_INT32_T),value :: MS    ! Ms = 2*Spin
-         integer(kind=C_INT32_T),intent(out) :: rowApqIJ ! # of Rows of ApqIJ matrix
-         integer(kind=C_INT32_T)  :: colApqIJ ! # of Columns of ApqIJ
+         subroutine getApqIJMatrixDims(Isomo, Jsomo, MS, rowApqIJ, colAqpIJ) &
+              bind(C, name='getApqIJMatrixDims')
+           import C_INT32_T, C_INT64_T
+           integer(kind=C_INT64_T),value,intent(in) :: Isomo ! CSFI
+           integer(kind=C_INT64_T),value,intent(in) :: Jsomo ! CSFJ
+           integer(kind=C_INT32_T),value,intent(in) :: MS    ! Ms = 2*Spin
+           integer(kind=C_INT32_T):: rowApqIJ
+           integer(kind=C_INT32_T):: colApqIJ
          end subroutine getApqIJMatrixDims
       end interface
       interface
          subroutine getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq,  &
-         MS, NMO, rowsApqIJ, colsAqpIJ, ApqIJ) bind(C, name='getApqIJMatrixDriver')
-         import C_INT32_T, C_INT64_T
-         integer(kind=C_INT64_T),value :: Isomo
-         integer(kind=C_INT64_T),value :: Jsomo
-         integer(kind=C_INT32_T),value :: orbp
-         integer(kind=C_INT32_T),value :: orbq
-         integer(kind=C_INT32_T),value :: MS
-         integer(kind=C_INT32_T),value :: NMO
-         integer(kind=C_INT32_T),intent(out) :: rowsApqIJ
-         integer(kind=C_INT32_T) :: colsApqIJ
-         !integer(kind=C_INT32_T),dimension(rowApqIJ,colApqIJ) :: ApqIJ
-         integer(kind=C_INT32_T) :: ApqIJ
+              MS, NMO, rowsApqIJ, colsAqpIJ, ApqIJ) bind(C, name='getApqIJMatrixDriver')
+           import C_INT32_T, C_INT64_T
+           integer(kind=C_INT64_T),value :: Isomo
+           integer(kind=C_INT64_T),value :: Jsomo
+           integer(kind=C_INT32_T),value :: orbp
+           integer(kind=C_INT32_T),value :: orbq
+           integer(kind=C_INT32_T),value :: MS
+           integer(kind=C_INT32_T),value :: NMO
+           integer(kind=C_INT32_T) :: rowsApqIJ
+           integer(kind=C_INT32_T) :: colsApqIJ
+           !integer(kind=C_INT32_T),dimension(rowApqIJ,colApqIJ) :: ApqIJ
+           integer(kind=C_INT32_T) :: ApqIJ(:)
          end subroutine getApqIJMatrixDriver
       end interface
-      end module cfunctions
+    end module cfunctions
   #+end_src
 
 
@@ -135,7 +134,6 @@ The only input required is the selected list of CFGs at a given CIPSI iteration 
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdio.h>
 #include <stdint.h>
-#include "tree_utils.h"
 
 void printCFGList(int32_t *inpNint, int32_t *inpNcfgs, int64_t *cfglist){
     int Ncfgs    = *inpNcfgs;
@@ -209,6 +207,8 @@ associated with the path traversed upon going back from the leaf to the root nod
 #+name: nodedef
 #+begin_src c :main no :tangle tree_utils.h
 #include <stdbool.h>
+#include <stdint.h>
+#include <math.h>
 
 typedef struct bin_node Node;
 typedef struct bin_tree Tree;
@@ -290,11 +290,14 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
 // Misc utils
 void int_to_bin_digit(int64_t in, int count, int* out);
 void printRealMatrix(double *orthoMatrix, int rows, int cols);
+void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int colB, double *C, bool transA, bool transB);
 
 #+end_src
 
 #+name: treefuncmain
 #+begin_src c :main no :tangle tree_utils.c
+#include "tree_utils.h"
+
 void buildTree(Tree *bftree,
                Node **inode,
                int isomo,
@@ -570,7 +573,7 @@ BF2 : 0    1    0    0    0    1    1    1
 - [X] Get Index list
 
 #+name: indexlist
-#+begin_src c :main no #:tangle cfgCI_utils.c
+#+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdio.h>
 
 void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1){
@@ -610,7 +613,7 @@ void getBFIndexList(int NSOMO, int *BF1, int *IdxListBF1){
 
 
 #+name: calculateIslands
-#+begin_src c :main no #:tangle cfgCI_utils.c
+#+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdio.h>
 
 void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
@@ -740,7 +743,7 @@ belong to the same spin subspace.
 - [X] Calculate the number of SOMOs in the input CFG.
 
 #+name:getNsomo
-#+begin_src C :main no #:tangle cfgCI_utils.c
+#+begin_src C :main no :tangle cfgCI_utils.c
 void getSetBits(int64_t n, int *nsetbits){
     int count = 0;
     while(n){
@@ -754,7 +757,7 @@ void getSetBits(int64_t n, int *nsetbits){
 - [ ] Generate all the BF for the SOMOs in the CFG
 
 #+name: generateAllBFs
-#+begin_src C :main no #:tangle cfgCI_utils.c
+#+begin_src C :main no :tangle cfgCI_utils.c
 void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOMO){
     getSetBits(Isomo, NSOMO);
     buildTreeDriver(bftree, *NSOMO, MS, NBF);
@@ -765,7 +768,7 @@ void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOM
 
 
 #+name: getOverlapMatrix
-#+begin_src c :main no #:tangle cfgCI_utils.c
+#+begin_src c :main no :tangle cfgCI_utils.c
 void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols, int *NSOMOout){
 
     int64_t NBF = 0;
@@ -856,7 +859,7 @@ void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int 
   A Gram-Schmidt orthogonalization will generate the CSFs from the BFs.
 
 #+name: gramSchmidt
-#+begin_src C :main no :noweb yes
+#+begin_src C :main no :noweb yes :tangle cfgCI_utils.c
 void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix){
 
     // vector
@@ -895,7 +898,7 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
   Generate the determinant representation of the BFs.
 
 #+name: genDetBasis
-#+begin_src C :main no
+#+begin_src C :main no :tangle tree_utils.c
 
 void genDets(Tree *dettree,
                Node **inode,
@@ -1082,7 +1085,7 @@ void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets){
   determinant basis.
 
 #+name: convertBFtoDetbasis
-#+begin_src C :main no :noweb yes
+#+begin_src C :main no :noweb yes :tangle cfgCI_utils.c
 
 void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowvec){
     int npairs = 1 << ((NSOMO - MS)/2);
@@ -1253,7 +1256,7 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
   Call CBLAS routines
 
 #+name: callingblas
-#+begin_src C :main no tangle tree_utils.c
+#+begin_src C :main no :tangle tree_utils.c
 void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int colB, double *C, bool transA, bool transB){
     int m = rowA;
     int k = colA;
@@ -1307,7 +1310,7 @@ void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int col
 
 - [ ] Testing everything
 
-#+begin_src C :main no :noweb yes :libs "-lm -lblas" :tangle main.c
+#+begin_src C :main no :noweb yes :libs "-lm -lblas"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -1514,7 +1517,7 @@ void makePrototypeMatrices(int nel, int norb, double spin);
 - [X] Calculate one-electron ME between two dets
 
 #+name: calcMEdetpair
-#+begin_src C :main no
+#+begin_src C :main no :tangle cfgCI_utils.c
 
 unsigned int shftbit(int num, int p){
     unsigned int maskleft = ~(0 | ((1<<p)-1));
@@ -1821,7 +1824,7 @@ printf("phs=%d\n",phase);
   Calculate the ME betwee two somos
 
 #+name: callcalcMEdetpair
-#+begin_src C :main no
+#+begin_src C :main no :tangle cfgCI_utils.c
 void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, double **ApqIJptr, int *rowsA, int *colsA){
     // Get dets for I
     int ndetI;
@@ -1887,7 +1890,7 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, dou
   using DGEMM calls.
 
 #+name: getApqIJMatrix
-#+begin_src C :main no
+#+begin_src C :main no :tangle cfgCI_utils.c
 void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_t MS, int *rowsout, int *colsout){
     int NSOMOI=0;
     int NSOMOJ=0;
@@ -2138,7 +2141,7 @@ specified type which is one of the four:
   Here we implement the rules.
 
 #+name: calculateMETypeSOMOSOMO
-#+begin_src C :main no #:tangle cfgCI_utils.c
+#+begin_src C :main no :tangle cfgCI_utils.c
 void calculateMETypeSOMOSOMO(int *BF1, int *BF2, int moi, int moj, double *factor, int *phasefactor){
 
     // Calculate the factor following rules in the table
