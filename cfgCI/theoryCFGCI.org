@@ -71,12 +71,13 @@ void getncsfs1(int *inpnsomo, int *inpms, int *outncsfs){
 
 void getncsfs(int NSOMO, int MS, int *outncsfs){
     int nparcoupl = (NSOMO + MS)/2;
-    int nparcouplp1 = (NSOMO + MS+2)/2;
-    int tmpndets=0;
+    int nparcouplp1 = ((NSOMO + MS)/2)+1;
+    double tmpndets=0.0;
     tmpndets = binom(NSOMO, nparcoupl);
-    (*outncsfs) = tmpndets - binom(NSOMO, nparcouplp1);
+    (*outncsfs) = round(tmpndets - binom(NSOMO, nparcouplp1));
 }
 #+end_src
+
 
 ** TODO [2/2] Print all CFGs
 
@@ -1594,10 +1595,9 @@ void calcMEdetpair(int *detlistI, int *detlistJ, int orbI, int orbJ, int Isomo, 
             //printf("\np=%d q=%d  (%d %d)\n",q,p,psomo,qsomo);
             for(int i=0;i<ndetI;i++){
                 int idet = detlistI[i];
-                //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
-                // Calculate phase
+                //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
                 int phase = getphase(idet,p,q,NMO);
-                // Shift bits for I
+                // Shift bits for
                 idet = shftbit(shftbit(detlistI[i],q),p-1);
                 //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
                 //printf(" %d\n",phase);
