@@ -98,30 +98,30 @@ module cfunctions
        end subroutine printcfglist
       end interface
       interface
-         subroutine getApqIJMatrixDims(Isomo, Jsomo, MS, rowApqIJ, colAqpIJ) &
+         subroutine getApqIJMatrixDims(Isomo, Jsomo, MS, rowsout, colsout) &
               bind(C, name='getApqIJMatrixDims')
            import C_INT32_T, C_INT64_T
            integer(kind=C_INT64_T),value,intent(in) :: Isomo ! CSFI
            integer(kind=C_INT64_T),value,intent(in) :: Jsomo ! CSFJ
-           integer(kind=C_INT32_T),value,intent(in) :: MS    ! Ms = 2*Spin
-           integer(kind=C_INT32_T):: rowApqIJ
-           integer(kind=C_INT32_T):: colApqIJ
+           integer(kind=C_INT64_T),value,intent(in) :: MS    ! Ms = 2*Spin
+           integer(kind=C_INT64_T),intent(out):: rowsout
+           integer(kind=C_INT64_T),intent(out):: colsout
          end subroutine getApqIJMatrixDims
       end interface
       interface
          subroutine getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq,  &
-              MS, NMO, rowsApqIJ, colsAqpIJ, ApqIJ) bind(C, name='getApqIJMatrixDriver')
-           import C_INT32_T, C_INT64_T
-           integer(kind=C_INT64_T),value :: Isomo
-           integer(kind=C_INT64_T),value :: Jsomo
-           integer(kind=C_INT32_T),value :: orbp
-           integer(kind=C_INT32_T),value :: orbq
-           integer(kind=C_INT32_T),value :: MS
-           integer(kind=C_INT32_T),value :: NMO
-           integer(kind=C_INT32_T) :: rowsApqIJ
-           integer(kind=C_INT32_T) :: colsApqIJ
+              MS, NMO, CSFICSFJApqIJptr, rowsout, colsout) bind(C, name='getApqIJMatrixDriver')
+           import C_INT32_T, C_INT64_T, C_FLOAT
+           integer(kind=C_INT64_T),value,intent(in) :: Isomo
+           integer(kind=C_INT64_T),value,intent(in) :: Jsomo
+           integer(kind=C_INT32_T),value,intent(in) :: orbp
+           integer(kind=C_INT32_T),value,intent(in) :: orbq
+           integer(kind=C_INT64_T),value,intent(in) :: MS
+           integer(kind=C_INT64_T),value,intent(in) :: NMO
+           real(kind=C_FLOAT  ),intent(inout) :: CSFICSFJApqIJptr
+           integer(kind=C_INT32_T),intent(out) :: rowsout
+           integer(kind=C_INT32_T),intent(out) :: colsout
            !integer(kind=C_INT32_T),dimension(rowApqIJ,colApqIJ) :: ApqIJ
-           integer(kind=C_INT32_T) :: ApqIJ(:)
          end subroutine getApqIJMatrixDriver
       end interface
     end module cfunctions
@@ -1800,7 +1800,7 @@ int getphase(int num, int p, int q, int nmo){
 ////c = a - b ? 0 : (1+(a/b)/(int)(a/b));
 //c = abs(a - b) == 0 ? 0 : (a > b ? 1 : 2);
 int d = 4;
-printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(3 << 0));
+printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(126));
 printf("\nleading test %d",(3 << 0));
 int numres=shftbit(3,1);
 int phase=getphase(3,4,1,6);
@@ -1812,12 +1812,12 @@ printf("phs=%d\n",phase);
 #+end_src
 
 #+RESULTS:
-| leading         | test     | 11 |    |    |
-| leading         | test     |  3 |    |    |
-| shftbit         | 11111110 |  0 |    |    |
-| na=1            | nb=1     |  ( | 4, | 1) |
-| nelecalphaatp=0 |          |    |    |    |
-| phs=-1          |          |    |    |    |
+| leading         | test     | 1111110 |    |    |
+| leading         | test     |       3 |    |    |
+| shftbit         | 11111110 |       0 |    |    |
+| na=1            | nb=1     |       ( | 4, | 1) |
+| nelecalphaatp=0 |          |         |    |    |
+| phs=-1          |          |         |    |    |
 
 - [X] Calculate batch of MEs between CFGs
 
@@ -1891,15 +1891,20 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, dou
 
 #+name: getApqIJMatrix
 #+begin_src C :main no :tangle cfgCI_utils.c
-void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_t MS, int *rowsout, int *colsout){
+void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int64_t *rowsout, int64_t *colsout){
     int NSOMOI=0;
     int NSOMOJ=0;
+    printf("Isomo=%d Jsomo=%d\n",Isomo,Jsomo);
     getSetBits(Isomo, &NSOMOI);
     getSetBits(Jsomo, &NSOMOJ);
+    printf("NsomoI=%d NsomoJ=%d\n",NSOMOI,NSOMOJ);
     int NBFI=0;
     int NBFJ=0;
     getncsfs(NSOMOI, MS, &NBFI);
     getncsfs(NSOMOJ, MS, &NBFJ);
+    (*rowsout) = NBFI;
+    (*colsout) = NBFJ;
+    printf("\t >> %d %d\n",NBFI,NBFJ);
 }
 
 void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_t MS, int64_t NMO, double **CSFICSFJApqIJptr, int *rowsout, int *colsout){
