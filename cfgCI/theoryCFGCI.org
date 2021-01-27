@@ -1800,7 +1800,7 @@ int getphase(int num, int p, int q, int nmo){
 ////c = a - b ? 0 : (1+(a/b)/(int)(a/b));
 //c = abs(a - b) == 0 ? 0 : (a > b ? 1 : 2);
 int d = 4;
-printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(126));
+printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(129));
 printf("\nleading test %d",(3 << 0));
 int numres=shftbit(3,1);
 int phase=getphase(3,4,1,6);
@@ -1812,12 +1812,12 @@ printf("phs=%d\n",phase);
 #+end_src
 
 #+RESULTS:
-| leading         | test     | 1111110 |    |    |
-| leading         | test     |       3 |    |    |
-| shftbit         | 11111110 |       0 |    |    |
-| na=1            | nb=1     |       ( | 4, | 1) |
-| nelecalphaatp=0 |          |         |    |    |
-| phs=-1          |          |         |    |    |
+| leading         | test     | 10000001 |    |    |
+| leading         | test     |        3 |    |    |
+| shftbit         | 11111110 |        0 |    |    |
+| na=1            | nb=1     |        ( | 4, | 1) |
+| nelecalphaatp=0 |          |          |    |    |
+| phs=-1          |          |          |    |    |
 
 - [X] Calculate batch of MEs between CFGs
 

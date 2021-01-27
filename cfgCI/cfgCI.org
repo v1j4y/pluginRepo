@@ -10,6 +10,8 @@
 
 * Main Fortran code
 
+** Loop over configurations
+
 #+name: mainf90
 #+begin_src fortran :main no :tangle cfgCI.irp.f
 
@@ -38,6 +40,12 @@
       end do
       call printCFGlist(N_int, psi_det_size, psi_configuration)
 
+#+end_src
+
+
+** Apply single excitations on a configuration
+
+#+begin_src f90 :main no :tangle cfgCI.irp.f
       integer Nint
       integer(bit_kind), dimension(1,2,100) :: singles
       integer n_singles
@@ -47,12 +55,12 @@
          n_singles, Nint)
          print *,"Number of singles=",n_singles
          do j = 1, 20
-            print *, psi_configuration(1,2,i), singles(1,2,j)
+            print *, psi_configuration(1,1,i), singles(1,1,j)
             MS = 0
             rows=-1
             cols=-1
-            call getApqIJMatrixDims(singles(1,2,j),           &
-                                    psi_configuration(1,2,i), &
+            call getApqIJMatrixDims(psi_configuration(1,1,i),           &
+                                    singles(1,1,j), &
                                     MS,                       &
                                     rows,                     &
                                     cols)
@@ -61,20 +69,263 @@
          end do
          call printCFGlist(Nint, n_singles, singles)
       end do
-      print *, 'Hello world Tangled'
+      print *, 'Hello world Tangled with two blocks'
       end
 #+end_src
 
 * Running QP
 
 #+name: runqp
-#+begin_src bash
-cd ~/Documents/codes/qp2/
-source quantum_package.rc
-cd src/cfgCI
+#+begin_src bash :results output
+source ../../../../quantum_package.rc
+cd ../../../../src/cfgCI
 qp set_file n2.ezfio
-ninja
-#qp run cfgCI
+ninja 2>&1 > /dev/null
+qp run cfgCI
 #+end_src
 
 #+RESULTS: runqp
+#+begin_example
+Makefile:30: irpf90.make: No such file or directory
+Date: 28/01/2021 00:44:34
+===============
+Quantum Package
+===============
+
+Git Commit: Singly excited cfg
+Git Date  : Fri Jan 15 00:07:59 2021 +0100
+Git SHA1  : 6a10d02
+EZFIO Dir : n2.ezfio
+
+
+Task server running : tcp://127.0.1.1:41279
+,* mo_num                                                        18
+,* N_int                                                          1
+.. >>>>> [ IO READ: read_wf ] <<<<< ..
+
+.. >>>>> [ RES  MEM :       0.004913 GB ] [ VIRT MEM :       0.042538 GB ] <<<<< ..
+.. >>>>> [ WALL TIME:       0.000143  s ] [ CPU  TIME:       0.001534  s ] <<<<< ..
+
+ ,* mo_label          Canonical
+,* Number of determinants                                       194
+.. >>>>> [ IO READ: elec_beta_num ] <<<<< ..
+
+.. >>>>> [ RES  MEM :       0.004913 GB ] [ VIRT MEM :       0.107933 GB ] <<<<< ..
+.. >>>>> [ WALL TIME:       0.001879  s ] [ CPU  TIME:       0.009108  s ] <<<<< ..
+
+.. >>>>> [ IO READ: elec_alpha_num ] <<<<< ..
+
+.. >>>>> [ RES  MEM :       0.004913 GB ] [ VIRT MEM :       0.107933 GB ] <<<<< ..
+.. >>>>> [ WALL TIME:       0.002009  s ] [ CPU  TIME:       0.009178  s ] <<<<< ..
+
+.. >>>>> [ IO READ: ao_num ] <<<<< ..
+
+.. >>>>> [ RES  MEM :       0.004913 GB ] [ VIRT MEM :       0.107933 GB ] <<<<< ..
+.. >>>>> [ WALL TIME:       0.002158  s ] [ CPU  TIME:       0.009267  s ] <<<<< ..
+
+ Read  mo_coef
+,* Dimension of the psi arrays                               100000
+ Read psi_det
+           1
+ 000000000000007F|000000000000007F
+ |+++++++---------------------------------------------------------|
+ |+++++++---------------------------------------------------------|
+ 000000000000013F|000000000000013F
+ |++++++--+-------------------------------------------------------|
+ |++++++--+-------------------------------------------------------|
+ 000000000000007F
+ |+++++++---------------------------------------------------------|
+ 000000000000013F
+ |++++++--+-------------------------------------------------------|
+           1
+      100000
+                    0                  127
+                    0                  191
+                    0                  223
+                    0                  239
+                    0                  319
+                    0                  351
+                    0                  367
+                    0                  415
+                    0                  431
+                    0                  463
+                    0                  575
+                    0                  607
+                    0                  623
+                    0                  671
+                    0                  687
+In 64 printcfglist
+Ncfgs = 100000 Nint=1
+ 1-- 0
+ -- 0
+0> domo=127 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+1> domo=191 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+2> domo=223 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+3> domo=239 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+4> domo=319 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+5> domo=351 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+6> domo=367 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+7> domo=415 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+8> domo=431 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+9> domo=463 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+10> domo=575 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+11> domo=607 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+12> domo=623 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+13> domo=671 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+14> domo=687 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Nsomos = 6
+ Number of singles=          84
+                    0                    0
+Isomo=0 Jsomo=0
+NsomoI=0 NsomoJ=0
+	 >> 1 1
+           1 >                    1                    1
+                    0                  129
+Isomo=0 Jsomo=129
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                  257
+Isomo=0 Jsomo=257
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                  513
+Isomo=0 Jsomo=513
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                 1025
+Isomo=0 Jsomo=1025
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                 2049
+Isomo=0 Jsomo=2049
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                 4097
+Isomo=0 Jsomo=4097
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                 8193
+Isomo=0 Jsomo=8193
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                16385
+Isomo=0 Jsomo=16385
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                32769
+Isomo=0 Jsomo=32769
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                65537
+Isomo=0 Jsomo=65537
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0               131073
+Isomo=0 Jsomo=131073
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                    0
+Isomo=0 Jsomo=0
+NsomoI=0 NsomoJ=0
+	 >> 1 1
+           1 >                    1                    1
+                    0                  130
+Isomo=0 Jsomo=130
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                  258
+Isomo=0 Jsomo=258
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                  514
+Isomo=0 Jsomo=514
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                 1026
+Isomo=0 Jsomo=1026
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                 2050
+Isomo=0 Jsomo=2050
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                 4098
+Isomo=0 Jsomo=4098
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+                    0                 8194
+Isomo=0 Jsomo=8194
+NsomoI=0 NsomoJ=2
+	 >> 1 1
+           1 >                    1                    1
+In 64 printcfglist
+Ncfgs = 84 Nint=1
+ 1-- 0
+ -- 4104
+0> domo=127 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+1> domo=126 somo=129
+0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1
+2> domo=126 somo=257
+0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1
+3> domo=126 somo=513
+0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 1
+4> domo=126 somo=1025
+0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1
+5> domo=126 somo=2049
+0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 1
+6> domo=126 somo=4097
+0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1
+7> domo=126 somo=8193
+0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 1
+8> domo=126 somo=16385
+0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1
+9> domo=126 somo=32769
+0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1
+10> domo=126 somo=65537
+0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1
+11> domo=126 somo=131073
+1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1
+12> domo=127 somo=0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+13> domo=125 somo=130
+0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0
+14> domo=125 somo=258
+0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0
+Nsomos = 6
+ Hello world Tangled
+Wall time: 0:00:01
+
+#+end_example

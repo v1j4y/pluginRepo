@@ -32,12 +32,12 @@
          n_singles, Nint)
          print *,"Number of singles=",n_singles
          do j = 1, 20
-            print *, psi_configuration(1,2,i), singles(1,2,j)
+            print *, psi_configuration(1,1,i), singles(1,1,j)
             MS = 0
             rows=-1
             cols=-1
-            call getApqIJMatrixDims(singles(1,2,j),           &
-                                    psi_configuration(1,2,i), &
+            call getApqIJMatrixDims(psi_configuration(1,1,i),           &
+                                    singles(1,1,j), &
                                     MS,                       &
                                     rows,                     &
                                     cols)
@@ -46,5 +46,5 @@
          end do
          call printCFGlist(Nint, n_singles, singles)
       end do
-      print *, 'Hello world Tangled'
+      print *, 'Hello world Tangled with two blocks'
       end
