@@ -22,6 +22,7 @@ the position of SOMOs and DOMOs.
 #+name: inttobindigit
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdint.h>
+#include <stdio.h>
 #include "tree_utils.h"
 
 void int_to_bin_digit(int64_t in, int count, int* out)
@@ -1890,7 +1891,7 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, dou
   using DGEMM calls.
 
 #+name: getApqIJMatrix
-#+begin_src C :main no :tangle cfgCI_utils.c
+#+begin_src C :main no :tangle cfgCI_utils.c  
 void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int64_t *rowsout, int64_t *colsout){
     int NSOMOI=0;
     int NSOMOJ=0;
@@ -2048,7 +2049,7 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     free(CSFIbfJApqIJ);
 }
 
-void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_t MS, int64_t NMO, double *CSFICSFJApqIJ, int64_t *rowsout, int64_t *colsout){
+void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, int32_t orbq, int64_t MS, int64_t NMO, double *CSFICSFJApqIJ, int64_t *rowsout, int64_t *colsout){
 
     double *overlapMatrixI;
     double *overlapMatrixJ;
