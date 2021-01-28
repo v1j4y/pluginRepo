@@ -13,7 +13,24 @@
 ** Loop over configurations
 
 #+name: mainf90
-#+begin_src fortran :main no :tangle cfgCI.irp.f
+#+begin_src f90 :main no :tangle cfgCI.irp.f
+      subroutine printMatrix(mat, rows, cols)
+      implicit none
+      BEGIN_DOC
+      ! Print a 2D matrix
+      END_DOC
+      integer i,j
+      integer*8,intent(in) :: rows
+      integer*8,intent(in) :: cols
+      real*8,dimension(:,:),intent(in) :: mat(rows,cols)
+      print *,""
+      do i=1,rows
+         do j=1,cols
+            write(*,'(F4.2) ',advance="no") mat(i,j)
+         end do
+         print *,""
+      end do
+      end subroutine
 
       program cfgCI
       use cfunctions
@@ -77,10 +94,19 @@
             print *, "\t",i, j, psi_configuration_to_psi_det_data(j)
          end do
       end do
-      print *, 'Now starting to read my provider'
+      print *, 'Now starting to read my provider for dims'
       do i = 4,6,2
          do j = i-2,i+2,2
             print *,i,j,AIJpqMatrixDimsList(i,j,1,i,j,1), AIJpqMatrixDimsList(i,j,1,i,j,2)
+         end do
+      end do
+      print *, 'Now starting to read my provider for matrix'
+      do i = 4,6,2
+         do j = i-2,i+2,2
+            rows = AIJpqMatrixDimsList(i,j,1,i,j,1)
+            cols = AIJpqMatrixDimsList(i,j,1,i,j,2)
+            print *,i,j
+            call printMatrix(AIJpqContainer(i,j,1,i,j,:,:),rows,cols)
          end do
       end do
       print *, 'Hello world Tangled with two blocks'
