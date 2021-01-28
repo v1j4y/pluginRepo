@@ -18,10 +18,9 @@
       print *,N_int
       cc = "Hello"
       print *,psi_det_size
-      do i = 1, 15
+      do i = 1, 4
          print *, psi_configuration(1,1,i), psi_configuration(1,2,i)
       end do
-      call printCFGlist(N_int, psi_det_size, psi_configuration)
 
       integer Nint
       integer(bit_kind), dimension(1,2,100) :: singles
@@ -31,7 +30,7 @@
          call generate_all_singles_cfg(psi_configuration(:,:,i), singles,&
          n_singles, Nint)
          print *,"Number of singles=",n_singles
-         do j = 1, 20
+         do j = 1, 2
             print *, psi_configuration(1,1,i), singles(1,1,j)
             MS = 0
             rows=-1
@@ -44,7 +43,22 @@
                                     print *, i,">",rows, cols
 
          end do
-         call printCFGlist(Nint, n_singles, singles)
+!        call printCFGlist(Nint, n_singles, singles)
+      end do
+
+      integer startDet, endDet
+      do i = 1, 4
+         startDet = psi_configuration_to_psi_det(1,i)
+         endDet = psi_configuration_to_psi_det(2,i)
+         do j = startDet, endDet
+            print *, "\t",i, j, psi_configuration_to_psi_det_data(j)
+         end do
+      end do
+      print *, 'Now starting to read my provider'
+      do i = 4,6,2
+         do j = i-2,i+2,2
+            print *,i,j,AIJpqMatrixDimsList(i,j,1,i,j,1), AIJpqMatrixDimsList(i,j,1,i,j,2)
+         end do
       end do
       print *, 'Hello world Tangled with two blocks'
       end
