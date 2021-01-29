@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
@@ -61,6 +63,9 @@ void genDetsDriver(Tree *dettree, int NSOMO, int MS, int *Ndets);
 
 void getIthDet(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, int *vecBF);
 void getIthDetDriver(Tree *dettree, int NSOMOMax, int getaddr, int *vecBF);
+void getDetlistDriver(Tree *dettree, int NSOMOMax, int *detlist);
+void findAddofDet(Node *inode, int isomo, bool foundDet, int NSOMOMax, int *inpdet, int *addr);
+void findAddofDetDriver(Tree *dettree, int NSOMOMax, int *inpdet, int *addr);
 
 
 /************************/
@@ -73,6 +78,3 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
 void int_to_bin_digit(int64_t in, int count, int* out);
 void printRealMatrix(double *orthoMatrix, int rows, int cols);
 void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int colB, double *C, bool transA, bool transB);
-
-void getDetlistDriver(Tree *dettree, int NSOMOMax, int *detlist);
-void findAddofDetDriver(Tree *dettree, int NSOMOMax, int *inpdet, int *addr);

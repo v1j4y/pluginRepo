@@ -1,7 +1,4 @@
 #include "tree_utils.h"
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
 
 void buildTree(Tree *bftree,
                Node **inode,

@@ -4,8 +4,8 @@
       ! Print a 2D matrix
       END_DOC
       integer i,j
-      integer*8,intent(in) :: rows
-      integer*8,intent(in) :: cols
+      integer,intent(in) :: rows
+      integer,intent(in) :: cols
       real*8,dimension(:,:),intent(in) :: mat(rows,cols)
       print *,""
       do i=1,rows
@@ -25,8 +25,8 @@
       character*32 cc
       integer i, j
       integer orbp, orbq
-      integer*8 rows
-      integer*8 cols
+      integer rows
+      integer cols
       integer*8 MS
       print *, N_int
       call debug_det(psi_det(1,1,1),N_int)

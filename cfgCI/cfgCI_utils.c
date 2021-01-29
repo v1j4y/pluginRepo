@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include "tree_utils.h"
 
@@ -64,11 +63,11 @@ void printCFGList(int32_t *inpNint, int32_t *inpNcfgs, int64_t *cfglist){
     int ncsfs=0;
     printf("In 64 printcfglist\n");
     printf("Ncfgs = %d Nint=%d\n",Ncfgs, N_int);
-    printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
+    printf(" 1-- %ld \n -- %ld \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
     for(int i = 0; i < 15; i++){
         cfg1 = cfglist[1 + i*2];
         cfg2 = cfglist[0 + i*2];
-        printf("%d> domo=%d somo=%d\n",i,cfg1,cfg2);
+        printf("%d> domo=%ld somo=%ld\n",i,cfg1,cfg2);
         int_to_bin_digit(cfg2,18,digit);
         for(int j=0;j<18;j++)
             printf("%d ",digit[j]);
@@ -151,7 +150,7 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
             //printf("\n(%d) %d> %d -> %d\n",i,maxcount,thisId,nextId);
 
             // Get the phase factor bra
-            if(nextId < thisId) *phasefactor = - *phasefactor;
+            if(nextId < thisId) *phasefactor *= -1;
 
             // Then the ket
             thisId = BF2copy[nextId];
@@ -160,7 +159,7 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
             //printf("\n(%d) %d> %d -> %d\n",i,maxcount,nextId,thisId);
 
             // Get the phase factor bra
-            if(nextId > thisId) *phasefactor = - *phasefactor;
+            if(nextId > thisId) *phasefactor *= -1;
 
         }
         //printf("\nBF1\n");
@@ -179,8 +178,8 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
 
 void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols, int *NSOMOout){
 
-    int32_t NBF = 0;
-    int32_t NSOMO = 0;
+    int NBF = 0;
+    int NSOMO = 0;
 
     Tree bftree = (Tree){  .rootNode = NULL, .NBF = -1 };
     bftree.rootNode = malloc(sizeof(Node));
@@ -213,7 +212,7 @@ void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int 
 
     int g = 0;
     g = (NSOMO - MS)/2;
-    printf("NBFs = %d NSOMOs = %d MS = %d g = %d\n",NBF,NSOMO,MS,g);
+    printf("NBFs = %d NSOMOs = %d MS = %ld g = %d\n",NBF,NSOMO,MS,g);
 
     int nislands; // Note that nislands < g always
     int phasefactor;
@@ -280,12 +279,11 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
     // vector
     double norm = 0.0;
     orthoMatrix[(rows-1)*cols + cols-1] = 1.0;
-    for(int i = cols-2; i > -1; i--){
-        orthoMatrix[(rows-1)*cols + i] = 0.0;
-    }
+    for(int i = cols-2; i > -1; i--){ orthoMatrix[(rows-1)*cols + i] = 0.0; }
 
     // Gram-Schmidt loop
     for(int i = rows-2; i > -1; i--){
+        for(int k = cols-1; k > -1; k--){ orthoMatrix[(i)*cols + k] = 0.0; }
         orthoMatrix[i*cols + i] = 1.0;
         for(int j = rows-1; j > i; j--){
             for(int k = rows-1; k >= j; k--){
@@ -300,7 +298,6 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
         }
         norm = sqrt(norm);
         for(int j = rows-1; j >= i; j--){
-//TODO divide by zero
             orthoMatrix[i*cols + j] /= norm;
         }
 
@@ -341,7 +338,7 @@ void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowv
             for(int k = shft/2; k < shft; k++){
                 detslist[(k+j)*NSOMO + idxp] = 0;
                 detslist[(k+j)*NSOMO + idxq] = 1;
-                phaselist[k+j] =-phaselist[k+j];
+                phaselist[k+j] *=-1;
             }
         }
         shft /= 2;
@@ -381,21 +378,20 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
     (*dettree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     genDetBasis(&dettree, Isomo, MS, &ndets);
-    (*cols) = ndets;
 
     //printTreeDriver(&dettree, NSOMO);
     //printf("Ndets = %d\n",ndets);
 
-    int addr = -1;
-    int inpdet[NSOMO];
-    inpdet[0] = 1;
-    inpdet[1] = 1;
-    inpdet[2] = 1;
-    inpdet[3] = 0;
-    inpdet[4] = 0;
-    inpdet[5] = 0;
+    //int addr = -1;
+    //int inpdet[NSOMO];
+    //inpdet[0] = 1;
+    //inpdet[1] = 1;
+    //inpdet[2] = 1;
+    //inpdet[3] = 0;
+    //inpdet[4] = 0;
+    //inpdet[5] = 0;
 
-    findAddofDetDriver(&dettree, NSOMO, inpdet, &addr);
+    //findAddofDetDriver(&dettree, NSOMO, inpdet, &addr);
 
     int detlist[ndets];
     getDetlistDriver(&dettree, NSOMO, detlist);
@@ -413,12 +409,13 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
     (*bftree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
-    (*rows) = NBF;
 
     //printf("in convert NBFs = %d ndets=%d\n",NBF,ndets);
 
     // Initialize transformation matrix
     (*bftodetmatrixptr) = malloc(NBF*ndets*sizeof(double));
+    (*rows) = NBF;
+    (*cols) = ndets;
 
     double *bftodetmatrix = (*bftodetmatrixptr);
 
@@ -501,7 +498,7 @@ int getphase(int num, int p, int q, int nmo){
     //printf("nelecalphaatp=%d\n",nelecalphaatp);
     int nfermions = nelecalphaatp == 0 ? nbeta : nalpha;
     int phase = nfermions % 2 == 0 ? 1 : -1;
-    if(nelecalphaatp == nelecalphaatq) phase = -phase;
+    if(nelecalphaatp == nelecalphaatq) phase *= -1;
     return(phase);
 };
 
@@ -739,10 +736,10 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, dou
     // Garbage collection
 }
 
-void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int64_t *rowsout, int64_t *colsout){
+void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int32_t *rowsout, int32_t *colsout){
     int NSOMOI=0;
     int NSOMOJ=0;
-    printf("Isomo=%d Jsomo=%d\n",Isomo,Jsomo);
+    printf("Isomo=%ld Jsomo=%ld\n",Isomo,Jsomo);
     getSetBits(Isomo, &NSOMOI);
     getSetBits(Jsomo, &NSOMOJ);
     printf("NsomoI=%d NsomoJ=%d\n",NSOMOI,NSOMOJ);
@@ -896,7 +893,7 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     free(CSFIbfJApqIJ);
 }
 
-void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, int32_t orbq, int64_t MS, int64_t NMO, double *CSFICSFJApqIJ, int64_t *rowsout, int64_t *colsout){
+void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, int32_t orbq, int64_t MS, int64_t NMO, double *CSFICSFJApqIJ, int32_t rowsmax, int32_t colsmax){
 
     double *overlapMatrixI;
     double *overlapMatrixJ;
@@ -1012,8 +1009,8 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
 
     // now transform J in CSF basis
     //(*CSFICSFJApqIJptr) = malloc(rowsI*rowsJ*sizeof(double));
-    (*rowsout) = rowsI;
-    (*colsout) = rowsJ;
+    //(*rowsout) = rowsI;
+    //(*colsout) = rowsJ;
 
     //double *CSFICSFJApqIJ = (*CSFICSFJApqIJptr);
     transA = false;

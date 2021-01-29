@@ -12,7 +12,9 @@
   NMO = NSOMOMax ! TODO: remove this
   END_PROVIDER
 
-  BEGIN_PROVIDER [ integer, AIJpqMatrixDimsList, (NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2)]
+  BEGIN_PROVIDER [ real*8, AIJpqMatrixDimsList, (NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2)]
+ &BEGIN_PROVIDER [ integer, rowsmax]
+ &BEGIN_PROVIDER [ integer, colsmax]
   use cfunctions
   implicit none
   BEGIN_DOC
@@ -24,11 +26,13 @@
   integer*8 Isomo, Jsomo
   Isomo = 0
   Jsomo = 0
-  integer*8 rows, cols
+  integer rows, cols
   rows = -1
   cols = -1
   integer*8 MS
   MS = 0
+  rowsmax = 0
+  colsmax = 0
   print *,"NSOMOMax = ",NSOMOMax
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
   do i = 2, NSOMOMax, 2
@@ -46,6 +50,12 @@
                    rows,                     &
                    cols)
               print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols
+              if(rowsmax .LT. rows) then
+                 rowsmax = rows
+              end if
+              if(colsmax .LT. cols) then
+                 colsmax = cols
+              end if
               ! i -> j
               AIJpqMatrixDimsList(i,j,1,k,l,1) = rows
               AIJpqMatrixDimsList(i,j,1,k,l,2) = cols
@@ -76,19 +86,16 @@
   integer*8 Isomo, Jsomo
   Isomo = 0
   Jsomo = 0
-  integer*8 rows, cols
+  integer rows, cols
   rows = -1
   cols = -1
   integer*8 MS
   MS = 0
-  real*8,dimension(:),allocatable :: meMatrix
+  real*8,dimension(:,:),allocatable :: meMatrix
+  ! allocate matrix
+  allocate(meMatrix(rowsmax,colsmax))
   print *,"NSOMOMax = ",NSOMOMax
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
-  ! allocate matrix
-  
-  ! TODO compute nrowsmax 
-  allocate(meMatrix(200*200))
-
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1,i)-1
      do j = i-2,i+2, 2
@@ -118,7 +125,7 @@
               ! i -> j
              do ri = 1,rows
                  do ci = 1,cols
-                    AIJpqContainer(i,j,1,k,l,ri,ci) = meMatrix(ri*(cols-1) + ci)
+                    AIJpqContainer(i,j,1,k,l,ri,ci) = meMatrix(ri, ci)
                  end do
               end do
            end do

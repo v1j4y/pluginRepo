@@ -15,13 +15,13 @@ module cfunctions
            integer(kind=C_INT64_T),value,intent(in) :: Isomo ! CSFI
            integer(kind=C_INT64_T),value,intent(in) :: Jsomo ! CSFJ
            integer(kind=C_INT64_T),value,intent(in) :: MS    ! Ms = 2*Spin
-           integer(kind=C_INT64_T),intent(out):: rowsout
-           integer(kind=C_INT64_T),intent(out):: colsout
+           integer(kind=C_INT32_T),intent(out):: rowsout
+           integer(kind=C_INT32_T),intent(out):: colsout
          end subroutine getApqIJMatrixDims
       end interface
       interface
          subroutine getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq,  &
-              MS, NMO, CSFICSFJApqIJ, rowsout, colsout) bind(C, name='getApqIJMatrixDriverArrayInp')
+              MS, NMO, CSFICSFJApqIJ, rowsmax, colsmax) bind(C, name='getApqIJMatrixDriverArrayInp')
            import C_INT32_T, C_INT64_T, C_DOUBLE
            integer(kind=C_INT64_T),value,intent(in) :: Isomo
            integer(kind=C_INT64_T),value,intent(in) :: Jsomo
@@ -29,9 +29,9 @@ module cfunctions
            integer(kind=C_INT32_T),value,intent(in) :: orbq
            integer(kind=C_INT64_T),value,intent(in) :: MS
            integer(kind=C_INT64_T),value,intent(in) :: NMO
-           real(kind=C_DOUBLE),intent(out) :: CSFICSFJApqIJ(200,200)
-           integer(kind=C_INT64_T),intent(out) :: rowsout
-           integer(kind=C_INT64_T),intent(out) :: colsout
+           integer(kind=C_INT32_T),intent(in) :: rowsmax
+           integer(kind=C_INT32_T),intent(in) :: colsmax
+           real   (kind=C_DOUBLE ),intent(out) :: CSFICSFJApqIJ(rowsmax,colsmax)
            !integer(kind=C_INT32_T),dimension(rowApqIJ,colApqIJ) :: ApqIJ
          end subroutine getApqIJMatrixDriver
       end interface

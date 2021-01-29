@@ -105,13 +105,13 @@ module cfunctions
            integer(kind=C_INT64_T),value,intent(in) :: Isomo ! CSFI
            integer(kind=C_INT64_T),value,intent(in) :: Jsomo ! CSFJ
            integer(kind=C_INT64_T),value,intent(in) :: MS    ! Ms = 2*Spin
-           integer(kind=C_INT64_T),intent(out):: rowsout
-           integer(kind=C_INT64_T),intent(out):: colsout
+           integer(kind=C_INT32_T),intent(out):: rowsout
+           integer(kind=C_INT32_T),intent(out):: colsout
          end subroutine getApqIJMatrixDims
       end interface
       interface
          subroutine getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq,  &
-              MS, NMO, CSFICSFJApqIJ, rowsout, colsout) bind(C, name='getApqIJMatrixDriverArrayInp')
+              MS, NMO, CSFICSFJApqIJ, rowsmax, colsmax) bind(C, name='getApqIJMatrixDriverArrayInp')
            import C_INT32_T, C_INT64_T, C_DOUBLE
            integer(kind=C_INT64_T),value,intent(in) :: Isomo
            integer(kind=C_INT64_T),value,intent(in) :: Jsomo
@@ -119,9 +119,9 @@ module cfunctions
            integer(kind=C_INT32_T),value,intent(in) :: orbq
            integer(kind=C_INT64_T),value,intent(in) :: MS
            integer(kind=C_INT64_T),value,intent(in) :: NMO
-           real(kind=C_DOUBLE  ),dimension(:),intent(inout) :: CSFICSFJApqIJ
-           integer(kind=C_INT64_T),intent(out) :: rowsout
-           integer(kind=C_INT64_T),intent(out) :: colsout
+           integer(kind=C_INT32_T),intent(in) :: rowsmax
+           integer(kind=C_INT32_T),intent(in) :: colsmax
+           real   (kind=C_DOUBLE ),intent(out) :: CSFICSFJApqIJ(rowsmax,colsmax)
            !integer(kind=C_INT32_T),dimension(rowApqIJ,colApqIJ) :: ApqIJ
          end subroutine getApqIJMatrixDriver
       end interface
@@ -871,12 +871,11 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
     // vector
     double norm = 0.0;
     orthoMatrix[(rows-1)*cols + cols-1] = 1.0;
-    for(int i = cols-2; i > -1; i--){
-        orthoMatrix[(rows-1)*cols + i] = 0.0;
-    }
+    for(int i = cols-2; i > -1; i--){ orthoMatrix[(rows-1)*cols + i] = 0.0; }
 
     // Gram-Schmidt loop
     for(int i = rows-2; i > -1; i--){
+        for(int k = cols-1; k > -1; k--){ orthoMatrix[(i)*cols + k] = 0.0; }
         orthoMatrix[i*cols + i] = 1.0;
         for(int j = rows-1; j > i; j--){
             for(int k = rows-1; k >= j; k--){
@@ -1170,16 +1169,16 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
     //printTreeDriver(&dettree, NSOMO);
     //printf("Ndets = %d\n",ndets);
 
-    int addr = -1;
-    int inpdet[NSOMO];
-    inpdet[0] = 1;
-    inpdet[1] = 1;
-    inpdet[2] = 1;
-    inpdet[3] = 0;
-    inpdet[4] = 0;
-    inpdet[5] = 0;
+    //int addr = -1;
+    //int inpdet[NSOMO];
+    //inpdet[0] = 1;
+    //inpdet[1] = 1;
+    //inpdet[2] = 1;
+    //inpdet[3] = 0;
+    //inpdet[4] = 0;
+    //inpdet[5] = 0;
 
-    findAddofDetDriver(&dettree, NSOMO, inpdet, &addr);
+    //findAddofDetDriver(&dettree, NSOMO, inpdet, &addr);
 
     int detlist[ndets];
     getDetlistDriver(&dettree, NSOMO, detlist);
@@ -1897,7 +1896,7 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, dou
 
 #+name: getApqIJMatrix
 #+begin_src C :main no :tangle cfgCI_utils.c  
-void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int64_t *rowsout, int64_t *colsout){
+void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int32_t *rowsout, int32_t *colsout){
     int NSOMOI=0;
     int NSOMOJ=0;
     printf("Isomo=%ld Jsomo=%ld\n",Isomo,Jsomo);
@@ -2054,7 +2053,7 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     free(CSFIbfJApqIJ);
 }
 
-void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, int32_t orbq, int64_t MS, int64_t NMO, double *CSFICSFJApqIJ, int64_t *rowsout, int64_t *colsout){
+void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, int32_t orbq, int64_t MS, int64_t NMO, double *CSFICSFJApqIJ, int32_t rowsmax, int32_t colsmax){
 
     double *overlapMatrixI;
     double *overlapMatrixJ;
@@ -2170,8 +2169,8 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
 
     // now transform J in CSF basis
     //(*CSFICSFJApqIJptr) = malloc(rowsI*rowsJ*sizeof(double));
-    (*rowsout) = rowsI;
-    (*colsout) = rowsJ;
+    //(*rowsout) = rowsI;
+    //(*colsout) = rowsJ;
 
     //double *CSFICSFJApqIJ = (*CSFICSFJApqIJptr);
     transA = false;
