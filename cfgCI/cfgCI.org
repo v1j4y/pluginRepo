@@ -75,6 +75,7 @@
             MS = 0
             rows=-1
             cols=-1
+            if(psi_configuration(1,1,i) .EQ. 0 .OR. singles(1,1,j) .EQ.0) cycle
             call getApqIJMatrixDims(psi_configuration(1,1,i),           &
                                     singles(1,1,j), &
                                     MS,                       &

@@ -1,6 +1,7 @@
-  BEGIN_PROVIDER [ integer*8, NSOMOMax]
- &BEGIN_PROVIDER [ integer*8, NCSFMax]
+  BEGIN_PROVIDER [ integer, NSOMOMax]
+ &BEGIN_PROVIDER [ integer, NCSFMax]
  &BEGIN_PROVIDER [ integer*8, NMO]
+ &BEGIN_PROVIDER [ integer, NBFMax]
   implicit none
   BEGIN_DOC
   ! Documentation for NSOMOMax
@@ -8,11 +9,12 @@
   ! required for the calculation of prototype arrays.
   END_DOC
   NSOMOMax = 8
+  NBFMax = 14
   NCSFMax = 14 ! TODO: NCSFs for MS=0
   NMO = NSOMOMax ! TODO: remove this
   END_PROVIDER
 
-  BEGIN_PROVIDER [ real*8, AIJpqMatrixDimsList, (NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2)]
+  BEGIN_PROVIDER [ integer, AIJpqMatrixDimsList, (NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2)]
  &BEGIN_PROVIDER [ integer, rowsmax]
  &BEGIN_PROVIDER [ integer, colsmax]
   use cfunctions
@@ -72,7 +74,7 @@
   end do
   END_PROVIDER
 
-  BEGIN_PROVIDER [ real*8, AIJpqContainer, (NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,NSOMOMax,NSOMOMax)]
+  BEGIN_PROVIDER [ real*8, AIJpqContainer, (NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,NBFMax,NBFMax)]
   use cfunctions
   implicit none
   BEGIN_DOC
@@ -121,7 +123,7 @@
                    meMatrix,                 &
                    rows,                     &
                    cols)
-             print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols
+             print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
               ! i -> j
              do ri = 1,rows
                  do ci = 1,cols
