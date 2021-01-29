@@ -146,11 +146,11 @@ void printCFGList(int32_t *inpNint, int32_t *inpNcfgs, int64_t *cfglist){
     int ncsfs=0;
     printf("In 64 printcfglist\n");
     printf("Ncfgs = %d Nint=%d\n",Ncfgs, N_int);
-    printf(" 1-- %d \n -- %d \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
+    printf(" 1-- %ld \n -- %ld \n",cfglist[0*(2*Ncfgs) + 0*(Ncfgs) + 0], cfglist[0*(2*Ncfgs) + 1*(Ncfgs) + 0]);
     for(int i = 0; i < 15; i++){
         cfg1 = cfglist[1 + i*2];
         cfg2 = cfglist[0 + i*2];
-        printf("%d> domo=%d somo=%d\n",i,cfg1,cfg2);
+        printf("%d> domo=%ld somo=%ld\n",i,cfg1,cfg2);
         int_to_bin_digit(cfg2,18,digit);
         for(int j=0;j<18;j++)
             printf("%d ",digit[j]);
@@ -207,6 +207,8 @@ associated with the path traversed upon going back from the leaf to the root nod
 
 #+name: nodedef
 #+begin_src c :main no :tangle tree_utils.h
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
@@ -280,6 +282,9 @@ void genDetsDriver(Tree *dettree, int NSOMO, int MS, int *Ndets);
 
 void getIthDet(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, int *vecBF);
 void getIthDetDriver(Tree *dettree, int NSOMOMax, int getaddr, int *vecBF);
+void getDetlistDriver(Tree *dettree, int NSOMOMax, int *detlist);
+void findAddofDet(Node *inode, int isomo, bool foundDet, int NSOMOMax, int *inpdet, int *addr);
+void findAddofDetDriver(Tree *dettree, int NSOMOMax, int *inpdet, int *addr);
 
 
 /************************/
@@ -323,17 +328,17 @@ void buildTree(Tree *bftree,
     }
 
     // Call 0 branch
-    if(((*inode)->C0) == -1 && izeros+1 <= zeromax){
+    if(((*inode)->C0) == NULL && izeros+1 <= zeromax){
         ((*inode)->C0) = malloc(sizeof(Node));
-        (*(*inode)->C0) = (Node){ .C0 = -1, .C1 = -1, .PREV = *inode, .addr = -1, .cpl = 0, .iSOMO = isomo };
+        (*(*inode)->C0) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = *inode, .addr = -1, .cpl = 0, .iSOMO = isomo };
         buildTree(bftree, &(*inode)->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
     }
     else buildTree(bftree, &(*inode)->C0, isomo+1, izeros+1, icpl+1, NSOMOMax, MSmax);
 
     // Call 1 branch
-    if(((*inode)->C1) == -1 && icpl-1 >= 0){
+    if(((*inode)->C1) == NULL && icpl-1 >= 0){
         ((*inode)->C1) = malloc(sizeof(Node));
-        (*(*inode)->C1) = (Node){ .C0 = -1, .C1 = -1, .PREV = *inode, .addr = -1, .cpl = 1, .iSOMO = isomo };
+        (*(*inode)->C1) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = *inode, .addr = -1, .cpl = 1, .iSOMO = isomo };
         buildTree(bftree, &(*inode)->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
     }
     else buildTree(bftree, &(*inode)->C1, isomo+1, izeros+0, icpl-1, NSOMOMax, MSmax);
@@ -355,7 +360,7 @@ void buildTreeDriver(Tree *bftree, int NSOMO, int MS, int *NBF){
 void printTree(Node *inode, int isomo, int NSOMOMax, int *vecBF){
     // Exit condition
     if(isomo > NSOMOMax) return;
-    if(inode == -1) return;
+    if(inode == NULL) return;
 
     if(isomo == NSOMOMax){
         printf("add : %d > ",inode->addr);
@@ -368,12 +373,12 @@ void printTree(Node *inode, int isomo, int NSOMOMax, int *vecBF){
 
 
     // Recurse to C0
-    if(inode->C0 != -1){
+    if(inode->C0 != NULL){
         vecBF[isomo] = 0;
         printTree(inode->C0, isomo+1, NSOMOMax, vecBF);
     }
     // Recurse to C1
-    if(inode->C1 != -1){
+    if(inode->C1 != NULL){
         vecBF[isomo] = 1;
         printTree(inode->C1, isomo+1, NSOMOMax, vecBF);
     }
@@ -393,7 +398,7 @@ void getIthBF(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, i
     // Exit condition
     if(foundBF) return;
     if(isomo > NSOMOMax) return;
-    if(inode == -1) return;
+    if(inode == NULL) return;
 
     if(isomo == NSOMOMax){
         if(inode->addr == getaddr){
@@ -409,11 +414,11 @@ void getIthBF(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, i
 
 
     // Recurse to C0
-    if(inode->C0 != -1){
+    if(inode->C0 != NULL){
         getIthBF(inode->C0, isomo+1, foundBF, NSOMOMax, getaddr, vecBF);
     }
     // Recurse to C1
-    if(inode->C1 != -1){
+    if(inode->C1 != NULL){
         getIthBF(inode->C1, isomo+1, foundBF, NSOMOMax, getaddr, vecBF);
     }
 
@@ -445,9 +450,9 @@ void main(){
     int NSOMO = 6;
     int MS = 0;
     int NBF=0;
-    Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    Tree bftree = (Tree){  .rootNode = NULL, .NBF = -1 };
     bftree.rootNode = malloc(sizeof(Node));
-    (*bftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    (*bftree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     buildTreeDriver(&bftree, NSOMO, MS, &NBF);
 
@@ -772,12 +777,12 @@ void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOM
 #+begin_src c :main no :tangle cfgCI_utils.c
 void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols, int *NSOMOout){
 
-    int64_t NBF = 0;
-    int64_t NSOMO = 0;
+    int NBF = 0;
+    int NSOMO = 0;
 
-    Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    Tree bftree = (Tree){  .rootNode = NULL, .NBF = -1 };
     bftree.rootNode = malloc(sizeof(Node));
-    (*bftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    (*bftree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
 
@@ -806,7 +811,7 @@ void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int 
 
     int g = 0;
     g = (NSOMO - MS)/2;
-    printf("NBFs = %d NSOMOs = %d MS = %d g = %d\n",NBF,NSOMO,MS,g);
+    printf("NBFs = %d NSOMOs = %d MS = %ld g = %d\n",NBF,NSOMO,MS,g);
 
     int nislands; // Note that nislands < g always
     int phasefactor;
@@ -925,17 +930,17 @@ void genDets(Tree *dettree,
     }
 
     // Call 0 branch
-    if(((*inode)->C0) == -1 && izeros+1 <= zeromax){
+    if(((*inode)->C0) == NULL && izeros+1 <= zeromax){
         ((*inode)->C0) = malloc(sizeof(Node));
-        (*(*inode)->C0) = (Node){ .C0 = -1, .C1 = -1, .PREV = *inode, .addr = -1, .cpl = 0, .iSOMO = isomo };
+        (*(*inode)->C0) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = *inode, .addr = -1, .cpl = 0, .iSOMO = isomo };
         genDets(dettree, &(*inode)->C0, isomo+1, izeros+1, icpl+0, NSOMOMax, MSmax);
     }
     else genDets(dettree, &(*inode)->C0, isomo+1, izeros+1, icpl+0, NSOMOMax, MSmax);
 
     // Call 1 branch
-    if(((*inode)->C1) == -1 && abs(icpl+1) <= onemax){
+    if(((*inode)->C1) == NULL && abs(icpl+1) <= onemax){
         ((*inode)->C1) = malloc(sizeof(Node));
-        (*(*inode)->C1) = (Node){ .C0 = -1, .C1 = -1, .PREV = *inode, .addr = -1, .cpl = 1, .iSOMO = isomo };
+        (*(*inode)->C1) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = *inode, .addr = -1, .cpl = 1, .iSOMO = isomo };
         genDets(dettree, &(*inode)->C1, isomo+1, izeros+0, icpl+1, NSOMOMax, MSmax);
     }
     else genDets(dettree, &(*inode)->C1, isomo+1, izeros+0, icpl+1, NSOMOMax, MSmax);
@@ -958,7 +963,7 @@ void getIthDet(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, 
     // Exit condition
     if(foundBF) return;
     if(isomo > NSOMOMax) return;
-    if(inode == -1) return;
+    if(inode == NULL) return;
 
     if(isomo == NSOMOMax){
         if(inode->addr == getaddr){
@@ -974,11 +979,11 @@ void getIthDet(Node *inode, int isomo, bool foundBF, int NSOMOMax, int getaddr, 
 
 
     // Recurse to C0
-    if(inode->C0 != -1){
+    if(inode->C0 != NULL){
         getIthDet(inode->C0, isomo+1, foundBF, NSOMOMax, getaddr, vecBF);
     }
     // Recurse to C1
-    if(inode->C1 != -1){
+    if(inode->C1 != NULL){
         getIthDet(inode->C1, isomo+1, foundBF, NSOMOMax, getaddr, vecBF);
     }
 
@@ -1004,7 +1009,7 @@ void findAddofDet(Node *inode, int isomo, bool foundDet, int NSOMOMax, int *inpd
 
     // Recurse to C0
     if(inpdet[isomo] == 0){
-        if(inode->C0 != -1){
+        if(inode->C0 != NULL){
             findAddofDet(inode->C0, isomo+1, foundDet, NSOMOMax, inpdet, addr);
         }
         else{
@@ -1014,7 +1019,7 @@ void findAddofDet(Node *inode, int isomo, bool foundDet, int NSOMOMax, int *inpd
     }
     else{
         // Recurse to C1
-        if(inode->C1 != -1){
+        if(inode->C1 != NULL){
             findAddofDet(inode->C1, isomo+1, foundDet, NSOMOMax, inpdet, addr);
         }
         else{
@@ -1038,7 +1043,7 @@ void findAddofDetDriver(Tree *dettree, int NSOMOMax, int *inpdet, int *addr){
 void getDetlist(Node *inode, int isomo, int NSOMOMax, int *vecBF, int *detlist){
     // Exit condition
     if(isomo > NSOMOMax) return;
-    if(inode == -1) return;
+    if(inode == NULL) return;
 
     if(isomo == NSOMOMax){
         int idet=0;
@@ -1052,12 +1057,12 @@ void getDetlist(Node *inode, int isomo, int NSOMOMax, int *vecBF, int *detlist){
 
 
     // Recurse to C0
-    if(inode->C0 != -1){
+    if(inode->C0 != NULL){
         vecBF[isomo] = 0;
         getDetlist(inode->C0, isomo+1, NSOMOMax, vecBF, detlist);
     }
     // Recurse to C1
-    if(inode->C1 != -1){
+    if(inode->C1 != NULL){
         vecBF[isomo] = 1;
         getDetlist(inode->C1, isomo+1, NSOMOMax, vecBF, detlist);
     }
@@ -1156,9 +1161,9 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
     ndets = (int)binom(dNSOMO, nalpha);
     //printf("Ndets = %d\n",ndets);
 
-    Tree dettree = (Tree){  .rootNode = -1, .NBF = -1 };
+    Tree dettree = (Tree){  .rootNode = NULL, .NBF = -1 };
     dettree.rootNode = malloc(sizeof(Node));
-    (*dettree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    (*dettree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     genDetBasis(&dettree, Isomo, MS, &ndets);
 
@@ -1187,9 +1192,9 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
     //printf("addr of det=%d\n",addr);
 
     // Prepare BFs
-    Tree bftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    Tree bftree = (Tree){  .rootNode = NULL, .NBF = -1 };
     bftree.rootNode = malloc(sizeof(Node));
-    (*bftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    (*bftree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
 
@@ -1837,16 +1842,16 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, dou
     getSetBits(Isomo, &NSOMOI);
     getSetBits(Jsomo, &NSOMOJ);
 
-    Tree dettreeI = (Tree){  .rootNode = -1, .NBF = -1 };
+    Tree dettreeI = (Tree){  .rootNode = NULL, .NBF = -1 };
     dettreeI.rootNode = malloc(sizeof(Node));
-    (*dettreeI.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    (*dettreeI.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     genDetBasis(&dettreeI, Isomo, MS, &ndetI);
 
 
-    Tree dettreeJ = (Tree){  .rootNode = -1, .NBF = -1 };
+    Tree dettreeJ = (Tree){  .rootNode = NULL, .NBF = -1 };
     dettreeJ.rootNode = malloc(sizeof(Node));
-    (*dettreeJ.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    (*dettreeJ.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     genDetBasis(&dettreeJ, Jsomo, MS, &ndetJ);
 
@@ -1895,7 +1900,7 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, dou
 void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int64_t *rowsout, int64_t *colsout){
     int NSOMOI=0;
     int NSOMOJ=0;
-    printf("Isomo=%d Jsomo=%d\n",Isomo,Jsomo);
+    printf("Isomo=%ld Jsomo=%ld\n",Isomo,Jsomo);
     getSetBits(Isomo, &NSOMOI);
     getSetBits(Jsomo, &NSOMOJ);
     printf("NsomoI=%d NsomoJ=%d\n",NSOMOI,NSOMOJ);
@@ -2327,9 +2332,9 @@ void getOneElMETypeSOMOSOMO(int64_t Isomo, int64_t Jsomo, int moi, int moj, int 
     int64_t INBF = 0;
     int64_t INSOMO = 0;
 
-    Tree Ibftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    Tree Ibftree = (Tree){  .rootNode = NULL, .NBF = -1 };
     Ibftree.rootNode = malloc(sizeof(Node));
-    (*Ibftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    (*Ibftree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     generateAllBFs(Isomo, MS, &Ibftree, &INBF, &INSOMO);
 
@@ -2338,9 +2343,9 @@ void getOneElMETypeSOMOSOMO(int64_t Isomo, int64_t Jsomo, int moi, int moj, int 
     int64_t JNBF = 0;
     int64_t JNSOMO = 0;
 
-    Tree Jbftree = (Tree){  .rootNode = -1, .NBF = -1 };
+    Tree Jbftree = (Tree){  .rootNode = NULL, .NBF = -1 };
     Jbftree.rootNode = malloc(sizeof(Node));
-    (*Jbftree.rootNode) = (Node){ .C0 = -1, .C1 = -1, .PREV = -1, .addr = 0, .cpl = -1, .iSOMO = -1};
+    (*Jbftree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     generateAllBFs(Jsomo, MS, &Jbftree, &JNBF, &JNSOMO);
 
@@ -2364,7 +2369,7 @@ void getOneElMETypeSOMOSOMO(int64_t Isomo, int64_t Jsomo, int moi, int moj, int 
 
     int g = 0;
     g = (INSOMO - MS)/2;
-    printf("NBFs = %d NSOMOs = %d MS = %d g = %d\n",INBF,INSOMO,MS,g);
+    printf("NBFs = %ld NSOMOs = %ld MS = %ld g = %d\n",INBF,INSOMO,MS,g);
 
     int nislands; // Note that nislands < g always
     int phasefactor;
