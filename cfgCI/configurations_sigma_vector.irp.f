@@ -72,15 +72,28 @@
         end do
      end do
   end do
+  print *,"Rowsmax=",rowsmax," Colsmax=",colsmax
   END_PROVIDER
 
-  BEGIN_PROVIDER [ real*8, AIJpqContainer, (NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,NBFMax,NBFMax)]
+  BEGIN_PROVIDER [ real*8, AIJpqContainer, (NSOMOMax,NSOMOMax,4,NSOMOMax+4,NSOMOMax+4,NBFMax,NBFMax)]
   use cfunctions
   implicit none
   BEGIN_DOC
   ! Documentation for AIJpqMatrixList
   ! The prototype matrix containing the <I|E_{pq}|J>
   ! matrices for each I,J somo pair and orb ids.
+  !
+  ! Due to the different types of excitations which
+  ! include DOMOs and VMOs two prototype DOMOs and two
+  ! prototype VMOs are needed. Therefore
+  ! the 4th and 5th dimensions are NSOMOMax+4 and NSOMOMax+4
+  ! respectively.
+  !
+  ! The type of excitations are ordered as follows:
+  ! Type 1 - SOMO -> SOMO
+  ! Type 2 - DOMO -> VMO
+  ! Type 3 - SOMO -> VMO
+  ! Type 4 - DOMO -> SOMO
   END_DOC
   integer i,j,k,l, orbp, orbq, ri, ci
   orbp = 0
@@ -99,20 +112,21 @@
   print *,"NSOMOMax = ",NSOMOMax
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
   do i = 2, NSOMOMax, 2
-     Isomo = ISHFT(1,i)-1
+     Isomo = ISHFT(ISHFT(1,i)-1,1)
      do j = i-2,i+2, 2
         Jsomo = ISHFT(1,j)-1
-        if(j .GT. NSOMOMax .OR. j .LE. 0) then
-           cycle
-        end if
-        do k = 1,NSOMOMax
-           do l = k,NSOMOMax
+        if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
+        do k = i-1,i+1
+           do l = 1,1
+              AIJpqContainer(i,j,1,k,l,:,:) = 0.0d0
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
                    MS,                       &
                    rows,                     &
                    cols)
 
+              orbp = k
+              orbq = l
               ! fill matrix
               call getApqIJMatrixDriver(Isomo,           &
                    Jsomo, &

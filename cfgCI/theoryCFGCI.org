@@ -1853,6 +1853,7 @@ void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, dou
     (*dettreeJ.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
 
     genDetBasis(&dettreeJ, Jsomo, MS, &ndetJ);
+    //printf("In callcalcME Isomo=%d Jsomo=%d ndetI=%d ndetJ=%d\n",Isomo,Jsomo,ndetI,ndetJ);
 
     int detlistI[ndetI];
     int detlistJ[ndetJ];
@@ -2073,6 +2074,7 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
 
     getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
 
+    //printf("\nIsomo=%ld MS=%ld NSOMO=%d (%d,%d)\n",Isomo,MS,NSOMO, rowsI, colsI);
     //printf("\nDone Overlap Matrix I\n");
     //printRealMatrix(overlapMatrixI, rowsI, colsI);
     //printf("\nDone Overlap Matrix I\n");
@@ -2130,6 +2132,7 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
 
     callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &ApqIJ, &rowsA, &colsA);
 
+    //printf("rowsA = %d colsA = %d\n");
     //printf("Done MEij\n");
     //printRealMatrix(ApqIJ, rowsA, colsA);
     //printf("Done MEij\n");
@@ -2172,13 +2175,20 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
     //(*rowsout) = rowsI;
     //(*colsout) = rowsJ;
 
-    //double *CSFICSFJApqIJ = (*CSFICSFJApqIJptr);
+    double *tmpCSFICSFJApqIJ = malloc(rowsI*rowsJ*sizeof(double));
     transA = false;
     transB = true;
-    callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, CSFICSFJApqIJ, transA, transB);
+    callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, tmpCSFICSFJApqIJ, transA, transB);
+
+    // Transfer to actual buffer in Fortran order
+    for(int i = 0; i < rowsI; i++)
+        for(int j = 0; j < rowsJ; j++)
+            CSFICSFJApqIJ[j*14 + i] = tmpCSFICSFJApqIJ[i*rowsJ + j];
+
 
     //printf("ME CSF basis\n");
-    //printRealMatrix(CSFICSFJApqIJ, rowsI, rowsJ);
+    //printRealMatrix(CSFICSFJApqIJ, 14, 14);
+    //printf("ME CSF basis\n");
 
 
     // Garbage collection
@@ -2192,8 +2202,11 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
     free(bfIApqIJ);
     free(CSFIApqIJ);
     free(CSFIbfJApqIJ);
+    free(tmpCSFICSFJApqIJ);
 }
 #+end_src
+
+#+RESULTS: getApqIJMatrix
 
 #+end_src
 

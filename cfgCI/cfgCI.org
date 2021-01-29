@@ -26,7 +26,7 @@
       print *,""
       do i=1,rows
          do j=1,cols
-            write(*,'(F4.2) ',advance="no") mat(i,j)
+            write(*,'(F6.4,2X)',advance="no") mat(i,j)
          end do
          print *,""
       end do
@@ -103,11 +103,12 @@
       end do
       print *, 'Now starting to read my provider for matrix'
       do i = 4,6,2
-         do j = i-2,i+2,2
-            rows = AIJpqMatrixDimsList(i,j,1,i,j,1)
-            cols = AIJpqMatrixDimsList(i,j,1,i,j,2)
-            print *,i,j
-            call printMatrix(AIJpqContainer(i,j,1,i,j,:,:),rows,cols)
+         do j = i,i+2,2
+            rows = AIJpqMatrixDimsList(i,j,1,i+1,1,1)
+            cols = AIJpqMatrixDimsList(i,j,1,i+1,1,2)
+            print *,i,j,rows,cols
+            !print *,AIJpqContainer(i,j,1,i+1,1,:rows,:cols)
+            call printMatrix(AIJpqContainer(i,j,1,i+1,1,:,:),14,14)
          end do
       end do
       print *, 'Hello world Tangled with two blocks'
