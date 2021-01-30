@@ -121,7 +121,14 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
 
     getBFIndexList(NSOMO, BF1, IdxListBF1);
     getBFIndexList(NSOMO, BF2, IdxListBF2);
+    //printf("\nBF1\n");
+    //for(int j = 0; j < NSOMO; j++)
+    //    printf("%d ",IdxListBF1[j]);
+    //printf("\nBF2\n");
+    //for(int j = 0; j < NSOMO; j++)
+    //    printf("%d ",IdxListBF2[j]);
 
+    int sumids = 0;
     int maxcount=0;
     *nislands = 0;
     *phasefactor = 1;
@@ -159,15 +166,20 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor){
             //printf("\n(%d) %d> %d -> %d\n",i,maxcount,nextId,thisId);
 
             // Get the phase factor bra
-            if(nextId > thisId) *phasefactor *= -1;
+            if(nextId < thisId) *phasefactor *= -1;
 
         }
-        //printf("\nBF1\n");
+        //printf("\nsum=%d\nBF1\n",sumids);
         //for(int j = 0; j < NSOMO; j++)
         //    printf("%d ",BF1copy[j]);
         //printf("\nBF2\n");
         //for(int j = 0; j < NSOMO; j++)
         //    printf("%d ",BF2copy[j]);
+        for(int j=0;j<NSOMO;j++)
+            sumids += BF1copy[j];
+        //printf("\nnislands=%d phase=%d sumids=%d\n",*nislands,*phasefactor,sumids);
+        if(sumids == -1*NSOMO) break;
+        sumids = 0;
     }
 
     // Garbage collection
@@ -248,7 +260,7 @@ void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int 
 
             //printf("(%d, %d) is=%d ph=%d fac=%10.15f\n",addI, addJ, nislands, phasefactor, phasefactor*1.0/(1 << (g-nislands)));
 
-            overlapMatrix[i*NBF + j] = -1.0*phasefactor / (1 << (g - nislands));
+            overlapMatrix[i*NBF + j] = 1.0*phasefactor / (1 << (g - nislands));
         }
     }
 
