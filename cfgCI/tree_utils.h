@@ -1,3 +1,5 @@
+#ifndef TREE_UTILS_H
+#define TREE_UTILS_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -78,3 +80,5 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
 void int_to_bin_digit(int64_t in, int count, int* out);
 void printRealMatrix(double *orthoMatrix, int rows, int cols);
 void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int colB, double *C, bool transA, bool transB);
+
+#endif

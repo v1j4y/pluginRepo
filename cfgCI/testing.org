@@ -1,0 +1,106 @@
+#+title:     Testing various functions
+#+author:    Vijay Gopal Chilkuri
+#+email:     vijay.gopal.c@gmail.com
+
+(org-babel-lob-injest "./theoryCFGCI.org")
+
+* Testing C functions
+
+** Simple unit tests with munit
+
+#+begin_src C :tangle tests.c
+#include <stdio.h>
+#include "munit/munit.h"
+
+void main(){
+
+    int foo = 1;
+    int bar = 1;
+
+    munit_assert_int(foo, ==, bar);
+
+    printf("Hello world (munit-testing)\n");
+}
+
+#+end_src
+
+#+begin_src bash :results output
+emacs --batch --eval "(require 'org)" --eval '(org-babel-tangle-file "testing.org")'
+gcc -o tests tests.c munit/munit.c
+./tests 2>&1
+rm tests
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Hello world (munit-testing)
+#+end_example
+
+** Testing BF overlap matrix
+
+The overlap matrix for the BF with 4 SOMOs is of dimension 2x2 and is shown below:
+
+#+begin_src python :results output :wrap ""
+import numpy
+import sys
+
+bfmat = numpy.zeros(shape=(2,6),dtype=float)
+#vec1
+bfmat[0,0] = 1/2
+bfmat[0,1] =-1/2
+bfmat[0,2] =-1/2
+bfmat[0,3] = 1/2
+#vec2
+bfmat[1,0] =-1/2
+bfmat[1,3] =-1/2
+bfmat[1,4] = 1/2
+bfmat[1,5] = 1/2
+ovlp = numpy.dot(bfmat,bfmat.T)
+#print(numpy.dot(bfmat,bfmat.T))
+#numpy.savetxt(sys.stdout, bfmat.T, fmt="|%4.2f")
+for el in ovlp:
+    print(' '.join(el.astype(str)))
+#+end_src
+
+#+name: bfmat
++----+----+
+|1.0 |-0.5|
++----+----+
+|-0.5|1.0 |
++----+----+
+
+Now this should match with the C code of the library.
+
+#+include: "./theoryCFGCI.org" src
+
+#+begin_src C :main no :noweb yes
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+
+<<getOverlapMatrix>>
+<<generateAllBFs>>
+<<treefuncmain>>
+<<indexlist>>
+<<calculateIslands>>
+<<getNsomo>>
+<<inttobindigit>>
+
+void main(){
+    int64_t Isomo = ((1<<4)-1);
+    int64_t MS=0;
+    double *overlapMatrix;
+    int rows=0;
+    int cols=0;
+    int NSOMOout=0;
+    getOverlapMatrix(Isomo, MS, &overlapMatrix, &rows, &cols, &NSOMOout);
+    printRealMatrix(overlapMatrix,rows,cols);
+    free(overlapMatrix);
+}
+#+end_src
+
+#+RESULTS:
+|      |      |
+| -1.0 |  0.5 |
+|  0.5 | -1.0 |

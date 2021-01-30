@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
-#include "tree_utils.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
 
 void int_to_bin_digit(int64_t in, int count, int* out)
 {
@@ -212,7 +212,7 @@ void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int 
 
     int g = 0;
     g = (NSOMO - MS)/2;
-    printf("NBFs = %d NSOMOs = %d MS = %ld g = %d\n",NBF,NSOMO,MS,g);
+    //printf("NBFs = %d NSOMOs = %d MS = %ld g = %d\n",NBF,NSOMO,MS,g);
 
     int nislands; // Note that nislands < g always
     int phasefactor;
