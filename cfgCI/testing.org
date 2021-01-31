@@ -36,9 +36,9 @@ rm tests
 Hello world (munit-testing)
 #+end_example
 
-** Testing BF overlap matrix
+** TODO[2/2] Testing BF overlap matrix
 
-*** 2x2 case
+- [X] 2x2 case
 
 The overlap matrix for the BF with 4 SOMOs is of dimension 2x2 and is shown below:
 
@@ -118,14 +118,15 @@ int main(){
     }
 
     //printRealMatrix(overlapMatrix,rows,cols);
-    printf("test_ovlp_matrix=%d\n",test_ovlp_matrix);
+    printf("test_ovlp_matrix_NSOMO4=%d\n",test_ovlp_matrix);
     free(overlapMatrix);
     return(test_ovlp_matrix);
 }
 #+end_src
 
 
-*** 4x4 case
+
+- [X] 4x4 case
 
 The overlap matrix for the BF with 4 SOMOs is of dimension 2x2 and is shown below:
 
@@ -262,7 +263,7 @@ for el in ovlp:
 
 Now this should match with the C code of the library.
 
-#+name: testOvlpMatrix2x2
+#+name: testOvlpMatrix4x4
 #+begin_src C :main no :noweb yes #:tangle tests.c
 #include <stdio.h>
 #include <stdlib.h>
@@ -287,28 +288,218 @@ int main(){
     int test_ovlp_matrix = 0;
 
     // The correct overlap matrix
-    //double *ovlp_matrix_check = malloc(2*2*sizeof(double));
-    //ovlp_matrix_check[0*2 + 0] = 1.0;
-    //ovlp_matrix_check[0*2 + 1] =-0.5;
-    //ovlp_matrix_check[1*2 + 0] =-0.5;
-    //ovlp_matrix_check[1*2 + 1] = 1.0;
+    double *ovlp_matrix_check = malloc(5*5*sizeof(double));
+    ovlp_matrix_check[0*5 + 0] = 1.0;
+    ovlp_matrix_check[0*5 + 1] =-0.5;
+    ovlp_matrix_check[0*5 + 2] = 0.25;
+    ovlp_matrix_check[0*5 + 3] = 0.25;
+    ovlp_matrix_check[0*5 + 4] =-0.5;
+    ovlp_matrix_check[1*5 + 0] =-0.5;
+    ovlp_matrix_check[1*5 + 1] = 1.0;
+    ovlp_matrix_check[1*5 + 2] =-0.5;
+    ovlp_matrix_check[1*5 + 3] =-0.5;
+    ovlp_matrix_check[1*5 + 4] = 0.25;
+    ovlp_matrix_check[2*5 + 0] = 0.25;
+    ovlp_matrix_check[2*5 + 1] =-0.5;
+    ovlp_matrix_check[2*5 + 2] = 1.0;
+    ovlp_matrix_check[2*5 + 3] = 0.25;
+    ovlp_matrix_check[2*5 + 4] =-0.5;
+    ovlp_matrix_check[3*5 + 0] = 0.25;
+    ovlp_matrix_check[3*5 + 1] =-0.5;
+    ovlp_matrix_check[3*5 + 2] = 0.25;
+    ovlp_matrix_check[3*5 + 3] = 1.0;
+    ovlp_matrix_check[3*5 + 4] =-0.5;
+    ovlp_matrix_check[4*5 + 0] =-0.5;
+    ovlp_matrix_check[4*5 + 1] = 0.25;
+    ovlp_matrix_check[4*5 + 2] =-0.5;
+    ovlp_matrix_check[4*5 + 3] =-0.5;
+    ovlp_matrix_check[4*5 + 4] = 1.0;
 
     getOverlapMatrix(Isomo, MS, &overlapMatrix, &rows, &cols, &NSOMOout);
-    //for(int i=0;i<rows;i++)
-    //    for(int j=0;j<cols;j++){
-    //        if(overlapMatrix[i*cols + j] != ovlp_matrix_check[i*cols + j]) test_ovlp_matrix = -1;
-    //    }
+    for(int i=0;i<rows;i++){
+        for(int j=0;j<cols;j++){
+            if(overlapMatrix[i*cols + j] != ovlp_matrix_check[i*cols + j]) test_ovlp_matrix = -1;
+        }
+    }
 
-    printRealMatrix(overlapMatrix,rows,cols);
+    //printRealMatrix(overlapMatrix,rows,cols);
     free(overlapMatrix);
+    printf("\ntest_ovlp_matrix6x6=%d\n",test_ovlp_matrix);
     return(test_ovlp_matrix);
 }
 #+end_src
 
-#+RESULTS: testOvlpMatrix2x2
-|      |      |      |      |      |
-|  1.0 | -0.5 | 0.25 | 0.25 | -0.5 |
-| -0.5 |  1.0 | -0.5 | -0.5 | 0.25 |
-| 0.25 | -0.5 |  1.0 | 0.25 | -0.5 |
-| 0.25 | -0.5 | 0.25 |  1.0 | -0.5 |
-| -0.5 | 0.25 | -0.5 | -0.5 |  1.0 |
+
+** TODO[1/2] Testing gram-schmidt orthonormalization
+
+- [X] Test orthonormalization matrix for 4 SOMO case
+
+  The orthonormalization matrix for 4 SOMO case is a 2x2 matrix and is very simple to derive.
+
+  #+name: 2x2orthonorm
+  | 0.8944 | 0.4472 |
+  |    0.0 |    1.0 |
+
+#+name: orthoMatrix4SOMO
+#+begin_src C :noweb yes :main no :libs -lm
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+
+<<getOverlapMatrix>>
+<<generateAllBFs>>
+<<treefuncmain>>
+<<indexlist>>
+<<calculateIslands>>
+<<getNsomo>>
+<<inttobindigit>>
+<<gramSchmidt>>
+
+int main(){
+    int64_t Isomo = ((1<<4)-1);
+    int64_t MS=0;
+    double *overlapMatrix;
+    double *orthoMatrix;
+    int rows=0;
+    int cols=0;
+    int NSOMOout=0;
+    int test_ortho_matrix = 0;
+
+    // The correct overlap matrix
+    double *ortho_matrix_check = malloc(2*2*sizeof(double));
+    ortho_matrix_check[0*2 + 0] = 0.8944271909999158785636694674925104941762473438446102897083588981;
+    ortho_matrix_check[0*2 + 1] = 0.4472135954999579392818347337462552470881236719223051448541794490;
+    ortho_matrix_check[1*2 + 0] = 0.0;
+    ortho_matrix_check[1*2 + 1] = 1.0;
+
+    getOverlapMatrix(Isomo, MS, &overlapMatrix, &rows, &cols, &NSOMOout);
+
+    orthoMatrix = malloc(rows*cols*sizeof(double));
+
+    gramSchmidt(overlapMatrix, rows, cols, orthoMatrix);
+
+    for(int i=0;i<rows;i++){
+        for(int j=0;j<cols;j++){
+            if(fabs(orthoMatrix[i*cols + j] - ortho_matrix_check[i*cols + j]) > 1e-16) test_ortho_matrix = -1;
+        }
+    }
+
+    printRealMatrix(orthoMatrix,rows,cols);
+    printf("test_ortho_matrix_NSOMO4=%d\n",test_ortho_matrix);
+
+    // Garbage collection
+    free(overlapMatrix);
+    free(orthoMatrix);
+
+    return(test_ortho_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS:
+|                            |      |
+|                       0.89 | 0.45 |
+|                        0.0 |  1.0 |
+| test_ortho_matrix_NSOMO4=0 |      |
+
+- [ ] Test orthonormalization matrix for 6 SOMO case
+
+  The orthonormalization matrix for 6 SOMO case is a 5x5 matrix the first three rows of which are:
+
+  #+name: 4x4orthonorm
+  | 0.9225 | 0.3094 |-0.2306 |
+  |    0.0 | 0.8944 | 0.4472 |
+  |    0.0 |    0.0 |    1.0 |
+
+  #+name: orthoMatrix6SOMO
+  #+begin_src C :noweb yes :main no :libs -lm
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <stdint.h>
+  #include <math.h>
+  #include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+
+  <<getOverlapMatrix>>
+  <<generateAllBFs>>
+  <<treefuncmain>>
+  <<indexlist>>
+  <<calculateIslands>>
+  <<getNsomo>>
+  <<inttobindigit>>
+  <<gramSchmidt>>
+
+  int main(){
+      int64_t Isomo = ((1<<6)-1);
+      int64_t MS=0;
+      double *overlapMatrix;
+      double *orthoMatrix;
+      int rows=0;
+      int cols=0;
+      int NSOMOout=0;
+      int test_ortho_matrix = 0;
+
+      // The correct overlap matrix
+      // TODO
+      double *ortho_matrix_check = malloc(2*2*sizeof(double));
+      ortho_matrix_check[0*5 + 0] = 1.0;
+      ortho_matrix_check[0*5 + 1] =-0.5;
+      ortho_matrix_check[0*5 + 2] = 0.25;
+      ortho_matrix_check[0*5 + 3] = 0.25;
+      ortho_matrix_check[0*5 + 4] =-0.5;
+      ortho_matrix_check[1*5 + 0] =-0.5;
+      ortho_matrix_check[1*5 + 1] = 1.0;
+      ortho_matrix_check[1*5 + 2] =-0.5;
+      ortho_matrix_check[1*5 + 3] =-0.5;
+      ortho_matrix_check[1*5 + 4] = 0.25;
+      ortho_matrix_check[2*5 + 0] = 0.25;
+      ortho_matrix_check[2*5 + 1] =-0.5;
+      ortho_matrix_check[2*5 + 2] = 1.0;
+      ortho_matrix_check[2*5 + 3] = 0.25;
+      ortho_matrix_check[2*5 + 4] =-0.5;
+      ortho_matrix_check[3*5 + 0] = 0.25;
+      ortho_matrix_check[3*5 + 1] =-0.5;
+      ortho_matrix_check[3*5 + 2] = 0.25;
+      ortho_matrix_check[3*5 + 3] = 1.0;
+      ortho_matrix_check[3*5 + 4] =-0.5;
+      ortho_matrix_check[4*5 + 0] =-0.5;
+      ortho_matrix_check[4*5 + 1] = 0.25;
+      ortho_matrix_check[4*5 + 2] =-0.5;
+      ortho_matrix_check[4*5 + 3] =-0.5;
+      ortho_matrix_check[4*5 + 4] = 1.0;
+
+      getOverlapMatrix(Isomo, MS, &overlapMatrix, &rows, &cols, &NSOMOout);
+
+      orthoMatrix = malloc(rows*cols*sizeof(double));
+
+      gramSchmidt(overlapMatrix, rows, cols, orthoMatrix);
+
+      //for(int i=0;i<rows;i++){
+      //    for(int j=0;j<cols;j++){
+      //        if(fabs(orthoMatrix[i*cols + j] - ortho_matrix_check[i*cols + j]) > 1e-16) test_ortho_matrix = -1;
+      //    }
+      //}
+
+      printRealMatrix(orthoMatrix,rows,cols);
+      printf("test_ortho_matrix_NSOMO4=%d\n",test_ortho_matrix);
+
+      // Garbage collection
+      free(overlapMatrix);
+      free(orthoMatrix);
+
+      return(test_ortho_matrix);
+  }
+
+
+  #+end_src
+
+  #+RESULTS: orthoMatrix6SOMO
+|                            |      |      |      |       |
+|                       0.88 | 0.16 |  0.0 |  0.0 |  0.44 |
+|                        0.0 | 0.88 |  0.3 |  0.3 | -0.22 |
+|                        0.0 |  0.0 | 0.89 |  0.0 |  0.45 |
+|                        0.0 |  0.0 |  0.0 | 0.89 |  0.45 |
+|                        0.0 |  0.0 |  0.0 |  0.0 |   1.0 |
+| test_ortho_matrix_NSOMO4=0 |      |      |      |       |
