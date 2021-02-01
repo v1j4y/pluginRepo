@@ -46,6 +46,10 @@ void getncsfs(int NSOMO, int MS, int *outncsfs){
     int nparcoupl = (NSOMO + MS)/2;
     int nparcouplp1 = ((NSOMO + MS)/2)+1;
     double tmpndets=0.0;
+    if(NSOMO == 0){
+        (*outncsfs) = 1;
+        return;
+    }
     tmpndets = binom(NSOMO, nparcoupl);
     (*outncsfs) = round(tmpndets - binom(NSOMO, nparcouplp1));
 }

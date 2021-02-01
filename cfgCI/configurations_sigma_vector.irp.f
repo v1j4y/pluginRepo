@@ -14,7 +14,7 @@
   NMO = NSOMOMax ! TODO: remove this
   END_PROVIDER
 
-  BEGIN_PROVIDER [ integer, AIJpqMatrixDimsList, (NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2)]
+  BEGIN_PROVIDER [ integer, AIJpqMatrixDimsList, (NSOMOMax+1,NSOMOMax+1,4,NSOMOMax,NSOMOMax,2)]
  &BEGIN_PROVIDER [ integer, rowsmax]
  &BEGIN_PROVIDER [ integer, colsmax]
   use cfunctions
@@ -37,7 +37,7 @@
   colsmax = 0
   print *,"NSOMOMax = ",NSOMOMax
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
-  do i = 2, NSOMOMax, 2
+  do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1,i)-1
      do j = i-2,i+2, 2
         Jsomo = ISHFT(1,j)-1
@@ -45,7 +45,8 @@
            cycle
         end if
         do k = 1,NSOMOMax
-           do l = k,NSOMOMax
+           do l = 1,NSOMOMax
+              if(k == l) cycle
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
                    MS,                       &
@@ -59,15 +60,15 @@
                  colsmax = cols
               end if
               ! i -> j
-              AIJpqMatrixDimsList(i,j,1,k,l,1) = rows
-              AIJpqMatrixDimsList(i,j,1,k,l,2) = cols
-              AIJpqMatrixDimsList(i,j,1,l,k,1) = rows
-              AIJpqMatrixDimsList(i,j,1,l,k,2) = cols
+              AIJpqMatrixDimsList(i+1,j+1,1,k,l,1) = rows
+              AIJpqMatrixDimsList(i+1,j+1,1,k,l,2) = cols
+              AIJpqMatrixDimsList(i+1,j+1,1,l,k,1) = rows
+              AIJpqMatrixDimsList(i+1,j+1,1,l,k,2) = cols
               ! j -> i
-              AIJpqMatrixDimsList(j,i,1,k,l,1) = rows
-              AIJpqMatrixDimsList(j,i,1,k,l,2) = cols
-              AIJpqMatrixDimsList(j,i,1,l,k,1) = rows
-              AIJpqMatrixDimsList(j,i,1,l,k,2) = cols
+              AIJpqMatrixDimsList(j+1,i+1,1,k,l,1) = rows
+              AIJpqMatrixDimsList(j+1,i+1,1,k,l,2) = cols
+              AIJpqMatrixDimsList(j+1,i+1,1,l,k,1) = rows
+              AIJpqMatrixDimsList(j+1,i+1,1,l,k,2) = cols
            end do
         end do
      end do
