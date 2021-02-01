@@ -23,71 +23,79 @@
 !     TODO : Put the documentation of the program here
       END_DOC
       character*32 cc
-      integer i, j
+      integer i, j, k
       integer orbp, orbq
       integer rows
       integer cols
       integer*8 MS
       print *, N_int
-      call debug_det(psi_det(1,1,1),N_int)
-      call debug_det(psi_det(1,1,2),N_int)
-      call debug_spindet(psi_det(1,1,1),N_int)
-      call debug_spindet(psi_det(1,1,2),N_int)
       print *,N_int
       cc = "Hello"
-      print *,psi_det_size
-      do i = 1, 4
-         print *, psi_configuration(1,1,i), psi_configuration(1,2,i)
+      print *,"Ndet=",psi_det_size, "Nconfig=",N_configuration
+      do i = 1, 6
+         call debug_spindet(psi_configuration(N_int,1,i),N_int)
+         call debug_spindet(psi_configuration(N_int,2,i),N_int)
+         print *,"with mask"
+         call debug_spindet(iand(reunion_of_act_virt_bitmask,psi_configuration(N_int,1,i)),1)
+         call debug_spindet(iand(reunion_of_act_virt_bitmask,psi_configuration(N_int,2,i)),1)
       end do
 
-      integer Nint
-      integer(bit_kind), dimension(1,2,100) :: singles
-      integer n_singles
-      Nint=1
-      do i = 1, 1
-         call generate_all_singles_cfg(psi_configuration(:,:,i), singles,&
-         n_singles, Nint)
-         print *,"Number of singles=",n_singles
-         do j = 1, 2
-            print *, psi_configuration(1,1,i), singles(1,1,j)
-            MS = 0
-            rows=-1
-            cols=-1
-            if(psi_configuration(1,1,i) .EQ. 0 .OR. singles(1,1,j) .EQ.0) cycle
-            call getApqIJMatrixDims(psi_configuration(1,1,i),           &
-                                    singles(1,1,j), &
-                                    MS,                       &
-                                    rows,                     &
-                                    cols)
-                                    print *, i,">",rows, cols
+  integer(bit_kind) :: Icfg(N_INT,2)
+  integer(bit_kind) :: alphas_Icfg(N_INT,2,200)
+  integer(bit_kind) :: connectedI_alpha(N_INT,2,200)
+  integer           :: excitationIds(200,2)
+  integer           :: excitationTypes(200)
+  integer  :: Nalphas_Icfg, nconnectedI
+  MS = 0
 
-         end do
-!        call printCFGlist(Nint, n_singles, singles)
-      end do
+  ! CFG: 2 2 2 0 0 0
+  ! CFG: 2 2 1 1 0 0
+  ! CFG: 2 1 1 1 1 0
+  !Icfg(1,1,1) = 0;
+  !Icfg(1,2,1) = ISHFT(1,3)-1;
+  !Icfg(1,1,2) = ISHFT(3,2);
+  !Icfg(1,2,2) = ISHFT(1,2)-1;
+  !Icfg(1,1,3) = ISHFT(ISHFT(1,4),1);
+  !Icfg(1,2,3) = 1
+  !integer Nint;
+  !Nint = 1
+  !integer n_singles_Icfg
+  !! Generate all singles excitations
+  !print *,"--------Gen----------"
+  !call debug_spindet(Icfg(:,:,1),Nint)
+  !call generate_all_singles_cfg_with_type(Icfg(:,:,1),singles_Icfg, &
+  !     ex_type_singles, n_singles_Icfg, Nint)
+  !print *,"nsingles=",n_singles_Icfg
+  !do i = 1,n_singles_Icfg
+  !   call debug_spindet(singles_Icfg(1,1,i),Nint)
+  !   call debug_spindet(singles_Icfg(1,2,i),Nint)
+  !   call getApqIJMatrixDims(Icfg(1,1,1),           &
+  !                           singles_Icfg(1,1,i), &
+  !                           MS,                       &
+  !                           rows,                     &
+  !                           cols)
+  !   print *,i," ",singles_Icfg(1,1,i), "-",singles_Icfg(1,2,i), ex_type_singles(i), rows,cols
+  !end do
 
-      integer startDet, endDet
-      do i = 1, 4
-         startDet = psi_configuration_to_psi_det(1,i)
-         endDet = psi_configuration_to_psi_det(2,i)
-         do j = startDet, endDet
-            print *, "\t",i, j, psi_configuration_to_psi_det_data(j)
-         end do
-      end do
-      print *, 'Now starting to read my provider for dims'
-      do i = 4,6,2
-         do j = i-2,i+2,2
-            print *,i,j,AIJpqMatrixDimsList(i,j,1,i,j,1), AIJpqMatrixDimsList(i,j,1,i,j,2)
-         end do
-      end do
-      print *, 'Now starting to read my provider for matrix'
-      do i = 4,6,2
-         do j = i,i+2,2
-            rows = AIJpqMatrixDimsList(i,j,1,i+1,1,1)
-            cols = AIJpqMatrixDimsList(i,j,1,i+1,1,2)
-            print *,i,j,rows,cols
-            !print *,AIJpqContainer(i,j,1,i+1,1,:rows,:cols)
-            call printMatrix(AIJpqContainer(i,j,1,i+1,1,:,:),14,14)
-         end do
-      end do
-      print *, 'Hello world Tangled with two blocks'
-      end
+  ! Loop over singles
+  do i = 1,N_configuration
+     Icfg(1,1) = psi_configuration(1,1,i)
+     Icfg(1,2) = psi_configuration(1,2,i)
+     call obtain_associated_alphaI(i, Icfg, alphas_Icfg, Nalphas_Icfg)
+     print *,i,"Nalphas = ",Nalphas_Icfg
+     do k = 1,Nalphas_Icfg
+        print *,k, Nalphas_Icfg
+        call debug_spindet(alphas_Icfg(1,1,k),N_int)
+        call debug_spindet(alphas_Icfg(1,2,k),N_int)
+        ! Now generate all singly excited with respect to a given alpha CFG
+        call obtain_connected_I_foralpha(alphas_Icfg(:,:,k),connectedI_alpha,nconnectedI,excitationIds,excitationTypes)
+        print *,k,"----> nconnected = ",nconnectedI
+        do j = 1,nconnectedI
+        print *,"----------------",i,j,k,nconnectedI
+        call debug_spindet(connectedI_alpha(1,1,j),N_int)
+        call debug_spindet(connectedI_alpha(1,2,j),N_int)
+        end do
+     end do
+  end do
+
+  end
