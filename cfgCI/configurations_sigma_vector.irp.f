@@ -37,6 +37,8 @@
   colsmax = 0
   print *,"NSOMOMax = ",NSOMOMax
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
+  ! Type
+  ! 1. SOMO -> VMO
   do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1,i)-1
      do j = i-2,i+2, 2
@@ -69,6 +71,120 @@
               AIJpqMatrixDimsList(j+1,i+1,1,k,l,2) = cols
               AIJpqMatrixDimsList(j+1,i+1,1,l,k,1) = rows
               AIJpqMatrixDimsList(j+1,i+1,1,l,k,2) = cols
+           end do
+        end do
+     end do
+  end do
+  ! Type
+  ! 2. DOMO -> VMO
+  do i = 0, NSOMOMax, 2
+     Isomo = ISHFT(1,i)-1
+     do j = i-2,i+2, 2
+        Jsomo = ISHFT(1,j)-1
+        if(j .GT. NSOMOMax .OR. j .LE. 0) then
+           cycle
+        end if
+        do k = 1,NSOMOMax
+           do l = 1,NSOMOMax
+              if(k == l) cycle
+              call getApqIJMatrixDims(Isomo,           &
+                   Jsomo, &
+                   MS,                       &
+                   rows,                     &
+                   cols)
+              print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols
+              if(rowsmax .LT. rows) then
+                 rowsmax = rows
+              end if
+              if(colsmax .LT. cols) then
+                 colsmax = cols
+              end if
+              ! i -> j
+              AIJpqMatrixDimsList(i+1,j+1,2,k,l,1) = rows
+              AIJpqMatrixDimsList(i+1,j+1,2,k,l,2) = cols
+              AIJpqMatrixDimsList(i+1,j+1,2,l,k,1) = rows
+              AIJpqMatrixDimsList(i+1,j+1,2,l,k,2) = cols
+              ! j -> i
+              AIJpqMatrixDimsList(j+1,i+1,2,k,l,1) = rows
+              AIJpqMatrixDimsList(j+1,i+1,2,k,l,2) = cols
+              AIJpqMatrixDimsList(j+1,i+1,2,l,k,1) = rows
+              AIJpqMatrixDimsList(j+1,i+1,2,l,k,2) = cols
+           end do
+        end do
+     end do
+  end do
+  ! Type
+  ! 3. DOMO -> VMO
+  do i = 0, NSOMOMax, 2
+     Isomo = ISHFT(1,i)-1
+     do j = i-2,i+2, 2
+        Jsomo = ISHFT(1,j)-1
+        if(j .GT. NSOMOMax .OR. j .LE. 0) then
+           cycle
+        end if
+        do k = 1,NSOMOMax
+           do l = 1,NSOMOMax
+              if(k == l) cycle
+              call getApqIJMatrixDims(Isomo,           &
+                   Jsomo, &
+                   MS,                       &
+                   rows,                     &
+                   cols)
+              print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols
+              if(rowsmax .LT. rows) then
+                 rowsmax = rows
+              end if
+              if(colsmax .LT. cols) then
+                 colsmax = cols
+              end if
+              ! i -> j
+              AIJpqMatrixDimsList(i+1,j+1,3,k,l,1) = rows
+              AIJpqMatrixDimsList(i+1,j+1,3,k,l,2) = cols
+              AIJpqMatrixDimsList(i+1,j+1,3,l,k,1) = rows
+              AIJpqMatrixDimsList(i+1,j+1,3,l,k,2) = cols
+              ! j -> i
+              AIJpqMatrixDimsList(j+1,i+1,3,k,l,1) = rows
+              AIJpqMatrixDimsList(j+1,i+1,3,k,l,2) = cols
+              AIJpqMatrixDimsList(j+1,i+1,3,l,k,1) = rows
+              AIJpqMatrixDimsList(j+1,i+1,3,l,k,2) = cols
+           end do
+        end do
+     end do
+  end do
+  ! Type
+  ! 4. DOMO -> SOMO
+  do i = 0, NSOMOMax, 2
+     Isomo = ISHFT(1,i)-1
+     do j = i-2,i+2, 2
+        Jsomo = ISHFT(1,j)-1
+        if(j .GT. NSOMOMax .OR. j .LE. 0) then
+           cycle
+        end if
+        do k = 1,NSOMOMax
+           do l = 1,NSOMOMax
+              if(k == l) cycle
+              call getApqIJMatrixDims(Isomo,           &
+                   Jsomo, &
+                   MS,                       &
+                   rows,                     &
+                   cols)
+              print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols
+              if(rowsmax .LT. rows) then
+                 rowsmax = rows
+              end if
+              if(colsmax .LT. cols) then
+                 colsmax = cols
+              end if
+              ! i -> j
+              AIJpqMatrixDimsList(i+1,j+1,4,k,l,1) = rows
+              AIJpqMatrixDimsList(i+1,j+1,4,k,l,2) = cols
+              AIJpqMatrixDimsList(i+1,j+1,4,l,k,1) = rows
+              AIJpqMatrixDimsList(i+1,j+1,4,l,k,2) = cols
+              ! j -> i
+              AIJpqMatrixDimsList(j+1,i+1,4,k,l,1) = rows
+              AIJpqMatrixDimsList(j+1,i+1,4,k,l,2) = cols
+              AIJpqMatrixDimsList(j+1,i+1,4,l,k,1) = rows
+              AIJpqMatrixDimsList(j+1,i+1,4,l,k,2) = cols
            end do
         end do
      end do
@@ -112,6 +228,8 @@
   allocate(meMatrix(rowsmax,colsmax))
   print *,"NSOMOMax = ",NSOMOMax
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
+  ! Type
+  ! 1. SOMO -> SOMO
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(ISHFT(1,i)-1,1)
      do j = i-2,i+2, 2
@@ -143,6 +261,123 @@
              do ri = 1,rows
                  do ci = 1,cols
                     AIJpqContainer(i,j,1,k,l,ri,ci) = meMatrix(ri, ci)
+                 end do
+              end do
+           end do
+        end do
+     end do
+  end do
+  ! Type
+  ! 2. DOMO -> VMO
+  do i = 2, NSOMOMax, 2
+     Isomo = ISHFT(ISHFT(1,i)-1,1)
+     do j = i-2,i+2, 2
+        Jsomo = ISHFT(1,j)-1
+        if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
+        do k = i-1,i+1
+           do l = 1,1
+              AIJpqContainer(i,j,2,k,l,:,:) = 0.0d0
+              call getApqIJMatrixDims(Isomo,           &
+                   Jsomo, &
+                   MS,                       &
+                   rows,                     &
+                   cols)
+
+              orbp = k
+              orbq = l
+              ! fill matrix
+              call getApqIJMatrixDriver(Isomo,           &
+                   Jsomo, &
+                   orbp,                     &
+                   orbq,                     &
+                   MS,                       &
+                   NMO,                      &
+                   meMatrix,                 &
+                   rows,                     &
+                   cols)
+             print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
+              ! i -> j
+             do ri = 1,rows
+                 do ci = 1,cols
+                    AIJpqContainer(i,j,2,k,l,ri,ci) = meMatrix(ri, ci)
+                 end do
+              end do
+           end do
+        end do
+     end do
+  end do
+  ! Type
+  ! 2. SOMO -> VMO
+  do i = 2, NSOMOMax, 2
+     Isomo = ISHFT(ISHFT(1,i)-1,1)
+     do j = i-2,i+2, 2
+        Jsomo = ISHFT(1,j)-1
+        if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
+        do k = i-1,i+1
+           do l = 1,1
+              AIJpqContainer(i,j,3,k,l,:,:) = 0.0d0
+              call getApqIJMatrixDims(Isomo,           &
+                   Jsomo, &
+                   MS,                       &
+                   rows,                     &
+                   cols)
+
+              orbp = k
+              orbq = l
+              ! fill matrix
+              call getApqIJMatrixDriver(Isomo,           &
+                   Jsomo, &
+                   orbp,                     &
+                   orbq,                     &
+                   MS,                       &
+                   NMO,                      &
+                   meMatrix,                 &
+                   rows,                     &
+                   cols)
+             print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
+              ! i -> j
+             do ri = 1,rows
+                 do ci = 1,cols
+                    AIJpqContainer(i,j,3,k,l,ri,ci) = meMatrix(ri, ci)
+                 end do
+              end do
+           end do
+        end do
+     end do
+  end do
+  ! Type
+  ! 4. DOMO -> SOMO
+  do i = 2, NSOMOMax, 2
+     Isomo = ISHFT(ISHFT(1,i)-1,1)
+     do j = i-2,i+2, 2
+        Jsomo = ISHFT(1,j)-1
+        if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
+        do k = i-1,i+1
+           do l = 1,1
+              AIJpqContainer(i,j,4,k,l,:,:) = 0.0d0
+              call getApqIJMatrixDims(Isomo,           &
+                   Jsomo, &
+                   MS,                       &
+                   rows,                     &
+                   cols)
+
+              orbp = k
+              orbq = l
+              ! fill matrix
+              call getApqIJMatrixDriver(Isomo,           &
+                   Jsomo, &
+                   orbp,                     &
+                   orbq,                     &
+                   MS,                       &
+                   NMO,                      &
+                   meMatrix,                 &
+                   rows,                     &
+                   cols)
+             print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
+              ! i -> j
+             do ri = 1,rows
+                 do ci = 1,cols
+                    AIJpqContainer(i,j,4,k,l,ri,ci) = meMatrix(ri, ci)
                  end do
               end do
            end do
