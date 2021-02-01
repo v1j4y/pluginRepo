@@ -101,11 +101,13 @@ Provide all the singles excitations.
   !   print *,i," ",singles_Icfg(1,1,i), "-",singles_Icfg(1,2,i), ex_type_singles(i), rows,cols
   !end do
 
-  ! Loop over singles
+  ! Loop over all selected configurations
   do i = 1,N_configuration
      Icfg(1,1) = psi_configuration(1,1,i)
      Icfg(1,2) = psi_configuration(1,2,i)
+     ! Returns all unique (checking the past) singly excited cfgs connected to I
      call obtain_associated_alphaI(i, Icfg, alphas_Icfg, Nalphas_Icfg)
+     ! TODO : remove doubly excited for return
      print *,i,"Nalphas = ",Nalphas_Icfg
      do k = 1,Nalphas_Icfg
         print *,k, Nalphas_Icfg
