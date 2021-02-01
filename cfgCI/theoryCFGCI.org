@@ -19,11 +19,12 @@ There are three main aspects while using configuration based representation
 Convert input CFG to an array of bits containing 0's and 1's representing
 the position of SOMOs and DOMOs.
 
+
 #+name: inttobindigit
 #+begin_src c :main no :tangle cfgCI_utils.c
 #include <stdint.h>
 #include <stdio.h>
-#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#include "tree_utils.h"
 
 void int_to_bin_digit(int64_t in, int count, int* out)
 {
@@ -305,7 +306,7 @@ void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int col
 
 #+name: treefuncmain
 #+begin_src c :main no :tangle tree_utils.c
-#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#include "tree_utils.h"
 
 void buildTree(Tree *bftree,
                Node **inode,
@@ -441,7 +442,7 @@ void getIthBFDriver(Tree *bftree, int NSOMOMax, int getaddr, int *vecBF){
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "/home/vijay/Documents/codes/qp2/plugins/local/pluginRepo/cfgCI/tree_utils.h"
+#include "tree_utils.h"
 
 <<treefuncmain>>
 
@@ -1335,7 +1336,7 @@ void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int col
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
-#include "/home/vijay/Documents/codes/qp2/plugins/local/pluginRepo/cfgCI/tree_utils.h"
+#include "tree_utils.h"
 #include "/usr/include/x86_64-linux-gnu/cblas.h"
 
 double logbinom(double n, double k);
@@ -2460,7 +2461,7 @@ void getOneElMETypeSOMOSOMO(int64_t Isomo, int64_t Jsomo, int moi, int moj, int 
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
-#include "/home/vijay/Documents/codes/qp2/plugins/local/pluginRepo/cfgCI/tree_utils.h"
+#include "tree_utils.h"
 
 <<inttobindigit>>
 

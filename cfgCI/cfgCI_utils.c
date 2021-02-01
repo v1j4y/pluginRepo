@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
-#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#include "tree_utils.h"
 
 void int_to_bin_digit(int64_t in, int count, int* out)
 {
