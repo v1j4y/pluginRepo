@@ -131,17 +131,15 @@ module cfunctions
          end subroutine getApqIJMatrixDriver
       end interface
        interface
-         subroutine getDETtoCSFTransformationMatrix(Isomo,&
-              MS, rowsmax, colsmax, bftodetmatrix,rows,cols) bind(C, name='convertBFtoDetBasisWithArrayDims')
+         subroutine getCSFtoDETTransformationMatrix(Isomo,&
+              MS, rowsmax, colsmax, csftodetmatrix) bind(C, name='convertCSFtoDetBasis')
            import C_INT32_T, C_INT64_T, C_DOUBLE
            integer(kind=C_INT64_T),value,intent(in) :: Isomo
            integer(kind=C_INT64_T),value,intent(in) :: MS
-           integer(kind=C_INT32_T),value,intent(in) :: rowsmax
-           integer(kind=C_INT32_T),value,intent(in) :: colsmax
-           integer(kind=C_INT32_T),intent(out) :: rows
-           integer(kind=C_INT32_T),intent(out) :: cols
-           real   (kind=C_DOUBLE ),intent(out) :: bftodetmatrix(rowsmax,colsmax)
-         end subroutine getDETtoCSFTransformationMatrix
+           integer(kind=C_INT32_T),intent(in) :: rowsmax
+           integer(kind=C_INT32_T),intent(in) :: colsmax
+           real   (kind=C_DOUBLE ),intent(out) :: csftodetmatrix(rowsmax,colsmax)
+         end subroutine getCSFtoDETTransformationMatrix
       end interface
     end module cfunctions
   #+end_src
@@ -1395,6 +1393,61 @@ void convertBFtoDetBasisWithArrayDims(int64_t Isomo, int MS, int rowsmax, int co
 #+end_src
 
 #+RESULTS: convertBFtoDetbasis
+
+- [ ] Get CSF to Determinant Transformation matrix
+
+#+begin_src C :main no :tangle cfgCI_utils.c
+
+void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, double *csftodetmatrix){
+
+    double *overlapMatrixI;
+    double *orthoMatrixI;
+    double *bftodetmatrixI;
+    double *csftodetmatrixI;
+    int NSOMO=0;
+
+    /***********************************
+                 Get Overlap
+    ,************************************/
+    // Fill matrix
+    int rowsI = 0;
+    int colsI = 0;
+
+    getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+
+    /***********************************
+         Get Orthonormalization Matrix
+    ,************************************/
+
+    orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
+
+    gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
+
+    /***********************************
+         Get BFtoDeterminant Matrix
+    ,************************************/
+
+    int rowsbftodetI, colsbftodetI;
+
+    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
+
+    /***********************************
+         Get Final CSF to Det Matrix
+    ,************************************/
+    // First transform matrix using BLAS
+    //double *bfIApqIJ = malloc(rowsbftodetI*colsbftodetI*sizeof(double));
+
+    int transA=false;
+    int transB=false;
+    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, csftodetmatrix, transA, transB);
+
+    // Garbage collection
+    if(rowsI + colsI > 0) free(overlapMatrixI);
+    if(rowsI + colsI > 0) free(orthoMatrixI);
+    if(rowsbftodetI + rowsbftodetJ > 0) free(bftodetmatrixI);
+}
+
+#+end_src
 
 - [ ] Calling Blas
 

@@ -51,7 +51,9 @@
   MS = elec_alpha_num - elec_beta_num
   do i = 2-iand(elec_alpha_num-elec_beta_num,1), elec_num,2
     Isomo = IBSET(0_8, i) - 1_8
-    call getDETtoCSFTransformationMatrix(Isomo, MS, NBFMax, maxDetDimPerBF, tempBuffer, rows, cols)
+    ! rows = Ncsfs
+    ! cols = Ndets
+    call getCSFtoDETTransformationMatrix(Isomo, MS, NBFMax, maxDetDimPerBF, tempBuffer)
     DetToCSFTransformationMatrix(i,:,:) =  tempBuffer
   enddo
 

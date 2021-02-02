@@ -587,6 +587,55 @@ void convertBFtoDetBasisWithArrayDims(int64_t Isomo, int MS, int rowsmax, int co
 
 }
 
+void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, double *csftodetmatrix){
+
+    double *overlapMatrixI;
+    double *orthoMatrixI;
+    double *bftodetmatrixI;
+    double *csftodetmatrixI;
+    int NSOMO=0;
+
+    /***********************************
+                 Get Overlap
+    ************************************/
+    // Fill matrix
+    int rowsI = 0;
+    int colsI = 0;
+
+    getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+
+    /***********************************
+         Get Orthonormalization Matrix
+    ************************************/
+
+    orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
+
+    gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
+
+    /***********************************
+         Get BFtoDeterminant Matrix
+    ************************************/
+
+    int rowsbftodetI, colsbftodetI;
+
+    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
+
+    /***********************************
+         Get Final CSF to Det Matrix
+    ************************************/
+    // First transform matrix using BLAS
+    //double *bfIApqIJ = malloc(rowsbftodetI*colsbftodetI*sizeof(double));
+
+    int transA=false;
+    int transB=false;
+    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, csftodetmatrix, transA, transB);
+
+    // Garbage collection
+    if(rowsI + colsI > 0) free(overlapMatrixI);
+    if(rowsI + colsI > 0) free(orthoMatrixI);
+    if(rowsbftodetI + rowsbftodetJ > 0) free(bftodetmatrixI);
+}
+
 unsigned int shftbit(int num, int p){
     unsigned int maskleft = ~(0 | ((1<<p)-1));
     unsigned int maskright = ((1<<(p-1))-1);
