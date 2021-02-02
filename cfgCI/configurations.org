@@ -48,6 +48,8 @@ via BLAS level 3 operations.
  &BEGIN_PROVIDER [ integer, NCSFMax]
  &BEGIN_PROVIDER [ integer*8, NMO]
  &BEGIN_PROVIDER [ integer, NBFMax]
+ &BEGIN_PROVIDER [ integer, dimBasisCSF]
+ &BEGIN_PROVIDER [ integer, maxDetDimPerBF]
   implicit none
   BEGIN_DOC
   ! Documentation for NSOMOMax
@@ -58,6 +60,85 @@ via BLAS level 3 operations.
   NBFMax = 14
   NCSFMax = 14 ! TODO: NCSFs for MS=0
   NMO = NSOMOMax ! TODO: remove this
+  integer i,j,k,l
+  integer startdet,enddet
+  integer ncfg,ncfgprev
+  integer NSOMO
+  integer detDimperBF
+  real*8 :: coeff
+  maxDetDimPerBF = 0
+  detDimperBF = 0
+  ncfgprev = 0
+  dimBasisCSF = 0
+  do i = 2-iand(elec_alpha_num-elec_beta_num,1), elec_num,2
+  ncfg = cfg_seniority_index(i) - ncfgprev
+  detDimperBF = max(1,int((binom(i,(i+1)/2)-binom(i,((i+1)/2)+1))))
+  dimBasisCSF += ncfg * detDimperBF
+  if(detDimperBF > maxDetDimPerBF) maxDetDimPerBF = detDimperBF
+  ncfgprev = ncfg
+  enddo
+  END_PROVIDER
+  #+end_src
+
+- [ ] Function to convert CSFs to DET basis and vice versa.
+
+  #+begin_src f90 :main no :tangle configurations_sigma_vector.irp.f
+  BEGIN_PROVIDER [ real*8, DetToCSFTransformationMatrix, (NSOMOMax,NBFMax,maxDetDimPerBF)]
+ &BEGIN_PROVIDER [ real*8, psi_coef_config, (dimBasisCSF)]
+  use cfunctions
+  implicit none
+  BEGIN_DOC
+  ! Documentation for DetToCSFTransformationMatrix
+  ! Provides the matrix of transformatons for the
+  ! conversion between determinant to CSF basis (in BFs)
+  END_DOC
+  integer*8 :: Isomo
+  integer   :: rows, cols, i, j, k
+  integer   :: startdet, enddet
+  integer*8 MS
+  real*8    :: tempBuffer(NBFMax,maxDetDimPerBF)
+  real*8    :: tempCoeff(maxDetDimPerBF)
+  MS = elec_alpha_num - elec_beta_num
+  do i = 2-iand(elec_alpha_num-elec_beta_num,1), elec_num,2
+    Isomo = IBSET(0_8, i) - 1_8
+    call getDETtoCSFTransformationMatrix(Isomo, MS, NBFMax, maxDetDimPerBF, tempBuffer, rows, cols)
+    DetToCSFTransformationMatrix(i,:,:) =  tempBuffer
+  enddo
+
+  integer s, bfIcfg
+  integer countcsf
+  countcsf = 0
+  integer countdet
+  countdet = 0
+  integer istate
+  istate = 1
+  do i = 1,N_configuration
+      startdet = psi_configuration_to_psi_det(1,i)
+      enddet = psi_configuration_to_psi_det(2,i)
+
+      do j = startdet, enddet
+        tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)
+        countdet += 1
+      enddo
+
+
+      s = 0
+      do k=1,N_int
+        if (psi_configuration(k,1,i) == 0_bit_kind) cycle
+        s = s + popcnt(psi_configuration(k,1,i))
+      enddo
+      bfIcfg = max(1,int((binom(s,(s+1)/2)-binom(s,((s+1)/2)+1))))
+
+      ! perhaps blocking with CFGs of same seniority
+      ! can be more efficient
+      tempBuffer = DetToCSFTransformationMatrix(s,:,:)
+
+       call dgemm('N','N', NBFMax, 1, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_config(countcsf), size(psi_coef_config,1))
+      !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
+
+      countcsf += bfIcfg
+  enddo
+
   END_PROVIDER
   #+end_src
 
