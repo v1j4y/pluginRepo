@@ -482,6 +482,111 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
 
 }
 
+
+void convertBFtoDetBasisWithArrayDims(int64_t Isomo, int MS, int rowsmax, int colsmax, int *rows, int *cols, double *bftodetmatrix){
+
+    int NSOMO=0;
+    getSetBits(Isomo, &NSOMO);
+    int ndets = 0;
+    int NBF = 0;
+    double dNSOMO = NSOMO*1.0;
+    double nalpha = (NSOMO + MS)/2.0;
+    ndets = (int)binom(dNSOMO, nalpha);
+    //printf("Ndets = %d\n",ndets);
+
+    Tree dettree = (Tree){  .rootNode = NULL, .NBF = -1 };
+    dettree.rootNode = malloc(sizeof(Node));
+    (*dettree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    genDetBasis(&dettree, Isomo, MS, &ndets);
+
+    //printTreeDriver(&dettree, NSOMO);
+    //printf("Ndets = %d\n",ndets);
+
+    //int addr = -1;
+    //int inpdet[NSOMO];
+    //inpdet[0] = 1;
+    //inpdet[1] = 1;
+    //inpdet[2] = 1;
+    //inpdet[3] = 0;
+    //inpdet[4] = 0;
+    //inpdet[5] = 0;
+
+    //findAddofDetDriver(&dettree, NSOMO, inpdet, &addr);
+
+    int detlist[ndets];
+    getDetlistDriver(&dettree, NSOMO, detlist);
+
+    //printf("\n");
+    //for(int i=0;i<ndets;i++)
+    //    printf("%d ",detlist[i]);
+    //printf("\n");
+
+    //printf("addr of det=%d\n",addr);
+
+    // Prepare BFs
+    Tree bftree = (Tree){  .rootNode = NULL, .NBF = -1 };
+    bftree.rootNode = malloc(sizeof(Node));
+    (*bftree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
+
+    //printf("in convert NBFs = %d ndets=%d\n",NBF,ndets);
+
+    // Initialize transformation matrix
+    //(*bftodetmatrixptr) = malloc(NBF*ndets*sizeof(double));
+    (*rows) = NBF;
+    (*cols) = ndets;
+
+    //double *bftodetmatrix = (*bftodetmatrixptr);
+
+    // Build BF to det matrix
+    int addI = 0;
+    int addJ = 0;
+    double rowvec[ndets];
+    for(int i=0;i<ndets;i++)
+        rowvec[i]=0.0;
+    int *BF1 = malloc(MAX_SOMO * sizeof(int));
+    int *BF2 = malloc(MAX_SOMO * sizeof(int));
+    int *IdxListBF1 = malloc(MAX_SOMO * sizeof(int));
+    int *IdxListBF2 = malloc(MAX_SOMO * sizeof(int));
+
+    for(int i = 0; i < NBF; i++){
+        addI = i;
+        getIthBFDriver(&bftree, NSOMO, addI, BF1);
+        getBFIndexList(NSOMO, BF1, IdxListBF1);
+
+
+        //printf("addI : %d > ",addI);
+        //for(int k=0;k<NSOMO;k++)
+        //    printf("%d ",BF1[k]);
+        //printf("\n");
+
+        // Get ith row
+        getbftodetfunction(&dettree, NSOMO, MS, IdxListBF1, rowvec);
+
+        //printf("---%d---\n",i);
+        //for(int k=0;k<ndets;k++)
+        //    printf("%10.4f ",rowvec[k]);
+        //printf("\n");
+
+        //printf("(%d, %d) is=%d ph=%d fac=%10.15f\n",addI, addJ, nislands, phasefactor, phasefactor*1.0/(1 << (g-nislands)));
+
+        for(int j = 0; j < ndets; j++)
+            bftodetmatrix[i*ndets + j] = rowvec[j];
+
+        for(int k=0;k<ndets;k++)
+            rowvec[k]=0.0;
+    }
+
+    // Garbage collection
+    free(BF1);
+    free(IdxListBF1);
+    free(BF2);
+    free(IdxListBF2);
+
+}
+
 unsigned int shftbit(int num, int p){
     unsigned int maskleft = ~(0 | ((1<<p)-1));
     unsigned int maskright = ((1<<(p-1))-1);

@@ -35,4 +35,17 @@ module cfunctions
            !integer(kind=C_INT32_T),dimension(rowApqIJ,colApqIJ) :: ApqIJ
          end subroutine getApqIJMatrixDriver
       end interface
+       interface
+         subroutine getDETtoCSFTransformationMatrix(Isomo,&
+              MS, rowsmax, colsmax, bftodetmatrix,rows,cols) bind(C, name='convertBFtoDetBasisWithArrayDims')
+           import C_INT32_T, C_INT64_T, C_DOUBLE
+           integer(kind=C_INT64_T),value,intent(in) :: Isomo
+           integer(kind=C_INT64_T),value,intent(in) :: MS
+           integer(kind=C_INT32_T),value,intent(in) :: rowsmax
+           integer(kind=C_INT32_T),value,intent(in) :: colsmax
+           integer(kind=C_INT32_T),intent(out) :: rows
+           integer(kind=C_INT32_T),intent(out) :: cols
+           real   (kind=C_DOUBLE ),intent(out) :: bftodetmatrix(rowsmax,colsmax)
+         end subroutine getDETtoCSFTransformationMatrix
+      end interface
     end module cfunctions
