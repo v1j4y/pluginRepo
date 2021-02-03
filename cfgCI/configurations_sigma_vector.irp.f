@@ -104,7 +104,7 @@
   ! matrices for each I,J somo pair and orb ids.
   END_DOC
   integer i,j,k,l
-  integer*8 Isomo, Jsomo
+  integer*8 Isomo, Jsomo, tmpsomo
   Isomo = 0
   Jsomo = 0
   integer rows, cols
@@ -120,14 +120,17 @@
   ! 1. SOMO -> VMO
   do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
-     do j = i-2,i+2, 2
+     do j = i-2,i-2, 2
         Jsomo = ISHFT(1_8,j)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
         do k = 1,NSOMOMax
            do l = 1,NSOMOMax
-              if(k == l) cycle
+              ! Define Jsomo
+              Jsomo = IBCLR(Isomo, k-1)
+              Jsomo = IBCLR(Jsomo, l-1)
+
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
                    MS,                       &
@@ -157,15 +160,20 @@
   ! Type
   ! 2. DOMO -> VMO
   do i = 0, NSOMOMax, 2
-     Isomo = ISHFT(1_8,i)-1
-     do j = i-2,i+2, 2
+     tmpsomo = ISHFT(1_8,i)-1
+     do j = i+2,i+2, 2
         Jsomo = ISHFT(1_8,j)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
         do k = 1,NSOMOMax
            do l = 1,NSOMOMax
-              if(k == l) cycle
+              Isomo = IBCLR(tmpsomo,i-1)
+              Isomo = IBCLR(Isomo,j-1)
+
+              ! Define Jsomo
+              Jsomo = ISHFT(1_8,i)-1;
+
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
                    MS,                       &
@@ -196,14 +204,17 @@
   ! 3. DOMO -> VMO
   do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
-     do j = i-2,i+2, 2
+     do j = i,i, 2
         Jsomo = ISHFT(1_8,j)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
         do k = 1,NSOMOMax
            do l = 1,NSOMOMax
-              if(k == l) cycle
+              Isomo = ISHFT(1_8,i+1)-1
+              Isomo = IBCLR(Isomo,j)
+              Jsomo = ISHFT(1_8,i+1)-1
+              Jsomo = IBCLR(Jsomo,i)-1
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
                    MS,                       &
@@ -233,15 +244,16 @@
   ! Type
   ! 4. DOMO -> SOMO
   do i = 0, NSOMOMax, 2
-     Isomo = ISHFT(1_8,i)-1
      do j = i-2,i+2, 2
-        Jsomo = ISHFT(1_8,j)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
         do k = 1,NSOMOMax
            do l = 1,NSOMOMax
-              if(k == l) cycle
+              Isomo = ISHFT(1_8,i+1)-1
+              Isomo = IBCLR(Isomo,i)
+              Jsomo = ISHFT(1_8,i+1)-1
+              Jsomo = IBCLR(Jsomo,j)-1
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
                    MS,                       &

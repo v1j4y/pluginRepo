@@ -137,6 +137,7 @@
 
         ! Do big BLAS
         ! TODO TKI, size(TKI,1)*size(TKI,2)
+        print *,"calling blas 2"
         call dgemm('N','N', rowsTKI, nconnectedI, totcolsTKI, 1.d0,  &
           TKI, size(TKI,1), GIJpqrs, size(GIJpqrs,1), 0.d0, &
           TKIGIJ , size(TKIGIJ,1) )

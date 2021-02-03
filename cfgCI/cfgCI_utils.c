@@ -294,27 +294,28 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
 
     // vector
     double norm = 0.0;
-    orthoMatrix[(rows-1)*cols + cols-1] = 1.0;
-    for(int i = cols-2; i > -1; i--){ orthoMatrix[(rows-1)*cols + i] = 0.0; }
+    orthoMatrix[0*cols + 0] = 1.0;
+    for(int i = 1; i < cols; i++){ orthoMatrix[0*cols + i] = 0.0; }
 
     // Gram-Schmidt loop
-    for(int i = rows-2; i > -1; i--){
+    for(int i = 1; i < rows; i++){
         for(int k = cols-1; k > -1; k--){ orthoMatrix[(i)*cols + k] = 0.0; }
         orthoMatrix[i*cols + i] = 1.0;
-        for(int j = rows-1; j > i; j--){
-            for(int k = rows-1; k >= j; k--){
+        for(int j = 0; j < i; j++){
+            for(int k = 0; k <= j; k++){
                 orthoMatrix[i*cols + j] += -1.0*orthoMatrix[j*cols + k]*overlapMatrix[i*cols + k];
             }
         }
 
         // Normalization
         norm = 0.0;
-        for(int j = rows-1; j >= i; j--){
-            norm += orthoMatrix[i*cols + j]*orthoMatrix[i*cols + j];
+        for(int j = 0; j <= i; j++){
+            for(int k=0; k <= i; k++)
+                norm += orthoMatrix[i*cols + j]*orthoMatrix[i*cols + k]*overlapMatrix[j*cols+k];
         }
-        norm = sqrt(norm);
-        for(int j = rows-1; j >= i; j--){
-            orthoMatrix[i*cols + j] /= norm;
+        norm = 1.0/sqrt(norm);
+        for(int j = 0; j <= i; j++){
+            orthoMatrix[i*cols + j] *= norm;
         }
 
     }
@@ -337,6 +338,10 @@ void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, doubl
     int colsI = 0;
 
     getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+    //printf("\noverlap matrix\n");
+    //printRealMatrix(overlapMatrixI,rowsI,colsI);
+    //printf("\noverlap matrix\n");
+
 
     /***********************************
          Get Orthonormalization Matrix
@@ -345,6 +350,9 @@ void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, doubl
     orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
 
     gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
+    //printf("\noverlap matrix\n");
+    //printRealMatrix(orthoMatrixI,rowsI,colsI);
+    //printf("\noverlap matrix\n");
 
     /***********************************
          Get BFtoDeterminant Matrix
@@ -353,6 +361,9 @@ void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, doubl
     int rowsbftodetI, colsbftodetI;
 
     convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
+    //printf("\ncsf to det matrix\n");
+    //printRealMatrix(bftodetmatrixI,rowsbftodetI, colsbftodetI);
+    //printf("\ncsf to det matrix\n");
 
     /***********************************
          Get Final CSF to Det Matrix
@@ -1366,11 +1377,12 @@ void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowv
         for(int j = 0; j < NSOMO; j++)
             inpdet[j] = detslist[i*NSOMO + j];
         findAddofDetDriver(dettree, NSOMO, inpdet, &addr);
-        //rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
+        rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
         // Upon transformation from
         // SOMO to DET basis,
         // all dets have the same phase
-        rowvec[addr] = 1.0/sqrt(fac);
+        // Is this true ?
+        //rowvec[addr] = 1.0/sqrt(fac);
     }
 
     free(detslist);

@@ -403,6 +403,8 @@ int main(){
 
 #+end_src
 
+#+RESULTS: orthoMatrix4SOMO
+
 #+RESULTS:
 |                            |      |
 |                       0.89 | 0.45 |
@@ -508,6 +510,108 @@ int main(){
 |                        0.0 |  0.0 |  0.0 |  0.0 |   1.0 |
 | test_ortho_matrix_NSOMO4=0 |      |      |      |       |
 
+
+* Testing conversion of DET to CSF
+
+** TODO[0/1] Test CSF to Det matrix
+
+- [ ] small 2 by 6 : 4 SOMOs
+
+#+name: testcsftodet4somo
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+
+int main(){
+    int64_t Isomo = ((1<<4)-1);
+    int64_t MS=0;
+    double *overlapMatrix;
+    double *orthoMatrix;
+    double *csftodetmatrix;
+    int rows=2;
+    int cols=6;
+    int NSOMOout=0;
+    int test_ortho_matrix = 0;
+    double norm = 0.0;
+
+    csftodetmatrix = malloc(rows*cols*sizeof(double));
+
+    convertCSFtoDetBasis(Isomo, MS, rows, cols, csftodetmatrix);
+
+    printRealMatrix(csftodetmatrix,rows,cols);
+    printf("test_ortho_matrix_NSOMO4=%d\n",test_ortho_matrix);
+
+    // Garbage collection
+    free(csftodetmatrix);
+
+    return(test_ortho_matrix);
+}
+
+
+
+#+end_src
+
+#+RESULTS: testcsftodet4somo
+#+begin_example
+
+      0.50      -0.50       0.00       0.00      -0.50       0.50
+      0.29       0.29      -0.58      -0.58       0.29       0.29
+test_ortho_matrix_NSOMO4=0
+#+end_example
+
+
+#+begin_src python :results output
+import numpy
+
+a = numpy.array([[2.0/numpy.sqrt(3.0), 1.0/numpy.sqrt(3.0)],[0.0,1.0]])
+b = numpy.array([
+      [0.50     ,-0.50     , 0.00  ,    0.00  ,   -0.50  ,    0.50 ],
+      [0.00     , 0.50     ,-0.50  ,   -0.50  ,    0.50  ,    0.00 ]
+])
+c = numpy.dot(a,b)
+print(a)
+print(c)
+print(numpy.dot(c,c.T))
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+[[1.15470054 0.57735027]
+ [0.         1.        ]]
+[[ 0.57735027 -0.28867513 -0.28867513 -0.28867513 -0.28867513  0.57735027]
+ [ 0.          0.5        -0.5        -0.5         0.5         0.        ]]
+[[1. 0.]
+ [0. 1.]]
+#+end_example
 
 * Testing generation of prototype matrices
 
@@ -1730,14 +1834,14 @@ int main(){
 
     callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
 
-    //printf("1Done MEij\n");
-    //printRealMatrix(MEij,rows,cols);
-    //printf("1Done MEij\n");
+    printf("1Done MEij\n");
+    printRealMatrix(MEij,rows,cols);
+    printf("1Done MEij\n");
 
 
     for(int i=0;i<6;i++){
         for(int j=0;j<20;j++){
-            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+            //munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
         }
     }
 
@@ -1755,6 +1859,15 @@ int main(){
 #+RESULTS: meijDOMOVMO_15
 #+begin_example
 2DOMO->VMO
+1Done MEij
+
+     -1.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00      -1.00
+1Done MEij
 #+end_example
 
 
