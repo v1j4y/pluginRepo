@@ -992,12 +992,13 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
             case 3:
                 // (SOMO -> VMO or DOMO -> SOMO)
                 printf("1SOMO->VMO and DOMO->SOMO\n");
-                int noccorbI = (Isomo & (1<<(orbI-1)));
+                int noccorbI = __builtin_popcount(Isomo & (1<<(orbI-1)));
 
+                printf("I=%d J=%d (%d %d) nocc=%d\n",Isomo,Jsomo,p,q,noccorbI);
                 switch (noccorbI){
                     case 0:
                         // Case: DOMO -> SOMO
-                        //printf("DOMO->SOMO, %d,%d\n",p,q);
+                        printf("DOMO->SOMO, %d,%d\n",p,q);
                         // Find the orbital ids in model space
                         // p is from Jsomo
                         // q is from Isomo
@@ -1006,7 +1007,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         psomo = __builtin_popcount(Jsomo & maskleft);
                         qsomo = __builtin_popcount(Isomo & maskright);
                         p = psomo;
-                        q = psomo;
+                        q = qsomo;
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
@@ -1033,7 +1034,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         psomo = __builtin_popcount(Isomo & maskleft);
                         qsomo = __builtin_popcount(Jsomo & maskright);
                         p = psomo;
-                        q = psomo;
+                        q = qsomo;
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
@@ -1062,8 +1063,8 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
     } // end orbI > orbJ
     else if(p < q){
         // CASE 2 orbI < orbJ
-        p = orbJ;
-        q = orbI;
+        p = orbI;
+        q = orbJ;
         // Find the corresponding sub case
         // 1. NdetI > NdetJ  (SOMO -> SOMO)
         // 2. NdetI < NdetJ  (DOMO -> VMO)
@@ -1154,16 +1155,16 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         psomo = __builtin_popcount(Jsomo & maskleft);
                         qsomo = __builtin_popcount(Isomo & maskright);
                         p = psomo;
-                        q = psomo;
+                        q = qsomo;
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
-                            //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
+                            printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
                             int phase=1;
                             // Apply remove and shft on Isomo
                             idet = applyRemoveShftAddDOMOSOMO(idet, p, q, &phase);
-                            //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
-                            //printf(" %d\n",phase);
+                            printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                            printf(" %d\n",phase);
                             for(int j=0;j<ndetJ;j++){
                                 int jdet = (detlistJ[j]);
                                 if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
@@ -1181,7 +1182,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         psomo = __builtin_popcount(Isomo & maskleft);
                         qsomo = __builtin_popcount(Jsomo & maskright);
                         p = psomo;
-                        q = psomo;
+                        q = qsomo;
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
