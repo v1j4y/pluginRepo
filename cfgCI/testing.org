@@ -36,6 +36,9 @@ rm tests
 Hello world (munit-testing)
 #+end_example
 
+
+* Testing CSF creation
+
 ** TODO[2/2] Testing BF overlap matrix
 
 - [X] 2x2 case
@@ -332,6 +335,7 @@ int main(){
 
 ** TODO[1/2] Testing gram-schmidt orthonormalization
 
+
 - [X] Test orthonormalization matrix for 4 SOMO case
 
   The orthonormalization matrix for 4 SOMO case is a 2x2 matrix and is very simple to derive.
@@ -503,3 +507,1530 @@ int main(){
 |                        0.0 |  0.0 |  0.0 | 0.89 |  0.45 |
 |                        0.0 |  0.0 |  0.0 |  0.0 |   1.0 |
 | test_ortho_matrix_NSOMO4=0 |      |      |      |       |
+
+
+* Testing generation of prototype matrices
+
+** TODO[1/4] SOMO -> SOMO type
+
+- [X] p = 6 q = 1
+
+  The SOMO -> SOMO excitations are of the following type:
+1 1 1 1 1 1
+0 1 1 1 1 2
+etc...
+
+#+name: mematrixSOMOSOMO16
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[20][6]=
+{
+    { 1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      1.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      1.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      1.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      1.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      1.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      1.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      1.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      1.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      1.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      1.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1 1 1 1 1 1
+    // |         |
+    // 0 1 1 1 1 2
+    // 6         1
+
+    orbp = 6;
+    orbq = 1;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<20;i++){
+        for(int j=0;j<5;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: mematrixSOMOSOMO16
+#+begin_example
+SOMO->SOMO
+#+end_example
+
+
+- [ ] p = 6 q = 2
+
+  The SOMO -> SOMO excitations are of the following type:
+1 1 1 1 1 1
+0 1 1 1 2 1
+etc...
+
+#+name: mematrixSOMOSOMO26
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[20][6]=
+{
+
+   {  1.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     1.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,   -1.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    1.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,  -1.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,   -1.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   { -1.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,    -1.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    1.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,   -1.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   1.00  ,    0.00},
+   {  0.00 ,     0.00  ,    0.00  ,    0.00   ,   0.00  ,    1.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1 1 1 1 1 1
+    // |         |
+    // 0 1 1 1 2 1
+    // 6       2
+
+    orbp = 6;
+    orbq = 2;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-3)-1;
+    Jsomo = Jsomo << 2;
+    Jsomo = Jsomo + 1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<20;i++){
+        for(int j=0;j<5;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: mematrixSOMOSOMO26
+#+begin_example
+SOMO->SOMO
+#+end_example
+
+- [ ] p = 5 q = 1
+
+#+name: mematrixSOMOSOMO15
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[20][6]=
+{
+   { -1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,     -1.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,     -1.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      1.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      1.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      1.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      1.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,      1.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,     -1.00,      0.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,     -1.00,      0.00},
+   {  0.00,      0.00,      0.00,      0.00,      0.00,     -1.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1 1 1 1 1 1
+    // |         |
+    // 1 0 1 1 1 2
+    //   2       6
+
+    orbp = 5;
+    orbq = 1;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    //Jsomo = Jsomo + (1<<NMO-2);
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+    //
+
+    for(int i=0;i<20;i++){
+        for(int j=0;j<5;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: mematrixSOMOSOMO15
+#+begin_example
+1SOMO->SOMO
+#+end_example
+
+- [ ] p = 4 q = 1
+
+#+name: mematrixSOMOSOMO14
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[20][6]=
+{
+    { 1.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 1.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,    -1.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,    -1.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,    -1.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,    -1.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,    -1.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,  -1.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,    -1.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,  -1.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    1.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00},
+    { 0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    1.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1 1 1 1 1 1
+    // |         |
+    // 1 0 1 1 1 2
+    //   2       6
+
+    orbp = 4;
+    orbq = 1;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<20;i++){
+        for(int j=0;j<5;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: mematrixSOMOSOMO14
+#+begin_example
+leading test 00111111
+leading test 00001111
+1SOMO->SOMO
+#+end_example
+
+- [ ] p = 1 q = 6
+
+#+name: mematrixSOMOSOMO61
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[20][6]=
+{
+
+    { 1.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     1.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     1.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    1.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     1.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     1.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 1.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     1.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     1.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    1.00 ,     0.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     1.00 ,     0.00},
+    { 0.00 ,     0.00 ,     0.00  ,    0.00 ,     0.00 ,     1.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1 1 1 1 1 1
+    // |         |
+    // 2 1 1 1 1 0
+    // 6         1
+
+    orbp = 1;
+    orbq = 6;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    Jsomo = Jsomo << 1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<20;i++){
+        for(int j=0;j<5;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: mematrixSOMOSOMO61
+#+begin_example
+leading test 00111111
+leading test 00011110
+2SOMO->SOMO
+#+end_example
+
+- [ ] p = 1 q = 4
+
+#+name: mematrixSOMOSOMO41
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[20][6]=
+{
+
+   {  1.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  1.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,    -1.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,    -1.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,    -1.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,    -1.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,    -1.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,  -1.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,    -1.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,  -1.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     1.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     0.00},
+   {  0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00 ,     1.00}
+
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1 1 1 1 1 1
+    // |         |
+    // 1 2 1 1 1 0
+    //   2       6
+
+    orbp = 1;
+    orbq = 4;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<20;i++){
+        for(int j=0;j<5;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: mematrixSOMOSOMO41
+#+begin_example
+2SOMO->SOMO
+#+end_example
+
+** TODO[0/2] DOMO -> VMO
+
+DOMO to VMO type for e.g.
+
+- [ ] p = 6 q = 1
+
+2 1 1 1 1 0
+1 1 1 1 1 1
+
+#+name: meijDOMOVMO61
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[6][20]=
+{
+
+      { 1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00},
+      { 0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00},
+      { 0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00},
+      { 0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00},
+      { 0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00},
+      { 0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00}
+
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 2 1 1 1 1 0
+    // |         |
+    // 1 1 1 1 1 1
+    // 6         1
+
+    orbp = 6;
+    orbq = 1;
+
+    Isomo = ((1 << NMO-2)-1) << 1;
+    Jsomo = (1 << NMO-0)-1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<6;i++){
+        for(int j=0;j<20;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: meijDOMOVMO61
+#+begin_example
+leading test 00011110
+leading test 00111111
+1DOMO->VMO
+#+end_example
+
+- [ ] p = 6 q = 2
+
+    2 1 1 1 0 1
+
+    1 1 1 1 1 1
+
+#+name: domovmo62
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[6][20]=
+{
+
+
+    { -1.00 ,     0.00 ,     0.00    ,  0.00 ,     0.00 ,     0.00  ,    0.00  ,    0.00  ,    0.00  ,    0.00 ,     0.00    ,  1.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00   ,   0.00   ,   0.00  ,    0.00  ,    0.00},
+    {  0.00 ,    -1.00 ,     0.00    ,  0.00 ,     0.00 ,     0.00  ,    0.00  ,    0.00  ,    0.00  ,    0.00 ,     0.00    ,  0.00  ,    0.00  ,    1.00 ,     0.00  ,    0.00   ,   0.00   ,   0.00  ,    0.00  ,    0.00},
+    {  0.00 ,     0.00 ,     0.00    ,  1.00 ,     0.00 ,     0.00  ,    0.00  ,    0.00  ,    0.00  ,    0.00 ,     0.00    ,  0.00  ,    0.00  ,    0.00 ,     0.00  ,   -1.00   ,   0.00   ,   0.00  ,    0.00  ,    0.00},
+    {  0.00 ,     0.00 ,     0.00    ,  0.00 ,    -1.00 ,     0.00  ,    0.00  ,    0.00  ,    0.00  ,    0.00 ,     0.00    ,  0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00   ,   1.00   ,   0.00  ,    0.00  ,    0.00},
+    {  0.00 ,     0.00 ,     0.00    ,  0.00 ,     0.00 ,     0.00  ,    1.00  ,    0.00  ,    0.00  ,    0.00 ,     0.00    ,  0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00   ,   0.00   ,   0.00  ,   -1.00  ,    0.00},
+    {  0.00 ,     0.00 ,     0.00    ,  0.00 ,     0.00 ,     0.00  ,    0.00  ,    0.00  ,    1.00  ,    0.00 ,     0.00    ,  0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00   ,   0.00   ,   0.00  ,    0.00  ,   -1.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing DOMO -> VMO
+    // 2 1 1 1 0 1
+    // |       |
+    // 1 1 1 1 1 1
+    // 6       2
+
+    orbp = 6;
+    orbq = 2;
+
+    Isomo = (1 << NMO-3)-1;
+    Isomo = Isomo << 2;
+    Isomo += 1;
+    Jsomo = (1 << NMO-0)-1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<6;i++){
+        for(int j=0;j<20;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+            //printf("%5.5f %5.5f \n",MEij[i*cols+j],MEijGood[i][j]);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: domovmo62
+#+begin_example
+leading test 00011101
+leading test 00111111
+1DOMO->VMO
+#+end_example
+
+
+- [ ] p = 5 q = 1
+
+1 2 1 1 1 0
+1 1 1 1 1 1
+
+#+name: meijDOMOVMO51
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[6][20]=
+{
+
+
+
+
+
+  {   1.00  ,    0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00 ,    -1.00   ,   0.00  ,    0.00   ,   0.00  ,    0.00  ,    0.00  ,    0.00   ,   0.00   ,   0.00    ,  0.00    ,  0.00    ,  0.00   ,   0.00  ,    0.00},
+  {   0.00  ,    1.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,   -1.00   ,   0.00  ,    0.00  ,    0.00  ,    0.00   ,   0.00   ,   0.00    ,  0.00    ,  0.00    ,  0.00   ,   0.00  ,    0.00},
+  {   0.00  ,    0.00  ,    1.00 ,     0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00   ,  -1.00  ,    0.00  ,    0.00  ,    0.00   ,   0.00   ,   0.00    ,  0.00    ,  0.00    ,  0.00   ,   0.00  ,    0.00},
+  {   0.00  ,    0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00   ,   0.00  ,   -1.00  ,    0.00  ,    0.00   ,   0.00   ,   0.00    ,  0.00    ,  0.00    ,  1.00   ,   0.00  ,    0.00},
+  {   0.00  ,    0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00   ,   0.00  ,    0.00  ,   -1.00  ,    0.00   ,   0.00   ,   0.00    ,  0.00    ,  0.00    ,  0.00   ,   1.00  ,    0.00},
+  {   0.00  ,    0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00 ,     0.00   ,   0.00  ,    0.00   ,   0.00  ,    0.00  ,    0.00  ,    0.00   ,  -1.00   ,   0.00    ,  0.00    ,  0.00    ,  0.00   ,   0.00  ,    1.00}
+
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1 2 1 1 1 0
+    // |         |
+    // 1 1 1 1 1 1
+    //   5       1
+
+    orbp = 5;
+    orbq = 1;
+
+    Isomo = ((1 << NMO-3)-1) << 1;
+    Isomo = Isomo | (1UL << (NMO-1));
+    Jsomo = (1 << NMO-0)-1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<6;i++){
+        for(int j=0;j<20;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+
+- [ ] p = 1 q = 6
+
+#+name: meijDOMOVMO_16
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[6][20]=
+{
+
+      { 1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00},
+      { 0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00},
+      { 0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00},
+      { 0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00},
+      { 0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00},
+      { 0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00}
+
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 0 1 1 1 1 2
+    // |         |
+    // 1 1 1 1 1 1
+    // 6         1
+
+    orbp = 1;
+    orbq = 6;
+
+    Isomo = ((1 << NMO-2)-1) << 1;
+    Jsomo = (1 << NMO-0)-1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<6;i++){
+        for(int j=0;j<20;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: meijDOMOVMO_16
+#+begin_example
+2DOMO->VMO
+#+end_example
+
+- [ ] p = 1 q = 5
+
+#+name: meijDOMOVMO_15
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[6][20]=
+{
+
+
+
+
+  {    1.00     , 0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00  ,   -1.00 ,     0.00  ,    0.00  ,    0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00 ,     0.00    ,  0.00   ,   0.00   ,   0.00  ,    0.00   ,   0.00},
+  {    0.00     , 1.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00  ,    0.00 ,     0.00  ,   -1.00  ,    0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00 ,     0.00    ,  0.00   ,   0.00   ,   0.00  ,    0.00   ,   0.00},
+  {    0.00     , 0.00  ,    1.00  ,    0.00 ,     0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00  ,   -1.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00 ,     0.00    ,  0.00   ,   0.00   ,   0.00  ,    0.00   ,   0.00},
+  {    0.00     , 0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00  ,    0.00  ,   -1.00 ,     0.00 ,     0.00 ,     0.00 ,     0.00    ,  0.00   ,   0.00   ,   1.00  ,    0.00   ,   0.00},
+  {    0.00     , 0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00  ,    0.00  ,    0.00 ,    -1.00 ,     0.00 ,     0.00 ,     0.00    ,  0.00   ,   0.00   ,   0.00  ,    1.00   ,   0.00},
+  {    0.00     , 0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00  ,    0.00 ,     0.00  ,    0.00  ,    0.00  ,    0.00 ,     0.00 ,     0.00 ,    -1.00 ,     0.00    ,  0.00   ,   0.00   ,   0.00  ,    0.00   ,   1.00}
+
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1 0 1 1 1 2
+    //   |       |
+    // 1 1 1 1 1 1
+    //   5       1
+
+    orbp = 1;
+    orbq = 5;
+
+    Isomo = ((1 << NMO-3)-1) << 1;
+    Isomo = Isomo + (1<<(NMO-1));
+    Jsomo = (1 << NMO-0)-1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<6;i++){
+        for(int j=0;j<20;j++){
+            munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: meijDOMOVMO_15
+#+begin_example
+2DOMO->VMO
+#+end_example
+
+
+** TODO[0/0] DOMO -> SOMO
+DEADLINE: <2021-02-03 mer.>
+
+DOMO to SOMO excitations for e.g.
+
+2 1 1 1 1 1
+
+1 1 1 1 1 2
+
+- [ ] p = 5 q = 1
+
+2 1 1 1 1
+
+1 1 1 1 2
+
+#+name: meijDOMOVMO16
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[6][6]=
+{
+
+
+      {0.00  ,    0.00 ,    -1.00 ,     0.00 ,     0.00  ,    0.00},
+      {0.00  ,    0.00 ,     0.00 ,     0.00 ,    -1.00  ,    0.00},
+      {0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00  ,    0.00},
+      {0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00  ,    0.00},
+      {0.00  ,   -1.00 ,     0.00 ,     0.00 ,     0.00  ,    0.00},
+      {0.00  ,    0.00 ,     0.00 ,    -1.00 ,     0.00  ,    0.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing DOMO -> SOMO
+    // 2 1 1 1 1
+    // |       |
+    // 1 1 1 1 2
+    // 5       1
+
+    orbp = 1;
+    orbq = 5;
+
+    Jsomo = ((1 << NMO-2)-1);
+    Isomo = ((1 << NMO-2)-1) << 1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+    //
+
+    //for(int i=0;i<6;i++){
+    //    for(int j=0;j<6;j++){
+    //        munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: meijDOMOVMO16
+#+begin_example
+leading test 00011110
+leading test 00111111
+2DOMO->VMO
+1Done MEij
+
+      1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00
+1Done MEij
+#+end_example
+
+
+- [ ] p = 4 q = 1
+
+1 2 1 1 1
+
+1 1 1 1 2
+
+#+name: meijDOMOSOMO14
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[6][6]=
+{
+
+
+      {0.00  ,    0.00 ,    -1.00 ,     0.00 ,     0.00  ,    0.00},
+      {0.00  ,    0.00 ,     0.00 ,     0.00 ,    -1.00  ,    0.00},
+      {0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00  ,    0.00},
+      {0.00  ,    0.00 ,     0.00 ,     0.00 ,     0.00  ,    0.00},
+      {0.00  ,   -1.00 ,     0.00 ,     0.00 ,     0.00  ,    0.00},
+      {0.00  ,    0.00 ,     0.00 ,    -1.00 ,     0.00  ,    0.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing DOMO -> SOMO
+    // 1 2 1 1 1
+    // |       |
+    // 1 1 1 1 2
+    //   4     1
+
+    orbp = 4;
+    orbq = 1;
+
+    Isomo = ((1 << NMO-2)-1);
+    Isomo = Isomo - (1<<(NMO-3)) + (1<<(NMO-2));
+    Jsomo = ((1 << NMO-2)-1) << 1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    printf("1Done MEij\n");
+    printRealMatrix(MEij,rows,cols);
+    printf("1Done MEij\n");
+
+
+    //for(int i=0;i<6;i++){
+    //    for(int j=0;j<6;j++){
+    //        munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: meijDOMOSOMO14
+#+begin_example
+leading test 00010111
+leading test 00011110
+SOMO->VMO and DOMO->SOMO
+DOMO->SOMO, 3,1
+leading test 00000011 -> 00000011 -1
+leading test 00000101 -> 00000101 -1
+leading test 00000110 -> 00001110 1
+leading test 00001001 -> 00001001 0
+leading test 00001010 -> 00000010 0
+leading test 00001100 -> 00000100 0
+1Done MEij
+
+      0.00      -1.00       0.00       0.00       0.00       0.00
+      0.00       0.00      -1.00       0.00       0.00       0.00
+      1.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+1Done MEij
+#+end_example
+
+
+#+begin_src C
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+
+
+printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY((1<<6-2)-1));
+
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+leading test 00001111
+#+end_example

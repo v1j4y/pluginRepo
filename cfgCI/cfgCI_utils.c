@@ -28,10 +28,10 @@ void printRealMatrix(double *orthoMatrix, int rows, int cols){
 #include <stdint.h>
 #include <math.h>
 
-inline double logbinom(double n, double k) {
+double logbinom(double n, double k) {
     return lgamma(n+1)-lgamma(n-k+1)-lgamma(k+1);
 }
-inline double binom(double n, double k) {
+double binom(double n, double k) {
     return exp(logbinom(n,k));
 }
 
@@ -321,6 +321,1004 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
 
 }
 
+void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, double *csftodetmatrix){
+
+    double *overlapMatrixI;
+    double *orthoMatrixI;
+    double *bftodetmatrixI;
+    double *csftodetmatrixI;
+    int NSOMO=0;
+
+    /***********************************
+                 Get Overlap
+    ************************************/
+    // Fill matrix
+    int rowsI = 0;
+    int colsI = 0;
+
+    getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+
+    /***********************************
+         Get Orthonormalization Matrix
+    ************************************/
+
+    orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
+
+    gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
+
+    /***********************************
+         Get BFtoDeterminant Matrix
+    ************************************/
+
+    int rowsbftodetI, colsbftodetI;
+
+    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
+
+    /***********************************
+         Get Final CSF to Det Matrix
+    ************************************/
+    // First transform matrix using BLAS
+    //double *bfIApqIJ = malloc(rowsbftodetI*colsbftodetI*sizeof(double));
+
+    int transA=false;
+    int transB=false;
+    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, csftodetmatrix, transA, transB);
+
+    // Garbage collection
+    if(rowsI + colsI > 0) free(overlapMatrixI);
+    if(rowsI + colsI > 0) free(orthoMatrixI);
+    if(rowsbftodetI + colsbftodetI > 0) free(bftodetmatrixI);
+}
+
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
+    // CSF: 1 2 1 1 1 1 1 1 1 1
+    // DET: 1   0 0 1 1 0 0 1 0
+    //        |         |
+    //        p         q
+    //
+    //          result
+    //
+    // CSF: 1 1 1 1 1 1 2 1 1 1
+    // DET: 1 0 0 0 1 1   0 1 0
+    // maskp:
+    //      0 1 1 1 1 1 1 1 1 1
+    // maskq:
+    //      0 0 0 0 0 0 0 1 1 1
+    int maskp  = (1UL << p)-1;
+    int maskq  = (1UL << q)-1;
+    int maskpxq = (maskp ^ maskq);
+    int maskpxqi = ~(maskp ^ maskq);
+
+    // Step 1: remove
+    // clear bits from p
+    int outdet = idet;
+    int occatp = idet & (1UL << (p-1));
+    //printf("occatp=%d\n",occatp);
+    outdet &= ~(1UL << (p-1));
+
+    // Step 2: shift
+    if(q > p){
+        // start with q
+        // shift middle electrons to left
+
+        //// This is because we dont need q but need p
+        //maskpxq = maskpxq >> 1;
+        //maskpxqi = ~(maskpxq);
+
+        // calculate the phase
+        int na, nb;
+        int tmpdet = outdet & (maskpxq);
+        na = __builtin_popcount(tmpdet);
+        nb = abs(p-q) - na;
+        //printf("\nna=%d nb=%d\n",na,nb);
+        int nfermions = occatp == 0 ? nb : na;
+        (*phase) = nfermions % 2 == 0 ? 1 : -1;
+
+        int tmpdetq1 = outdet & maskpxq;
+        int tmpdetq2 = outdet & maskpxqi;
+        tmpdetq1 = tmpdetq1 >> 1;
+        outdet = tmpdetq1 | tmpdetq2;
+    }
+    else{
+
+        // This is because we dont need p but need q
+        maskpxq = maskpxq >> 1;
+        maskpxqi = ~(maskpxq);
+
+        // calculate the phase
+        int na, nb;
+        int tmpdet = outdet & (maskpxq);
+        na = __builtin_popcount(tmpdet);
+        nb = abs(p-q) - na;
+        //printf("\nna=%d nb=%d\n",na,nb);
+        int nfermions = occatp == 0 ? nb : na;
+        (*phase) = nfermions % 2 == 0 ? 1 : -1;
+
+        // start with p
+        // shift middle electrons to right
+        int tmpdetp1 = outdet & maskpxq;
+        int tmpdetp2 = outdet & maskpxqi;
+        tmpdetp1 = tmpdetp1 << 1;
+        outdet = tmpdetp1 | tmpdetp2;
+    }
+
+    // Step 3: Add bit at q
+    if(occatp > 0) outdet |= (1UL << (q-1));
+
+    // Done
+    return(outdet);
+}
+int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
+    // CSF: 1 2 1 1 1 1 1 1 1 1
+    // DET: 1   0 0 1 1 0 0 1 0
+    //        |         |
+    //        p         q
+    //
+    //          result
+    //
+    // CSF: 1 1 1 1 1 1 2 1 1 1
+    // DET: 1 0 0 0 1 1   0 1 0
+    // maskp:
+    //      0 1 1 1 1 1 1 1 1 1
+    // maskq:
+    //      0 0 0 0 0 0 0 1 1 1
+    int maskp  = (1UL << p)-1;
+    int maskq  = (1UL << q)-1;
+    int maskpxq = (maskp ^ maskq);
+    int maskpxqi = ~(maskp ^ maskq);
+
+    // Step 1: remove
+    // clear bits from q
+    int outdet = idet;
+    int occatq = idet & (1UL << (q-1));
+    outdet &= ~(1UL << (q-1));
+
+    // Step 2: shift
+    if(q > p){
+        // start with q
+        // shift middle electrons to left
+
+        // This is because we dont need q but need p
+        maskpxq = maskpxq >> 1;
+        maskpxqi = ~(maskpxq);
+
+        // calculate the phase
+        int na, nb;
+        int tmpdet = outdet & (maskpxq);
+        na = __builtin_popcount(tmpdet);
+        nb = abs(p-q) - na;
+        //printf("\nna=%d nb=%d\n",na,nb);
+        // spin obb to that at q is moving
+        int nfermions = occatq == 0 ? na : nb;
+        (*phase) = nfermions % 2 == 0 ? 1 : -1;
+
+        int tmpdetq1 = outdet & maskpxq;
+        int tmpdetq2 = outdet & maskpxqi;
+        tmpdetq1 = tmpdetq1 << 1;
+        outdet = tmpdetq1 | tmpdetq2;
+    }
+    else{
+        // calculate the phase
+        int na, nb;
+        int tmpdet = outdet & (maskpxq);
+        na = __builtin_popcount(tmpdet);
+        nb = abs(p-q) - na;
+        //printf("\nna=%d nb=%d\n",na,nb);
+        // spin obb to that at q is moving
+        int nfermions = occatq == 0 ? na : nb;
+        (*phase) = nfermions % 2 == 0 ? 1 : -1;
+
+        // start with p
+        // shift middle electrons to right
+        int tmpdetp1 = outdet & maskpxq;
+        int tmpdetp2 = outdet & maskpxqi;
+        tmpdetp1 = tmpdetp1 >> 1;
+        outdet = tmpdetp1 | tmpdetp2;
+    }
+
+    // Step 3: Add bit at p
+    if(occatq > 0) outdet |= (1UL << (p-1));
+
+    // Done
+    return(outdet);
+}
+
+int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
+    // CSF: 1 1 1 1 1 1 1 1 1 1
+    // DET: 1 1 0 0 1 1 0 0 1 0
+    //        |         |
+    //        p         q
+    //
+    //          result
+    //
+    // CSF: 1   1 1 1 1   1 1 1
+    // DET: 1   0 0 1 1   0 1 0
+    // maskp:
+    //      0 1 1 1 1 1 1 1 1 1
+    // maskq:
+    //      0 0 0 0 0 0 0 1 1 1
+    int maskp  = (1UL << p)-1;
+    int maskq  = (1UL << q)-1;
+    int maskpi =~maskp;
+    int maskqi =~maskq;
+
+    // Step 1: remove
+    // clear bits from p and q
+    int outdet = idet;
+    outdet &= ~(1UL << (p-1));
+    outdet &= ~(1UL << (q-1));
+
+    // calculate the phase
+    int occatp = idet & (1UL << (p-1));
+    int na, nb;
+    int tmpdet = outdet & (maskp ^ maskq);
+    na = __builtin_popcount(tmpdet);
+    nb = abs(p-q)-1 - na;
+    //printf("\nna=%d nb=%d\n",na,nb);
+    int nfermions = occatp == 0 ? nb : na;
+    (*phase) = nfermions % 2 == 0 ? 1 : -1;
+
+    // Step 2: shift
+    if(q > p){
+        // start with q
+        // shift everything left of q
+        int tmpdetq1 = outdet & maskq;
+        int tmpdetq2 = outdet & maskqi;
+        tmpdetq2 = tmpdetq2 >> 1;
+        outdet = tmpdetq1 | tmpdetq2;
+
+        // shift everything left of p
+        int tmpdetp1 = outdet & maskp;
+        int tmpdetp2 = outdet & maskpi;
+        tmpdetp2 = tmpdetp2 >> 1;
+        outdet = tmpdetp1 | tmpdetp2;
+    }
+    else{
+        // start with p
+        // shift everything left of p
+        int tmpdetp1 = outdet & maskp;
+        int tmpdetp2 = outdet & maskpi;
+        tmpdetp2 = tmpdetp2 >> 1;
+        outdet = tmpdetp1 | tmpdetp2;
+
+        // shift everything left of q
+        int tmpdetq1 = outdet & maskq;
+        int tmpdetq2 = outdet & maskqi;
+        tmpdetq2 = tmpdetq2 >> 1;
+        outdet = tmpdetq1 | tmpdetq2;
+    }
+
+    // Done
+    return(outdet);
+}
+
+unsigned int shftbit(int num, int p){
+    unsigned int maskleft = ~(0 | ((1<<p)-1));
+    unsigned int maskright = ((1<<(p-1))-1);
+    int numleft = num & maskleft;
+    int numright = num & maskright;
+    numleft = numleft >> 1;
+    return(numleft | numright);
+};
+
+int getphase(int num, int p, int q, int nmo){
+    // CSF: 1 1 1 1 1 1 1 1 1 1
+    // DET: 1 1 0 0 1 1 0 0 1 0
+    //        |         |
+    //        p         q
+    //        |         |
+    // CSF: 1 1 1 1 1 1 1 1 1 1
+    // DET: 1 0 0 0 1 1 1 0 1 0
+    //
+    // maskleft:
+    //      1 1 1 1 1 1 1 0 0 0
+    // maskright:
+    //      0 1 1 1 1 1 1 1 1 1
+    int omax = p > q ? p : q;
+    int omin = p > q ? q : p;
+    unsigned int maskleft = ~(0 | ((1<<(omin-1))-1));
+    unsigned int maskright = ((1<<(omax))-1);
+    unsigned int maskmo = ((1<<nmo)-1);
+    int numleft = num & maskleft;
+    int numleftright = numleft & maskright;
+    int nalpha = __builtin_popcount(numleftright & maskmo);
+    int nbeta = omax-omin+1 - nalpha;
+    int maskatp = (1<<(p-1));
+    int nelecalphaatp = __builtin_popcount(num & maskatp);
+    int maskatq = (1<<(q-1));
+    int nelecalphaatq = __builtin_popcount(num & maskatq);
+    int nfermions = nelecalphaatp == 0 ? nbeta : nalpha;
+    int phase = (nfermions-1) % 2 == 0 ? 1 : -1;
+    if(nelecalphaatp == nelecalphaatq) phase = 0.0;
+    return(phase);
+};
+
+
+int getDOMOSOMOshift(int idet, int p, int q, int *phase){
+    /*
+      Idea:
+      DOMO->SOMO example
+
+      1 2 1 1 1
+        p     q
+      1 1 1 1 2
+
+      p = 3
+      q = 1
+
+      in determinant representation: (0->beta,1->alpha)
+      |I>   = 0 0 1 1
+               |____|
+               p    q
+
+      |ret> = 0 1 0 1
+      A shift of bit at q to pos after p.
+
+    */
+
+    int maskq = ~((1UL<<q)-1);
+    int maskp = (1UL<<p)-1;
+    int maskpq = ~(maskp & maskq);
+    int bits_to_shft = (idet & maskq) & maskp;
+    // shift bits by 1 index
+    int shifted_bits = bits_to_shft >> 1;
+    // Now combine with original det
+    int detout = (idet & maskpq);
+    // Zero out bits at q
+    detout &= ~(1UL << (q-1));
+    // Set the bit at p
+    detout |=  (1UL << (p-1));
+    // Add the shifted bits
+    detout |= shifted_bits;
+
+    // Now calcaulate the phase
+    // Find the type of bit at q
+    int occatq = idet & (1UL << (q-1));
+    // calculate number of alpha and beta spins
+    int na = __builtin_popcount(shifted_bits);
+    int nb = p - q - na;
+    printf("\noccq=%d | na=%d nb=%d\n",occatq,na,nb);
+    // Find the number of fermions to pass
+    int nfermions = occatq == 0 ? na : nb;
+    (*phase) = nfermions % 2 == 0 ? 1 : -1;
+    return(detout);
+}
+
+void calcMEdetpair(int *detlistI, int *detlistJ, int orbI, int orbJ, int Isomo, int Jsomo, int ndetI, int ndetJ, int NMO, double *matelemdetbasis){
+
+    // Calculation of phase
+    // The following convention is used
+    // <J|a^{\dagger}_q a_p | I>
+    //
+    // The phase is calculated
+    // assuming all alpha electrons
+    // are on the left and all beta
+    // electrons are on the RHS
+    // of the alphas.
+
+
+    int maskI;
+    int nelecatI;
+    unsigned int maskleft;
+    unsigned int maskright;
+    unsigned int psomo;
+    unsigned int qsomo;
+
+
+    // E(q,p) |I> = cqp |J>
+
+
+    int p,q; // The two orbitals p is always > q.
+    p = orbI >= orbJ ? orbI : orbJ;
+    q = orbI >= orbJ ? orbJ : orbI;
+
+    // Find the corresponding case
+    // 1. NdetI > NdetJ  (SOMO -> SOMO)
+    // 2. NdetI < NdetJ  (DOMO -> VMO)
+    // 3. NdetI == NdetJ (SOMO -> VMO and DOMO -> SOMO)
+
+    // Converting the above four cases into int:
+    int case_type = abs(ndetI - ndetJ) == 0 ? 3 : (ndetI > ndetJ ? 1 : 2);
+
+    switch (case_type){
+        case 1:
+            // SOMO -> SOMO
+            printf("SOMO->SOMO\n");
+            // Find the orbital ids in model space
+            maskleft  =  (0 | ((1<<(p))-1));
+            maskright =  (0 | ((1<<(q))-1));
+            //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskleft));
+            //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskright));
+            psomo = __builtin_popcount(Isomo & maskleft);
+            qsomo = q == 1 ? 1 : __builtin_popcount(Isomo & maskright);
+            p = psomo >= qsomo ? psomo : qsomo;
+            q = psomo >= qsomo ? qsomo : psomo;
+
+            //printf("I=%d J=%d (%d %d)\n",Isomo,Jsomo,p,q);
+
+            //printf("SOMO->SOMO\n");
+            //printf("\np=%d q=%d  (%d %d)\n",q,p,psomo,qsomo);
+            for(int i=0;i<ndetI;i++){
+                int idet = detlistI[i];
+                printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
+                int phase = getphase(idet,orbI,orbJ,NMO);
+                // Shift bits for
+                idet = shftbit(shftbit(detlistI[i],q),p-1);
+                printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                printf(" %d\n",phase);
+                for(int j=0;j<ndetJ;j++){
+                    int jdet = (detlistJ[j]);
+                    if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                }
+            }
+            break;
+        case 2:
+            // DOMO -> VMO
+            printf("DOMO->VMO\n");
+            // Find the orbital ids in model space
+            maskleft = (0 | ((1<<(p))-1));
+            maskright =(0 | ((1<<(q))-1));
+            psomo = __builtin_popcount(Jsomo & maskleft);
+            qsomo = q == 1 ? 1 : __builtin_popcount(Jsomo & maskright);
+            p = psomo >= qsomo ? psomo : qsomo;
+            q = psomo >= qsomo ? qsomo : psomo;
+
+            //printf("I=%d J=%d (%d %d)\n",Isomo,Jsomo,p,q);
+
+            for(int i=0;i<ndetI;i++){
+                // Get phase
+                int idet = detlistI[i];
+                for(int j=0;j<ndetJ;j++){
+                    int jdet = (detlistJ[j]);
+                    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));                // Calculate phase
+                    // Calculate phase
+                    int phase = 1*getphase(jdet,p,q,NMO);
+                    // Shift bits for I
+                    jdet = shftbit(shftbit(detlistJ[j],q),p-1);
+                    //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));
+                    //printf(" %d\n",phase);
+                    if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                }
+            }
+            break;
+        case 3:
+            // (SOMO -> VMO or DOMO -> SOMO)
+            // if Isomo[p] == 1 => SOMO -> VMO
+            // if Isomo[p] == 0 => DOMO -> SOMO
+            printf("SOMO->VMO and DOMO->SOMO\n");
+            // Find the orbital ids in model space
+            maskleft = ((1<<(p))-1);
+            maskright =((1<<(q))-1);
+            psomo = __builtin_popcount(Isomo & maskleft);
+            //qsomo = q == 1 ? 1 : __builtin_popcount(Isomo & maskright);
+            qsomo = __builtin_popcount(Isomo & maskright);
+            p = psomo >= qsomo ? psomo : qsomo;
+            q = psomo >= qsomo ? qsomo : psomo;
+
+
+            int noccorbI = (Isomo & (1<<(orbI-1)));
+            switch (noccorbI){
+                case 0:
+                    // Case: DOMO -> SOMO
+                    printf("DOMO->SOMO, %d,%d\n",p,q);
+                    break;
+                case 1:
+                    // Case: SOMO -> VMO
+                    printf("SOMO->VMO, %d,%d\n",p,q);
+                    break;
+                default:
+                    printf("Something is wrong in calcMEdetpair\n");
+                    break;
+            }
+
+            int tmpidet;
+
+            //printf("I=%d J=%d (>%d %d)\n",Isomo,Jsomo,p,q);
+            for(int i=0;i<ndetI;i++){
+                // Get phase
+                int idet = detlistI[i];
+                printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                int nelecalphaatp = (Isomo & (1<<(orbI-1)));
+                // Idea:
+                // if DOMO -> SOMO
+                //
+                // I =
+                //   2  1 1 1 1
+                // (10) 0 0 1 1
+                //
+                //     |
+                //    \ /
+                //     .
+                //  0 0 0 1 1
+                //
+                // J =
+                // 1 1 1 1  2
+                // 0 0 1 1 (10)
+                //
+                if(nelecalphaatp == 0){
+                    // Case: DOMO -> SOMO
+                    tmpidet = idet;
+                    int nelecalphaatq = (idet & (1<<(orbJ-1)));
+                    if(nelecalphaatq==0) tmpidet = tmpidet ^ (1<<(orbI-1));
+                    else                 tmpidet = tmpidet ^ (0);
+                    idet = shftbit(idet,q);
+                }
+                else{
+                    tmpidet = idet;
+                    idet = shftbit(idet,p);
+                }
+
+                // Calculate phase
+                int phase = 1*getphase(tmpidet,orbI,orbJ,NMO);
+                printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(tmpidet));
+                printf(" %d\n",phase);
+                for(int j=0;j<ndetJ;j++){
+                //printf("\tleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(detlistJ[j]));
+                    int jdet;
+                    if(nelecalphaatp == 0) jdet = shftbit(detlistJ[j],p);
+                    else                   jdet = shftbit(detlistJ[j],q);
+                //printf("\t -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));
+                //printf("\n");
+                //printf("(%d  %d) -> %d\n",i,j,phase);
+                    if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                }
+            }
+
+            break;
+        default:
+            printf("Something is wrong in calc ME\n");
+            break;
+    } // end select
+    //printRealMatrix(matelemdetbasis,ndetI,ndetJ);
+
+}
+
+void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int Isomo, int Jsomo, int ndetI, int ndetJ, int NMO, double *matelemdetbasis){
+
+    // Calculation of phase
+    // The following convention is used
+    // <J|a^{\dagger}_q a_p | I>
+    //
+    // The phase is calculated
+    // assuming all alpha electrons
+    // are on the left and all beta
+    // electrons are on the RHS
+    // of the alphas.
+
+    // There are three possibilities
+    // which need to be separated
+    // CASE 1. p > q
+    // CASE 2. p < q
+    // CASE 3. p == q
+
+    int maskI;
+    int nelecatI;
+    unsigned int maskleft;
+    unsigned int maskright;
+    unsigned int psomo;
+    unsigned int qsomo;
+
+    int p,q; // The two orbitals p is always > q.
+
+    if(orbI > orbJ){
+        // CASE 1 : orbI > orbJ
+        p = orbI;
+        q = orbJ;
+
+        // Find the corresponding sub case
+        // 1. NdetI > NdetJ  (SOMO -> SOMO)
+        // 2. NdetI < NdetJ  (DOMO -> VMO)
+        // 3. NdetI == NdetJ (SOMO -> VMO and DOMO -> SOMO)
+
+        // Converting the above four cases into int:
+        int case_type = abs(ndetI - ndetJ) == 0 ? 3 : (ndetI > ndetJ ? 1 : 2);
+        p = orbI;
+        q = orbJ;
+
+        switch (case_type){
+            case 1:
+                // SOMO -> SOMO
+                printf("1SOMO->SOMO\n");
+                // Find the orbital ids in model space
+                maskleft  =  (0 | ((1<<(p))-1));
+                maskright =  (0 | ((1<<(q))-1));
+                //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskleft));
+                //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskright));
+                psomo = __builtin_popcount(Isomo & maskleft);
+                qsomo = __builtin_popcount(Isomo & maskright); // q has to be atleast 1
+                p = psomo;
+                q = qsomo;
+
+                //printf("I=%d J=%d (%d %d)\n",Isomo,Jsomo,p,q);
+
+                //printf("SOMO->SOMO\n");
+                //printf("\np=%d q=%d  (%d %d)\n",q,p,psomo,qsomo);
+                for(int i=0;i<ndetI;i++){
+                    int idet = detlistI[i];
+                    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
+                    int phase=1;
+                    // Apply remove and shft on Isomo
+                    idet = applyRemoveShftSOMOSOMO(idet, p, q, &phase);
+                    //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                    //printf(" %d\n",phase);
+                    for(int j=0;j<ndetJ;j++){
+                        int jdet = (detlistJ[j]);
+                        if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                    }
+                }
+                break;
+            case 2:
+                // DOMO -> VMO
+                printf("1DOMO->VMO\n");
+                // Find the orbital ids in model space
+                // As seen in Jsomo
+                // Here we apply a^{\dagger}_p a_q |J>
+                maskleft = (0 | ((1<<(p))-1));
+                maskright =(0 | ((1<<(q))-1));
+                psomo = __builtin_popcount(Jsomo & maskleft);
+                qsomo = __builtin_popcount(Jsomo & maskright); // q has to be atleast 1
+                p = psomo;
+                q = qsomo;
+
+                //printf("I=%d J=%d (%d %d)\n",Isomo,Jsomo,p,q);
+
+                for(int i=0;i<ndetI;i++){
+                    // Get phase
+                    int idet = detlistI[i];
+                    for(int j=0;j<ndetJ;j++){
+                        int jdet = (detlistJ[j]);
+                        //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));                // Calculate phase
+                        // Calculate phase
+                        int phase=1;
+                        // Apply remove and shift on Jdet (orbital ids are inverted)
+                        jdet = applyRemoveShftSOMOSOMO(jdet, q, p, &phase);
+                        //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));
+                        //printf(" %d\n",phase);
+                        if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                    }
+                }
+                break;
+            case 3:
+                // (SOMO -> VMO or DOMO -> SOMO)
+                printf("1SOMO->VMO and DOMO->SOMO\n");
+                int noccorbI = (Isomo & (1<<(orbI-1)));
+
+                switch (noccorbI){
+                    case 0:
+                        // Case: DOMO -> SOMO
+                        //printf("DOMO->SOMO, %d,%d\n",p,q);
+                        // Find the orbital ids in model space
+                        // p is from Jsomo
+                        // q is from Isomo
+                        maskleft = ((1<<(p))-1);
+                        maskright =((1<<(q))-1);
+                        psomo = __builtin_popcount(Jsomo & maskleft);
+                        qsomo = __builtin_popcount(Isomo & maskright);
+                        p = psomo;
+                        q = psomo;
+
+                        for(int i=0;i<ndetI;i++){
+                            int idet = detlistI[i];
+                            //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
+                            int phase=1;
+                            // Apply remove and shft on Isomo
+                            idet = applyRemoveShftAddDOMOSOMO(idet, p, q, &phase);
+                            //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                            //printf(" %d\n",phase);
+                            for(int j=0;j<ndetJ;j++){
+                                int jdet = (detlistJ[j]);
+                                if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                            }
+                        }
+                        break;
+                    case 1:
+                        // Case: SOMO -> VMO
+                        printf("SOMO->VMO, %d,%d\n",p,q);
+                        // Find the orbital ids in model space
+                        // p is from Isomo
+                        // q is from Jsomo
+                        maskleft = ((1<<(p))-1);
+                        maskright =((1<<(q))-1);
+                        psomo = __builtin_popcount(Isomo & maskleft);
+                        qsomo = __builtin_popcount(Jsomo & maskright);
+                        p = psomo;
+                        q = psomo;
+
+                        for(int i=0;i<ndetI;i++){
+                            int idet = detlistI[i];
+                            //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
+                            int phase=1;
+                            // Apply remove and shft on Isomo
+                            idet = applyRemoveShftAddSOMOVMO(idet, p, q, &phase);
+                            //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                            //printf(" %d\n",phase);
+                            for(int j=0;j<ndetJ;j++){
+                                int jdet = (detlistJ[j]);
+                                if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                            }
+                        }
+                        break;
+                    default:
+                        printf("Something is wrong in calcMEdetpair\n");
+                        break;
+                }
+                break;
+            default:
+                printf("Something is wrong in calc ME\n");
+                break;
+        } // end select
+
+    } // end orbI > orbJ
+    else if(p < q){
+        // CASE 2 orbI < orbJ
+        p = orbJ;
+        q = orbI;
+        // Find the corresponding sub case
+        // 1. NdetI > NdetJ  (SOMO -> SOMO)
+        // 2. NdetI < NdetJ  (DOMO -> VMO)
+        // 3. NdetI == NdetJ (SOMO -> VMO and DOMO -> SOMO)
+
+        // Converting the above four cases into int:
+        int case_type = abs(ndetI - ndetJ) == 0 ? 3 : (ndetI > ndetJ ? 1 : 2);
+
+        switch (case_type){
+            case 1:
+                // SOMO -> SOMO
+                printf("2SOMO->SOMO\n");
+                // Find the orbital ids in model space
+                maskleft  =  (0 | ((1<<(p))-1));
+                maskright =  (0 | ((1<<(q))-1));
+                //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskleft));
+                //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskright));
+                psomo = __builtin_popcount(Isomo & maskleft);
+                qsomo = __builtin_popcount(Isomo & maskright); // q has to be atleast 1
+                p = psomo;
+                q = qsomo;
+
+                //printf("I=%d J=%d  (%d %d) (%d %d)\n",Isomo,Jsomo,p,q,orbI,orbJ);
+
+                //printf("SOMO->SOMO\n");
+                //printf("\np=%d q=%d  (%d %d)\n",q,p,psomo,qsomo);
+                for(int i=0;i<ndetI;i++){
+                    int idet = detlistI[i];
+                    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
+                    int phase=1;
+                    // Apply remove and shft on Isomo
+                    idet = applyRemoveShftSOMOSOMO(idet, p, q, &phase);
+                    //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                    //printf(" %d\n",phase);
+                    for(int j=0;j<ndetJ;j++){
+                        int jdet = (detlistJ[j]);
+                        if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                    }
+                }
+                break;
+            case 2:
+                // DOMO -> VMO
+                printf("2DOMO->VMO\n");
+                // Find the orbital ids in model space
+                // As seen in Jsomo
+                // Here we apply a^{\dagger}_p a_q |J>
+                maskleft = (0 | ((1<<(p))-1));
+                maskright =(0 | ((1<<(q))-1));
+                psomo = __builtin_popcount(Jsomo & maskleft);
+                qsomo = __builtin_popcount(Jsomo & maskright); // q has to be atleast 1
+                p = psomo;
+                q = qsomo;
+
+                //printf("I=%d J=%d (%d %d)\n",Isomo,Jsomo,p,q);
+
+                for(int i=0;i<ndetI;i++){
+                    // Get phase
+                    int idet = detlistI[i];
+                    for(int j=0;j<ndetJ;j++){
+                        int jdet = (detlistJ[j]);
+                        //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));                // Calculate phase
+                        // Calculate phase
+                        int phase=1;
+                        // Apply remove and shift on Jdet (orbital ids are inverted)
+                        jdet = applyRemoveShftSOMOSOMO(jdet, q, p, &phase);
+                        //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));
+                        //printf(" %d\n",phase);
+                        if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                    }
+                }
+                break;
+            case 3:
+                // (SOMO -> VMO or DOMO -> SOMO)
+                // if Isomo[p] == 1 => SOMO -> VMO
+                // if Isomo[p] == 0 => DOMO -> SOMO
+                printf("2SOMO->VMO and DOMO->SOMO\n");
+                int noccorbI = (Isomo & (1<<(orbI-1)));
+
+                switch (noccorbI){
+                    case 0:
+                        // Case: DOMO -> SOMO
+                        printf("DOMO->SOMO, %d,%d\n",p,q);
+                        // Find the orbital ids in model space
+                        // p is from Jsomo
+                        // q is from Isomo
+                        maskleft = ((1<<(p))-1);
+                        maskright =((1<<(q))-1);
+                        psomo = __builtin_popcount(Jsomo & maskleft);
+                        qsomo = __builtin_popcount(Isomo & maskright);
+                        p = psomo;
+                        q = psomo;
+
+                        for(int i=0;i<ndetI;i++){
+                            int idet = detlistI[i];
+                            //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
+                            int phase=1;
+                            // Apply remove and shft on Isomo
+                            idet = applyRemoveShftAddDOMOSOMO(idet, p, q, &phase);
+                            //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                            //printf(" %d\n",phase);
+                            for(int j=0;j<ndetJ;j++){
+                                int jdet = (detlistJ[j]);
+                                if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                            }
+                        }
+                        break;
+                    case 1:
+                        // Case: SOMO -> VMO
+                        printf("SOMO->VMO, %d,%d\n",p,q);
+                        // Find the orbital ids in model space
+                        // p is from Isomo
+                        // q is from Jsomo
+                        maskleft = ((1<<(p))-1);
+                        maskright =((1<<(q))-1);
+                        psomo = __builtin_popcount(Isomo & maskleft);
+                        qsomo = __builtin_popcount(Jsomo & maskright);
+                        p = psomo;
+                        q = psomo;
+
+                        for(int i=0;i<ndetI;i++){
+                            int idet = detlistI[i];
+                            //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
+                            int phase=1;
+                            // Apply remove and shft on Isomo
+                            idet = applyRemoveShftAddSOMOVMO(idet, p, q, &phase);
+                            //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                            //printf(" %d\n",phase);
+                            for(int j=0;j<ndetJ;j++){
+                                int jdet = (detlistJ[j]);
+                                if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
+                            }
+                        }
+                        break;
+                    default:
+                        printf("Something is wrong in calcMEdetpair\n");
+                        break;
+                }
+                break;
+            default:
+                printf("Something is wrong in calc ME\n");
+                break;
+        } // end select
+    } // end orbI  < orbJ
+    else{
+        // CASE 3 : orbI == orbJ
+
+        // Three possibilities
+        // orbI = VMO
+        // orbI = SOMO
+        // orbI = DOMO
+        int noccorbI = (Isomo & (1<<(orbI-1)));
+        switch (noccorbI){
+            case 0:
+                // Matrix is 0
+                for(int i=0;i<ndetI;i++){
+                    int idet = detlistI[i];
+                    for(int j=0;j<ndetJ;j++){
+                        int jdet = (detlistJ[j]);
+                        if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 0.0;
+                    }
+                }
+                break;
+            case 1:
+                // Matrix is Identity
+                for(int i=0;i<ndetI;i++){
+                    int idet = detlistI[i];
+                    for(int j=0;j<ndetJ;j++){
+                        int jdet = (detlistJ[j]);
+                        if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0;
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+    } // end orbI == orbJ
+
+    return;
+}
+
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, double **ApqIJptr, int *rowsA, int *colsA){
+    // Get dets for I
+    int ndetI;
+    int ndetJ;
+
+    // Get detlist
+    int NSOMOI=0;
+    int NSOMOJ=0;
+    getSetBits(Isomo, &NSOMOI);
+    getSetBits(Jsomo, &NSOMOJ);
+
+    Tree dettreeI = (Tree){  .rootNode = NULL, .NBF = -1 };
+    dettreeI.rootNode = malloc(sizeof(Node));
+    (*dettreeI.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    genDetBasis(&dettreeI, Isomo, MS, &ndetI);
+
+
+    Tree dettreeJ = (Tree){  .rootNode = NULL, .NBF = -1 };
+    dettreeJ.rootNode = malloc(sizeof(Node));
+    (*dettreeJ.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    genDetBasis(&dettreeJ, Jsomo, MS, &ndetJ);
+    //printf("In callcalcME Isomo=%d Jsomo=%d ndetI=%d ndetJ=%d\n",Isomo,Jsomo,ndetI,ndetJ);
+
+    int detlistI[ndetI];
+    int detlistJ[ndetJ];
+
+    // Get detlist
+    getDetlistDriver(&dettreeI, NSOMOI, detlistI);
+    getDetlistDriver(&dettreeJ, NSOMOJ, detlistJ);
+    // printdets I
+    //printf("Idets\n");
+    //for(int i=0;i<ndetI;i++){
+    //    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(detlistI[i]));
+    //    printf("\n");
+    //}
+    //// printdets J
+    //printf("Jdets\n");
+    //for(int i=0;i<ndetJ;i++){
+    //    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(detlistJ[i]));
+    //    printf("\n");
+    //}
+
+    (*ApqIJptr) = malloc(ndetI*ndetJ*sizeof(double));
+    (*rowsA) = ndetI;
+    (*colsA) = ndetJ;
+    //printf("ndetI=%d ndetJ=%d\n",ndetI,ndetJ);
+
+    double *matelemdetbasis = (*ApqIJptr);
+
+    for(int i=0;i<ndetI;i++)
+        for(int j=0;j<ndetJ;j++)
+            matelemdetbasis[i*ndetJ + j]=0.0;
+
+    // Calculate matrix elements in det basis
+    //calcMEdetpair(detlistI, detlistJ, orbI, orbJ, Isomo, Jsomo, ndetI, ndetJ, NMO, matelemdetbasis);
+    calcMEdetpairGeneral(detlistI, detlistJ, orbI, orbJ, Isomo, Jsomo, ndetI, ndetJ, NMO, matelemdetbasis);
+
+    //printRealMatrix(matelemdetbasis, ndetI, ndetJ);
+
+    // Garbage collection
+}
+
 void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowvec){
     int npairs = 1 << ((NSOMO - MS)/2);
     int idxp = 0;
@@ -587,325 +1585,7 @@ void convertBFtoDetBasisWithArrayDims(int64_t Isomo, int MS, int rowsmax, int co
 
 }
 
-void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, double *csftodetmatrix){
 
-    double *overlapMatrixI;
-    double *orthoMatrixI;
-    double *bftodetmatrixI;
-    double *csftodetmatrixI;
-    int NSOMO=0;
-
-    /***********************************
-                 Get Overlap
-    ************************************/
-    // Fill matrix
-    int rowsI = 0;
-    int colsI = 0;
-
-    getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
-
-    /***********************************
-         Get Orthonormalization Matrix
-    ************************************/
-
-    orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
-
-    gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
-
-    /***********************************
-         Get BFtoDeterminant Matrix
-    ************************************/
-
-    int rowsbftodetI, colsbftodetI;
-
-    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
-
-    /***********************************
-         Get Final CSF to Det Matrix
-    ************************************/
-    // First transform matrix using BLAS
-    //double *bfIApqIJ = malloc(rowsbftodetI*colsbftodetI*sizeof(double));
-
-    int transA=false;
-    int transB=false;
-    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, csftodetmatrix, transA, transB);
-
-    // Garbage collection
-    if(rowsI + colsI > 0) free(overlapMatrixI);
-    if(rowsI + colsI > 0) free(orthoMatrixI);
-    if(rowsbftodetI + rowsbftodetJ > 0) free(bftodetmatrixI);
-}
-
-unsigned int shftbit(int num, int p){
-    unsigned int maskleft = ~(0 | ((1<<p)-1));
-    unsigned int maskright = ((1<<(p-1))-1);
-    int numleft = num & maskleft;
-    int numright = num & maskright;
-    numleft = numleft >> 1;
-    return(numleft | numright);
-};
-
-int getphase(int num, int p, int q, int nmo){
-    // CSF: 1 1 1 1 1 1 1 1 1 1
-    // DET: 1 1 0 0 1 1 0 0 1 0
-    //        |         |
-    //        p         q
-    //        |         |
-    // CSF: 1 1 1 1 1 1 1 1 1 1
-    // DET: 1 0 0 0 1 1 1 0 1 0
-    unsigned int maskleft = ~(0 | ((1<<q)-1));
-    unsigned int maskright = ((1<<(p-1))-1);
-    unsigned int maskmo = ((1<<nmo)-1);
-    int numleft = num & maskleft;
-    int numleftright = numleft & maskright;
-    int nalpha = __builtin_popcount(numleftright & maskmo);
-    int nbeta = p-q-1 - nalpha;
-    //printf("na=%d nb=%d ( %d, %d)\n",nalpha,nbeta,p,q);
-    int maskatp = (1<<(p-1));
-    int nelecalphaatp = __builtin_popcount(num & maskatp);
-    int maskatq = (1<<(q-1));
-    int nelecalphaatq = __builtin_popcount(num & maskatq);
-    //printf("nelecalphaatp=%d\n",nelecalphaatp);
-    int nfermions = nelecalphaatp == 0 ? nbeta : nalpha;
-    int phase = nfermions % 2 == 0 ? 1 : -1;
-    if(nelecalphaatp == nelecalphaatq) phase *= -1;
-    return(phase);
-};
-
-void calcMEdetpair(int *detlistI, int *detlistJ, int orbI, int orbJ, int Isomo, int Jsomo, int ndetI, int ndetJ, int NMO, double *matelemdetbasis){
-
-
-    int maskI;
-    int nelecatI;
-    unsigned int maskleft;
-    unsigned int maskright;
-    unsigned int psomo;
-    unsigned int qsomo;
-
-    // E(p,q) |I> = cpq |J>
-
-
-    int p,q; // The two orbitals p is always > q.
-    p = orbI >= orbJ ? orbI : orbJ;
-    q = orbI >= orbJ ? orbJ : orbI;
-
-    // Find the corresponding case
-    // 1. NdetI > NdetJ  (SOMO -> SOMO)
-    // 2. NdetI < NdetJ  (DOMO -> VMO)
-    // 3. NdetI == NdetJ (SOMO -> VMO and DOMO -> SOMO)
-
-    // Converting the above four cases into int:
-    int case_type = abs(ndetI - ndetJ) == 0 ? 3 : (ndetI > ndetJ ? 1 : 2);
-
-    switch (case_type){
-        case 1:
-            // SOMO -> SOMO
-            printf("SOMO->SOMO\n");
-            // Find the orbital ids in model space
-            maskleft = (0 | ((1<<(p))-1));
-            maskright =(0 | ((1<<(q-1))-1));
-            psomo = __builtin_popcount(Isomo & maskleft);
-            qsomo = q == 1 ? 1 : __builtin_popcount(Isomo & maskright);
-            p = psomo >= qsomo ? psomo : qsomo;
-            q = psomo >= qsomo ? qsomo : psomo;
-
-            //printf("I=%d J=%d (%d %d)\n",Isomo,Jsomo,p,q);
-
-            //printf("SOMO->SOMO\n");
-            //printf("\np=%d q=%d  (%d %d)\n",q,p,psomo,qsomo);
-            for(int i=0;i<ndetI;i++){
-                int idet = detlistI[i];
-                //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
-                int phase = getphase(idet,p,q,NMO);
-                // Shift bits for
-                idet = shftbit(shftbit(detlistI[i],q),p-1);
-                //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
-                //printf(" %d\n",phase);
-                for(int j=0;j<ndetJ;j++){
-                    int jdet = (detlistJ[j]);
-                    if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
-                }
-            }
-            break;
-        case 2:
-            // DOMO -> VMO
-            printf("DOMO->VMO\n");
-            // Find the orbital ids in model space
-            maskleft = (0 | ((1<<(p))-1));
-            maskright =(0 | ((1<<(q-1))-1));
-            psomo = __builtin_popcount(Jsomo & maskleft);
-            qsomo = q == 1 ? 1 : __builtin_popcount(Jsomo & maskright);
-            p = psomo >= qsomo ? psomo : qsomo;
-            q = psomo >= qsomo ? qsomo : psomo;
-
-            //printf("I=%d J=%d (%d %d)\n",Isomo,Jsomo,p,q);
-
-            for(int i=0;i<ndetI;i++){
-                // Get phase
-                int idet = detlistI[i];
-                for(int j=0;j<ndetJ;j++){
-                    int jdet = (detlistJ[j]);
-                    // Calculate phase
-                    // Note -1 phase difference wrt to SOMO->SOMO
-                    int phase = 1*getphase(jdet,p,q,NMO);
-                    // Shift bits for I
-                    jdet = shftbit(shftbit(detlistJ[j],q),p-1);
-                    if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
-                }
-            }
-            break;
-        case 3:
-            // (SOMO -> VMO or DOMO -> SOMO)
-            printf("SOMO->VMO and DOMO->SOMO\n");
-            // Find the orbital ids in model space
-            maskleft = (0 | ((1<<(p))-1));
-            maskright =(0 | ((1<<(q-1))-1));
-            psomo = __builtin_popcount(Isomo & maskleft);
-            qsomo = q == 1 ? 1 : __builtin_popcount(Isomo & maskright);
-            p = psomo >= qsomo ? psomo : qsomo;
-            q = psomo >= qsomo ? qsomo : psomo;
-
-            //printf("I=%d J=%d (>%d %d)\n",Isomo,Jsomo,p,q);
-            for(int i=0;i<ndetI;i++){
-                // Get phase
-                int idet = detlistI[i];
-                //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
-                // Calculate phase
-                int phase = 1*getphase(idet,p,q,NMO);
-                // Shift bits for I
-                idet = shftbit(detlistI[i],p);
-                //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
-                //printf("\n");
-                for(int j=0;j<ndetJ;j++){
-                //printf("\tleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(detlistJ[j]));
-                    int jdet = shftbit(detlistJ[j],q);
-                //printf("\t -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));
-                //printf("\n");
-                //printf("(%d  %d) -> %d\n",i,j,phase);
-                    if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
-                }
-            }
-
-            //maskI = (1 << (orbI-1));
-            //nelecatI = __builtin_popcount(Isomo & maskI);
-            ////printf("maskI=%d nelecatI=%d \n",maskI,Isomo);
-
-            //switch(nelecatI){
-            //    case 1:
-            //        // SOMO -> VMO
-            //        printf("SOMO->VMO\n");
-            //        // Find the orbital ids in model space
-            //        maskleft = (0 | ((1<<(p))-1));
-            //        maskright =(0 | ((1<<(q-1))-1));
-            //        psomo = __builtin_popcount(Isomo & maskleft);
-            //        qsomo = q == 1 ? 1 : __builtin_popcount(Isomo & maskright);
-            //        p = psomo >= qsomo ? psomo : qsomo;
-            //        q = psomo >= qsomo ? qsomo : psomo;
-
-            //        //printf("I=%d J=%d (>%d %d)\n",Isomo,Jsomo,p,q);
-            //        for(int i=0;i<ndetI;i++){
-            //            // Get phase
-            //            int idet = detlistI[i];
-            //            //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
-            //            // Calculate phase
-            //            int phase = 1*getphase(idet,p,q,NMO);
-            //            // Shift bits for I
-            //            idet = shftbit(detlistI[i],p);
-            //            //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
-            //            //printf("\n");
-            //            for(int j=0;j<ndetJ;j++){
-            //            //printf("\tleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(detlistJ[j]));
-            //                int jdet = shftbit(detlistJ[j],q);
-            //            //printf("\t -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));
-            //            //printf("\n");
-            //            //printf("(%d  %d) -> %d\n",i,j,phase);
-            //                if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
-            //            }
-            //        }
-            //        break;
-            //    case 0:
-            //        // DOMO -> SOMO
-            //        printf("DOMO->SOMO\n");
-            //        // Find the orbital ids in model space
-            //        maskleft = (0 | ((1<<(p))-1));
-            //        maskright =(0 | ((1<<(q-1))-1));
-            //        psomo = __builtin_popcount(Isomo & maskleft);
-            //        qsomo = q == 1 ? 1 : __builtin_popcount(Isomo & maskright);
-            //        p = psomo >= qsomo ? psomo : qsomo;
-            //        q = psomo >= qsomo ? qsomo : psomo;
-
-            //        printf("I=%d J=%d (%d %d)\n",Isomo,Jsomo,p,q);
-            //        break;
-            //    default:
-            //        printf("Something went wrong in calcME\n");
-            //        break;
-            //}
-
-            break;
-        default:
-            printf("Something is wrong in calc ME\n");
-            break;
-    } // end select
-    //printRealMatrix(matelemdetbasis,ndetI,ndetJ);
-
-}
-
-void callcalcMEij(int Isomo, int Jsomo, int orbI, int orbJ, int MS, int NMO, double **ApqIJptr, int *rowsA, int *colsA){
-    // Get dets for I
-    int ndetI;
-    int ndetJ;
-
-    // Get detlist
-    int NSOMOI=0;
-    int NSOMOJ=0;
-    getSetBits(Isomo, &NSOMOI);
-    getSetBits(Jsomo, &NSOMOJ);
-
-    Tree dettreeI = (Tree){  .rootNode = NULL, .NBF = -1 };
-    dettreeI.rootNode = malloc(sizeof(Node));
-    (*dettreeI.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
-
-    genDetBasis(&dettreeI, Isomo, MS, &ndetI);
-
-
-    Tree dettreeJ = (Tree){  .rootNode = NULL, .NBF = -1 };
-    dettreeJ.rootNode = malloc(sizeof(Node));
-    (*dettreeJ.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
-
-    genDetBasis(&dettreeJ, Jsomo, MS, &ndetJ);
-    //printf("In callcalcME Isomo=%d Jsomo=%d ndetI=%d ndetJ=%d\n",Isomo,Jsomo,ndetI,ndetJ);
-
-    int detlistI[ndetI];
-    int detlistJ[ndetJ];
-
-    // Get detlist
-    getDetlistDriver(&dettreeI, NSOMOI, detlistI);
-    getDetlistDriver(&dettreeJ, NSOMOJ, detlistJ);
-    // printdets I
-    //printf("Idets\n");
-    //for(int i=0;i<ndetI;i++){
-    //    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(detlistI[i]));
-    //    printf("\n");
-    //}
-
-    (*ApqIJptr) = malloc(ndetI*ndetJ*sizeof(double));
-    (*rowsA) = ndetI;
-    (*colsA) = ndetJ;
-    //printf("ndetI=%d ndetJ=%d\n",ndetI,ndetJ);
-
-    double *matelemdetbasis = (*ApqIJptr);
-
-    for(int i=0;i<ndetI;i++)
-        for(int j=0;j<ndetJ;j++)
-            matelemdetbasis[i*ndetJ + j]=0.0;
-
-    // Garbage collection
-    calcMEdetpair(detlistI, detlistJ, orbI, orbJ, Isomo, Jsomo, ndetI, ndetJ, NMO, matelemdetbasis);
-
-    //printRealMatrix(matelemdetbasis, ndetI, ndetJ);
-
-    // Garbage collection
-}
 
 void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int32_t *rowsout, int32_t *colsout){
     int NSOMOI=0;
