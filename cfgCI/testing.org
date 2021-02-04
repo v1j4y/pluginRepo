@@ -513,9 +513,9 @@ int main(){
 
 * Testing conversion of DET to CSF
 
-** TODO[0/1] Test CSF to Det matrix
+** TODO[1/2] Test CSF to Det matrix
 
-- [ ] small 2 by 6 : 4 SOMOs
+- [X] small 2 by 6 : 4 SOMOs
 
 #+name: testcsftodet4somo
 #+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
@@ -572,7 +572,7 @@ int main(){
     // Garbage collection
     free(csftodetmatrix);
 
-    return(test_ortho_matrix);
+    RETURN(test_ortho_matrix);
 }
 
 
@@ -582,10 +582,151 @@ int main(){
 #+RESULTS: testcsftodet4somo
 #+begin_example
 
-      0.50      -0.50       0.00       0.00      -0.50       0.50
-      0.29       0.29      -0.58      -0.58       0.29       0.29
+      0.58      -0.29      -0.29      -0.29      -0.29       0.58
+      0.00       0.50      -0.50      -0.50       0.50       0.00
 test_ortho_matrix_NSOMO4=0
 #+end_example
+
+#+begin_src python :results output
+
+import numpy
+
+a = numpy.array([[1,0],[numpy.sqrt(1/3),numpy.sqrt(4/3)]])
+b = numpy.array([[0.5,-0.5,0,0,-0.5,0.5],[0,0.5,-0.5,-0.5,0.5,0]])
+d = numpy.array([[1.0,-0.5],[-0.5,1.0]])
+print(a)
+print(b[0])
+print(b[1])
+print(b[0]*numpy.sqrt(4./3.) + b[1]*numpy.sqrt(1./3.))
+c = numpy.dot(a,b)
+print(c)
+print(numpy.dot(c,b.T))
+print(numpy.dot(c,b.T))
+print(numpy.dot(a,d))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+[[1.         0.        ]
+ [0.57735027 1.15470054]]
+[ 0.5 -0.5  0.   0.  -0.5  0.5]
+[ 0.   0.5 -0.5 -0.5  0.5  0. ]
+[ 0.57735027 -0.28867513 -0.28867513 -0.28867513 -0.28867513  0.57735027]
+[[ 0.5        -0.5         0.          0.         -0.5         0.5       ]
+ [ 0.28867513  0.28867513 -0.57735027 -0.57735027  0.28867513  0.28867513]]
+[[ 1.        -0.5      ]
+ [ 0.         0.8660254]]
+[[ 1.        -0.5      ]
+ [ 0.         0.8660254]]
+[[ 1.        -0.5      ]
+ [ 0.         0.8660254]]
+#+end_example
+
+- [ ] small 5 by 20 : 6 SOMOs
+
+#+name: testcsftodet6somo
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+
+int main(){
+    int64_t Isomo = ((1<<6)-1);
+    int64_t MS=0;
+    double *overlapMatrix;
+    double *orthoMatrix;
+    double *csftodetmatrix;
+    int rows=5;
+    int cols=20;
+    int NSOMOout=0;
+    int test_ortho_matrix = 0;
+    double norm = 0.0;
+
+    csftodetmatrix = malloc(rows*cols*sizeof(double));
+
+    convertCSFtoDetBasis(Isomo, MS, rows, cols, csftodetmatrix);
+
+    printRealMatrix(csftodetmatrix,rows,cols);
+    printf("test_ortho_matrix_NSOMO4=%d\n",test_ortho_matrix);
+
+    // Garbage collection
+    free(csftodetmatrix);
+
+    return(test_ortho_matrix);
+}
+
+
+
+#+end_src
+
+#+RESULTS: testcsftodet6somo
+#+begin_example
+
+overlap matrix
+
+      1.00      -0.50       0.25       0.25      -0.50
+     -0.50       1.00      -0.50      -0.50       0.25
+      0.25      -0.50       1.00       0.25      -0.50
+      0.25      -0.50       0.25       1.00      -0.50
+     -0.50       0.25      -0.50      -0.50       1.00
+
+overlap matrix
+
+overlap matrix
+
+      0.75       0.34      -0.27      -0.24       0.69
+      0.00       0.91       0.45       0.39      -0.54
+      0.00       0.00       1.00      -0.29       0.79
+      0.00       0.00       0.00       1.15       0.58
+      0.00       0.00       0.00       0.00       1.00
+
+overlap matrix
+
+csf to det matrix
+
+      0.35      -0.35       0.00       0.00       0.00      -0.35       0.00       0.35       0.00       0.00       0.00       0.00      -0.35       0.00       0.35       0.00       0.00       0.00       0.35      -0.35
+      0.00       0.35      -0.35       0.00      -0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -0.35       0.35       0.00       0.35      -0.35       0.00
+      0.00       0.00       0.35      -0.35       0.00      -0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00      -0.35       0.35       0.00       0.35      -0.35       0.00       0.00
+      0.00       0.00       0.00       0.00       0.35      -0.35       0.00       0.00      -0.35       0.35      -0.35       0.35       0.00       0.00       0.35      -0.35       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.35      -0.35      -0.35       0.35       0.00       0.00      -0.35       0.35       0.35      -0.35       0.00       0.00       0.00       0.00       0.00
+
+csf to det matrix
+
+      0.27      -0.15      -0.22       0.10      -0.20       0.28      -0.34       0.02       0.33      -0.08       0.08      -0.33      -0.02       0.34      -0.28       0.20      -0.10       0.22       0.15      -0.27
+      0.00       0.32      -0.16      -0.16      -0.18      -0.17       0.35       0.19      -0.33       0.14      -0.14       0.33      -0.19      -0.35       0.17       0.18       0.16       0.16      -0.32       0.00
+      0.00       0.00       0.35      -0.35      -0.10       0.03       0.07      -0.28       0.38      -0.10       0.10      -0.38       0.28      -0.07      -0.03       0.10       0.35      -0.35       0.00       0.00
+      0.00       0.00       0.00       0.00       0.41      -0.20      -0.20      -0.20      -0.20       0.41      -0.41       0.20       0.20       0.20       0.20      -0.41       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.35      -0.35      -0.35       0.35       0.00       0.00      -0.35       0.35       0.35      -0.35       0.00       0.00       0.00       0.00       0.00
+test_ortho_matrix_NSOMO4=0
+#+end_example
+
 
 
 #+begin_src python :results output

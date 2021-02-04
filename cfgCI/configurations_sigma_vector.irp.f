@@ -85,6 +85,7 @@
       ! can be more efficient
       tempBuffer = DetToCSFTransformationMatrix(s,:,:)
 
+       print *,"calling dgemm 3"
        call dgemm('N','N', NBFMax, 1, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_config(countcsf), size(psi_coef_config,1))
       !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
 
