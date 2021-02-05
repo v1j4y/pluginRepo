@@ -2576,7 +2576,7 @@ int main(){
     cols = 0;
     int64_t Isomo, Jsomo, MS, NMO;
     MS = 0;
-    NMO = 6;
+    NMO = 8;
     int orbp, orbq;
 
     // Testing SOMO -> SOMO
@@ -2595,9 +2595,7 @@ int main(){
     printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
     printf("\n");
 
-    getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int32_t *rowsout, int32_t *colsout){
-
-    getApqIJMatrixDims(Isomo, Jsomo, MS, NMO,  &rows, &cols);
+    getApqIJMatrixDims(Isomo, Jsomo, MS, &rows, &cols);
     printf("rows=%d,cols=%d\n",rows,cols);
 
     //printf("1Done MEij\n");
@@ -2623,6 +2621,14 @@ int main(){
 #+end_src
 
 #+RESULTS: proijDOMOVMO61
+#+begin_example
+leading test 01111110
+leading test 11111111
+Isomo=126 Jsomo=255
+NsomoI=6 NsomoJ=8
+	 >> 5 14
+rows=5,cols=14
+#+end_example
 
 * Testing generation of prototype matrices
 

@@ -44,7 +44,7 @@
   integer(bit_kind) :: alphas_Icfg(N_INT,2,200)
   integer(bit_kind) :: connectedI_alpha(N_INT,2,200)
   integer(bit_kind) :: psi_configuration_out(N_INT,2,400)
-  real*8            :: psi_coef_out(400)
+  real*8            :: psi_coef_out(N_configuration)
   integer           :: excitationIds(2,200)
   integer           :: excitationTypes(200)
   integer  :: Nalphas_Icfg, nconnectedI, rowsikpq, colsikpq
@@ -62,6 +62,7 @@
 
   do i = 1,N_configuration
      print *, "i=",i,"coef=",psi_coef_config(i)
+     psi_coef_out(i)=0.d0
   enddo
 
   ! Loop over all selected configurations
@@ -101,11 +102,11 @@
            !print *,"----------------Icfg------- Isingle=",j
            !call debug_spindet(connectedI_alpha(1,1,j),N_int)
            !call debug_spindet(connectedI_alpha(1,2,j),N_int)
-           print *,"----------------",NSOMOalpha,NSOMOI,"ex=",extype,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
+           !print *,"----------------",NSOMOalpha,NSOMOI,"ex=",extype,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
         end do
 
-        print *,"total columnTKI=",totcolsTKI
-        print *,"total rowsTKI=",rowsTKI
+        !print *,"total columnTKI=",totcolsTKI
+        !print *,"total rowsTKI=",rowsTKI
         ! allocate memory for table
         ! for 1 root
         ! for n roots dims = (rowsTKI,nroots,totcolsTKI)
@@ -127,7 +128,7 @@
            p = excitationIds(1,j)
            q = excitationIds(2,j)
            extype = excitationTypes(j)
-           print *,j,"calling to modelspaace pq=",p,q
+           !print *,j,"calling to modelspaace pq=",p,q
            call convertOrbIdsToModelSpaceIds(alphas_Icfg(:,:,k), connectedI_alpha(:,:,j), p, q, extype, pmodel, qmodel)
            !print *,"det a"
            !call debug_spindet(alphas_Icfg(:,1,k),1)
@@ -137,7 +138,7 @@
            !call debug_spindet(connectedI_alpha(:,2,j),1)
            rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
            colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
-           print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha
+           !print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha
            do l = 1,rowsTKI
               do m = 1,colsikpq
                  TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * psi_coef_config(j)
@@ -155,6 +156,8 @@
            enddo
            totcolsTKI += colsikpq
         end do
+
+
         print *,"TKI matrix"
         call printMatrix(TKI,rowsTKI,totcolsTKI)
         print *,"GIJpqrs matrix"
@@ -166,6 +169,9 @@
           TKI, size(TKI,1), GIJpqrs, size(GIJpqrs,1), 0.d0, &
           TKIGIJ , size(TKIGIJ,1) )
 
+        print *,"TKIGIJ matrix"
+        call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
+
         ! Collect the result
         do j = 1,nconnectedI
            NSOMOalpha = getNSOMO(alphas_Icfg(:,:,k))
@@ -176,9 +182,9 @@
            call convertOrbIdsToModelSpaceIds(alphas_Icfg(:,:,k), connectedI_alpha(:,:,j), p, q, extype, pmodel, qmodel)
            rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
            colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
-           do l = 1,rowsTKI
-              do m = 1,colsikpq
-                 psi_coef_out(totcolsTKI + m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * TKIGIJ(l,j)
+           do m = 1,colsikpq
+              do l = 1,rowsTKI
+                 psi_coef_out(totcolsTKI + m) += AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * TKIGIJ(l,j)
               enddo
            enddo
            totcolsTKI += colsikpq
@@ -192,5 +198,9 @@
 
      end do
   end do
+
+  do i = 1,N_configuration
+     print *, "i=",i,"coef=",psi_coef_config(i),psi_coef_out(i)
+  enddo
 
   end
