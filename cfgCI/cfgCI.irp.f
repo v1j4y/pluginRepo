@@ -111,6 +111,10 @@
         allocate(GIJpqrs(totcolsTKI,nconnectedI))  ! gpqrs
         allocate(TKIGIJ(rowsTKI,nconnectedI))  ! gpqrs
 
+        TKI = 0.d0
+        GIJpqrs = 0.d0
+        TKIGIJ = 0.d0
+
 
         totcolsTKI = 0
         do j = 1,nconnectedI
@@ -132,17 +136,17 @@
            print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha
            do l = 1,rowsTKI
               do m = 1,colsikpq
-                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * psi_coef_config(j)
+                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m)! * psi_coef_config(j)
               enddo
            enddo
-           do l = 1,colsikpq
-              do m = 1,nconnectedI
+           do m = 1,colsikpq
+              do l = 1,nconnectedI
                  ! <ij|kl> = (ik|jl)
                  moi = excitationIds(1,j)
                  mok = excitationIds(2,j)
-                 moj = excitationIds(1,m)
-                 mol = excitationIds(2,m)
-                 GIJpqrs(totcolsTKI+l,j) = mo_two_e_integral(moi,moj,mok,mol)
+                 moj = excitationIds(1,l)
+                 mol = excitationIds(2,l)
+                 GIJpqrs(totcolsTKI+m,l) = mo_two_e_integral(moi,moj,mok,mol)
               enddo
            enddo
            totcolsTKI += colsikpq
