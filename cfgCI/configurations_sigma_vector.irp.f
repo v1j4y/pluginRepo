@@ -72,8 +72,8 @@
     Isomo = IBSET(0_8, i) - 1_8
     ! rows = Ncsfs
     ! cols = Ndets
-    bfIcfg = max(1,int((binom(i,(i+1)/2)-binom(i,((i+1)/2)+1))))
-    ndetI = max(1,int((binom(i,(i+1)/2))))
+    bfIcfg = max(1,nint((binom(i,(i+1)/2)-binom(i,((i+1)/2)+1))))
+    ndetI = max(1,nint((binom(i,(i+1)/2))))
 
     allocate(tempBuffer(bfIcfg,ndetI))
     call getCSFtoDETTransformationMatrix(Isomo, MS, NBFMax, maxDetDimPerBF, tempBuffer)
@@ -106,7 +106,7 @@
         if (psi_configuration(k,1,i) == 0_bit_kind) cycle
         s = s + popcnt(psi_configuration(k,1,i))
       enddo
-      bfIcfg = max(1,int((binom(s,(s+1)/2)-binom(s,((s+1)/2)+1))))
+      bfIcfg = max(1,nint((binom(s,(s+1)/2)-binom(s,((s+1)/2)+1))))
 
       ! perhaps blocking with CFGs of same seniority
       ! can be more efficient
