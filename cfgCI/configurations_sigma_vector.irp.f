@@ -46,7 +46,7 @@
   enddo
   END_PROVIDER
 
-  BEGIN_PROVIDER [ real*8, DetToCSFTransformationMatrix, (NSOMOMax,NBFMax,maxDetDimPerBF)]
+  BEGIN_PROVIDER [ real*8, DetToCSFTransformationMatrix, (0:NSOMOMax,NBFMax,maxDetDimPerBF)]
  &BEGIN_PROVIDER [ real*8, psi_coef_config, (dimBasisCSF)]
   use cfunctions
   implicit none
@@ -65,6 +65,7 @@
   print *,"Maxbfdim=",NBFMax
   print *,"Maxdetdim=",maxDetDimPerBF
   print *,"dimBasisCSF=",dimBasisCSF
+  DetToCSFTransformationMatrix(0,:,:) = 1.0
   do i = 2-iand(elec_alpha_num-elec_beta_num,1), NSOMOMax,2
     Isomo = IBSET(0_8, i) - 1_8
     ! rows = Ncsfs
@@ -109,7 +110,7 @@
 
   END_PROVIDER
 
-  BEGIN_PROVIDER [ integer, AIJpqMatrixDimsList, (NSOMOMax+1,NSOMOMax+1,4,NSOMOMax,NSOMOMax,2)]
+  BEGIN_PROVIDER [ integer, AIJpqMatrixDimsList, (0:NSOMOMax,0:NSOMOMax,4,NSOMOMax,NSOMOMax,2)]
  &BEGIN_PROVIDER [ integer, rowsmax]
  &BEGIN_PROVIDER [ integer, colsmax]
   use cfunctions
@@ -127,26 +128,29 @@
   rows = -1
   cols = -1
   integer*8 MS
-  MS = 0
+  MS = elec_alpha_num-elec_beta_num
+  integer nsomomin
+  nsomomin = elec_alpha_num-elec_beta_num
   rowsmax = 0
   colsmax = 0
   print *,"NSOMOMax = ",NSOMOMax
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
   ! Type
   ! 1. SOMO -> SOMO
-  do i = 0, NSOMOMax, 2
+  print *,"Doing SOMO->SOMO"
+  do i = 2-iand(nsomomin,1), NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i-2,i-2, 2
         Jsomo = ISHFT(1_8,j)-1
-        if(j .GT. NSOMOMax .OR. j .LE. 0) then
+        if(j .GT. NSOMOMax .OR. j .LT. 0) then
            cycle
         end if
         do k = 1,i
            do l = 1,i
               ! Define Jsomo
               if(k.NE.l)then
-              Jsomo = IBCLR(Isomo, k-1)
-              Jsomo = IBCLR(Jsomo, l-1)
+                 Jsomo = IBCLR(Isomo, k-1)
+                 Jsomo = IBCLR(Jsomo, l-1)
               else
                  Isomo = ISHFT(1_8,i)-1
                  Jsomo = ISHFT(1_8,j)-1
@@ -165,31 +169,25 @@
                  colsmax = cols
               end if
               ! i -> j
-              AIJpqMatrixDimsList(i+1,j+1,1,k,l,1) = rows
-              AIJpqMatrixDimsList(i+1,j+1,1,k,l,2) = cols
-              AIJpqMatrixDimsList(i+1,j+1,1,l,k,1) = rows
-              AIJpqMatrixDimsList(i+1,j+1,1,l,k,2) = cols
-              ! j -> i
-              AIJpqMatrixDimsList(j+1,i+1,1,k,l,1) = rows
-              AIJpqMatrixDimsList(j+1,i+1,1,k,l,2) = cols
-              AIJpqMatrixDimsList(j+1,i+1,1,l,k,1) = rows
-              AIJpqMatrixDimsList(j+1,i+1,1,l,k,2) = cols
+              AIJpqMatrixDimsList(i,j,1,k,l,1) = rows
+              AIJpqMatrixDimsList(i,j,1,k,l,2) = cols
            end do
         end do
      end do
   end do
   ! Type
   ! 2. DOMO -> VMO
-  do i = 0, NSOMOMax, 2
+  print *,"Doing DOMO->VMO"
+  do i = 0+iand(nsomomin,1), NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
-     tmpsomo = ISHFT(1_8,i)-1
+     tmpsomo = ISHFT(1_8,i+2)-1
      do j = i+2,i+2, 2
         Jsomo = ISHFT(1_8,j)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
-        do k = 1,i
-           do l = 1,i
+        do k = 1,j
+           do l = 1,j
               if(k .NE. l) then
               Isomo = IBCLR(tmpsomo,k-1)
               Isomo = IBCLR(Isomo,l-1)
@@ -214,22 +212,16 @@
                  colsmax = cols
               end if
               ! i -> j
-              AIJpqMatrixDimsList(i+1,j+1,2,k,l,1) = rows
-              AIJpqMatrixDimsList(i+1,j+1,2,k,l,2) = cols
-              AIJpqMatrixDimsList(i+1,j+1,2,l,k,1) = rows
-              AIJpqMatrixDimsList(i+1,j+1,2,l,k,2) = cols
-              ! j -> i
-              AIJpqMatrixDimsList(j+1,i+1,2,k,l,1) = rows
-              AIJpqMatrixDimsList(j+1,i+1,2,k,l,2) = cols
-              AIJpqMatrixDimsList(j+1,i+1,2,l,k,1) = rows
-              AIJpqMatrixDimsList(j+1,i+1,2,l,k,2) = cols
+              AIJpqMatrixDimsList(i,j,2,k,l,1) = rows
+              AIJpqMatrixDimsList(i,j,2,k,l,2) = cols
            end do
         end do
      end do
   end do
   ! Type
   ! 3. DOMO -> SOMO
-  do i = 0, NSOMOMax, 2
+  print *,"Doing DOMO->SOMO"
+  do i = 2-iand(nsomomin,1), NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
         Jsomo = ISHFT(1_8,j)-1
@@ -260,22 +252,16 @@
                  colsmax = cols
               end if
               ! i -> j
-              AIJpqMatrixDimsList(i+1,j+1,3,k,l,1) = rows
-              AIJpqMatrixDimsList(i+1,j+1,3,k,l,2) = cols
-              AIJpqMatrixDimsList(i+1,j+1,3,l,k,1) = rows
-              AIJpqMatrixDimsList(i+1,j+1,3,l,k,2) = cols
-              ! j -> i
-              AIJpqMatrixDimsList(j+1,i+1,3,k,l,1) = rows
-              AIJpqMatrixDimsList(j+1,i+1,3,k,l,2) = cols
-              AIJpqMatrixDimsList(j+1,i+1,3,l,k,1) = rows
-              AIJpqMatrixDimsList(j+1,i+1,3,l,k,2) = cols
+              AIJpqMatrixDimsList(i,j,3,k,l,1) = rows
+              AIJpqMatrixDimsList(i,j,3,k,l,2) = cols
            end do
         end do
      end do
   end do
   ! Type
   ! 4. SOMO -> VMO
-  do i = 0, NSOMOMax, 2
+  print *,"Doing SOMO->VMO"
+  do i = 2-iand(nsomomin,1), NSOMOMax, 2
      do j = i,i, 2
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
@@ -304,15 +290,8 @@
                  colsmax = cols
               end if
               ! i -> j
-              AIJpqMatrixDimsList(i+1,j+1,4,k,l,1) = rows
-              AIJpqMatrixDimsList(i+1,j+1,4,k,l,2) = cols
-              AIJpqMatrixDimsList(i+1,j+1,4,l,k,1) = rows
-              AIJpqMatrixDimsList(i+1,j+1,4,l,k,2) = cols
-              ! j -> i
-              AIJpqMatrixDimsList(j+1,i+1,4,k,l,1) = rows
-              AIJpqMatrixDimsList(j+1,i+1,4,k,l,2) = cols
-              AIJpqMatrixDimsList(j+1,i+1,4,l,k,1) = rows
-              AIJpqMatrixDimsList(j+1,i+1,4,l,k,2) = cols
+              AIJpqMatrixDimsList(i,j,4,k,l,1) = rows
+              AIJpqMatrixDimsList(i,j,4,k,l,2) = cols
            end do
         end do
      end do
@@ -320,7 +299,7 @@
   print *,"Rowsmax=",rowsmax," Colsmax=",colsmax
   END_PROVIDER
 
-  BEGIN_PROVIDER [ real*8, AIJpqContainer, (NSOMOMax,NSOMOMax,4,NSOMOMax+4,NSOMOMax+4,NBFMax,NBFMax)]
+  BEGIN_PROVIDER [ real*8, AIJpqContainer, (0:NSOMOMax,0:NSOMOMax,4,NSOMOMax,NSOMOMax,NBFMax,NBFMax)]
   use cfunctions
   implicit none
   BEGIN_DOC
@@ -417,14 +396,14 @@
   ! Type
   ! 2. DOMO -> VMO
   print *,"Doing DOMO -> VMO"
-  do i = 2, NSOMOMax, 2
+  do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
-     tmpsomo = ISHFT(1_8,i)-1
+     tmpsomo = ISHFT(1_8,i+2)-1
      do j = i+2,i+2, 2
         if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
         Jsomo = ISHFT(1_8,j)-1
-        do k = 1,i
-           do l = 1,i
+        do k = 1,j
+           do l = 1,j
               if(k .NE. l) then
                  Isomo = IBCLR(tmpsomo,k-1)
                  Isomo = IBCLR(Isomo,l-1)

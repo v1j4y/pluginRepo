@@ -70,11 +70,15 @@
      print *,i,"Nalphas = ",Nalphas_Icfg
      ! Here we do 2x the loop. One to count for the size of the matrix, then we compute.
      do k = 1,Nalphas_Icfg
+        print *,"Kalpha=",k
+        call debug_spindet(alphas_Icfg(1,1,k),N_int)
+        call debug_spindet(alphas_Icfg(1,2,k),N_int)
         ! Now generate all singly excited with respect to a given alpha CFG
         call obtain_connected_I_foralpha(i,alphas_Icfg(:,:,k),connectedI_alpha,nconnectedI,excitationIds,excitationTypes)
 
         print *,k,"----> nconnected = ",nconnectedI
         totcolsTKI = 0
+        rowsTKI = 0
         do j = 1,nconnectedI
            NSOMOalpha = getNSOMO(alphas_Icfg(:,:,k))
            NSOMOI = getNSOMO(connectedI_alpha(:,:,j))
@@ -82,8 +86,8 @@
            q = excitationIds(2,j)
            extype = excitationTypes(j)
            call convertOrbIdsToModelSpaceIds(alphas_Icfg(:,:,k), connectedI_alpha(:,:,j), p, q, extype, pmodel, qmodel)
-           rowsikpq = AIJpqMatrixDimsList(NSOMOalpha+1,NSOMOI+1,extype,pmodel,qmodel,1)
-           colsikpq = AIJpqMatrixDimsList(NSOMOalpha+1,NSOMOI+1,extype,pmodel,qmodel,2)
+           rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
+           colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
            totcolsTKI += colsikpq
            if(rowsTKI .LT. rowsikpq) rowsTKI = rowsikpq
            !print *,"----------------alpha------"
@@ -93,10 +97,11 @@
            !print *,"----------------Icfg------- Isingle=",j
            !call debug_spindet(connectedI_alpha(1,1,j),N_int)
            !call debug_spindet(connectedI_alpha(1,2,j),N_int)
-           print *,"----------------",NSOMOalpha,NSOMOI,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
+           print *,"----------------",NSOMOalpha,NSOMOI,"ex=",extype,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
         end do
 
-        print *,"total columns=",totcolsTKI
+        print *,"total columnTKI=",totcolsTKI
+        print *,"total rowsTKI=",rowsTKI
         ! allocate memory for table
         ! for 1 root
         ! for n roots dims = (rowsTKI,nroots,totcolsTKI)
@@ -114,12 +119,20 @@
            p = excitationIds(1,j)
            q = excitationIds(2,j)
            extype = excitationTypes(j)
+           print *,j,"calling to modelspaace pq=",p,q
            call convertOrbIdsToModelSpaceIds(alphas_Icfg(:,:,k), connectedI_alpha(:,:,j), p, q, extype, pmodel, qmodel)
-           rowsikpq = AIJpqMatrixDimsList(NSOMOalpha+1,NSOMOI+1,extype,pmodel,qmodel,1)
-           colsikpq = AIJpqMatrixDimsList(NSOMOalpha+1,NSOMOI+1,extype,pmodel,qmodel,2)
+           !print *,"det a"
+           !call debug_spindet(alphas_Icfg(:,1,k),1)
+           !call debug_spindet(alphas_Icfg(:,2,k),1)
+           !print *,"det I"
+           !call debug_spindet(connectedI_alpha(:,1,j),1)
+           !call debug_spindet(connectedI_alpha(:,2,j),1)
+           rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
+           colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
+           print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha
            do l = 1,rowsTKI
               do m = 1,colsikpq
-                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha+1,NSOMOI+1,extype,pmodel,qmodel,l,m) * psi_coef_config(j)
+                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * psi_coef_config(j)
               enddo
            enddo
            do l = 1,colsikpq
@@ -134,10 +147,13 @@
            enddo
            totcolsTKI += colsikpq
         end do
+        print *,"TKI matrix"
+        call printMatrix(TKI,rowsTKI,totcolsTKI)
+        print *,"GIJpqrs matrix"
+        call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
 
         ! Do big BLAS
         ! TODO TKI, size(TKI,1)*size(TKI,2)
-        print *,"calling blas 2"
         call dgemm('N','N', rowsTKI, nconnectedI, totcolsTKI, 1.d0,  &
           TKI, size(TKI,1), GIJpqrs, size(GIJpqrs,1), 0.d0, &
           TKIGIJ , size(TKIGIJ,1) )
@@ -150,16 +166,21 @@
            q = excitationIds(2,j)
            extype = excitationTypes(j)
            call convertOrbIdsToModelSpaceIds(alphas_Icfg(:,:,k), connectedI_alpha(:,:,j), p, q, extype, pmodel, qmodel)
-           rowsikpq = AIJpqMatrixDimsList(NSOMOalpha+1,NSOMOI+1,extype,pmodel,qmodel,1)
-           colsikpq = AIJpqMatrixDimsList(NSOMOalpha+1,NSOMOI+1,extype,pmodel,qmodel,2)
+           rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
+           colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
            do l = 1,rowsTKI
               do m = 1,colsikpq
-                 psi_coef_out(totcolsTKI + m) = AIJpqContainer(NSOMOalpha+1,NSOMOI+1,extype,pmodel,qmodel,l,m) * TKIGIJ(l,j)
+                 psi_coef_out(totcolsTKI + m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * TKIGIJ(l,j)
               enddo
            enddo
            totcolsTKI += colsikpq
         enddo
 
+        deallocate(TKI) ! coefficients of CSF
+        ! Initialize the inegral container
+        ! dims : (totcolsTKI, nconnectedI)
+        deallocate(GIJpqrs)  ! gpqrs
+        deallocate(TKIGIJ)  ! gpqrs
 
      end do
   end do
