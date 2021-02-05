@@ -754,9 +754,136 @@ print(numpy.dot(c,c.T))
  [0. 1.]]
 #+end_example
 
-* Testing generation of prototype matrices
 
-** TODO[1/4] SOMO -> SOMO type
+* Testing generation of MEij matrices
+
+** TODO[1/7] SOMO -> SOMO type
+
+- [ ] Edge case 2 and 0 Somos
+
+#+name: mematrixSOMOSOMO12
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[20][6]=
+{
+    { 1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      1.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      1.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      1.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      1.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      1.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      1.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      1.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      1.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      1.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      1.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 2;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 2;
+    orbq = 1;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    printf("1Done MEij\n");
+    printRealMatrix(MEij,rows,cols);
+    printf("1Done MEij\n");
+
+
+    //for(int i=0;i<20;i++){
+    //    for(int j=0;j<5;j++){
+    //        munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: mematrixSOMOSOMO12
+#+begin_example
+leading test 00000011
+leading test 00000000
+Idets=2
+leading test 00000001
+leading test 00000010
+Jdets 1
+leading test 00000000
+1SOMO->SOMO
+1Done MEij
+
+      1.00
+      1.00
+1Done MEij
+#+end_example
 
 - [X] p = 6 q = 1
 
@@ -2385,4 +2512,697 @@ printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY((1<<6-2)-1));
 #+RESULTS:
 #+begin_example
 leading test 00001111
+#+end_example
+
+
+* Testing generation of dimensions
+
+** TODO[/] DOMO -> VMO type
+
+- [ ] p = 6 q = 1
+
+2 1 1 1 1 0
+1 1 1 1 1 1
+
+#+name: proijDOMOVMO61
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[6][20]=
+{
+
+      { 1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00},
+      { 0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00},
+      { 0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00},
+      { 0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00},
+      { 0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00},
+      { 0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       0.00,       1.00}
+
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 2 1 1 1 1 0
+    // |         |
+    // 1 1 1 1 1 1
+    // 6         1
+
+    orbp = 6;
+    orbq = 1;
+
+    Isomo = ((1 << NMO-2)-1) << 1;
+    Jsomo = (1 << NMO-0)-1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int32_t *rowsout, int32_t *colsout){
+
+    getApqIJMatrixDims(Isomo, Jsomo, MS, NMO,  &rows, &cols);
+    printf("rows=%d,cols=%d\n",rows,cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(MEij,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    //for(int i=0;i<6;i++){
+    //    for(int j=0;j<20;j++){
+    //        munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    //free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: proijDOMOVMO61
+
+* Testing generation of prototype matrices
+
+** TODO[0/4] SOMO -> SOMO type
+
+- [ ] Small case with 2 somos and 0 somos
+
+#+name: promatrixSOMOSOMO12
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double ApqIJGood[1][1]=
+{
+    { 1.4142135623730950488016887242096980785696718753769480731766797379 }
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *CSFICSFJApqIJ;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 2;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 2;
+    orbq = 1;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
+
+    //printf("1Done MEij\n");
+    //printRealMatrix(CSFICSFJApqIJ,rows,cols);
+    //printf("1Done MEij\n");
+
+
+    for(int i=0;i<rows;i++){
+        for(int j=0;j<cols;j++){
+            munit_assert_double_equal(CSFICSFJApqIJ[i*cols + j],ApqIJGood[i][j],6);
+        }
+    }
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(CSFICSFJApqIJ);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: promatrixSOMOSOMO12
+#+begin_example
+
+BF to det I
+
+      0.50       0.50       0.00       0.00       0.50       0.50
+      0.00       0.50       0.50       0.50       0.50       0.00
+
+BF to det I
+
+Gen det basis J
+
+      0.71       0.71
+
+Gen det basis  J
+Idets=6
+leading test 00000011
+leading test 00000101
+leading test 00000110
+leading test 00001001
+leading test 00001010
+leading test 00001100
+Jdets 2
+leading test 00000001
+leading test 00000010
+1SOMO->SOMO
+Done MEij
+
+     -1.00       0.00
+      0.00       0.00
+      0.00       1.00
+      1.00       0.00
+      0.00       0.00
+      0.00      -1.00
+Done MEij
+Done blas BFI
+
+     -0.50      -0.50
+      0.50       0.50
+Done blas BFI
+#+end_example
+
+- [ ] 4 somos and 2 somos
+
+#+name: promatrixSOMOSOMO42
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double ApqIJGood[1][1]=
+{
+    { 1.4142135623730950488016887242096980785696718753769480731766797379 }
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *CSFICSFJApqIJ;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 4;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 4;
+    orbq = 1;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
+
+    printf("1Done CSFICSFJApqij\n");
+    printRealMatrix(CSFICSFJApqIJ,rows,cols);
+    printf("1Done CSFICSFJApqij\n");
+
+
+    //for(int i=0;i<rows;i++){
+    //    for(int j=0;j<cols;j++){
+    //        munit_assert_double_equal(CSFICSFJApqIJ[i*cols + j],ApqIJGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(CSFICSFJApqIJ);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: promatrixSOMOSOMO42
+#+begin_example
+
+BF to det I
+
+      0.50       0.50       0.00       0.00       0.50       0.50
+      0.00       0.50       0.50       0.50       0.50       0.00
+
+BF to det I
+
+Gen det basis J
+
+      0.71       0.71
+
+Gen det basis  J
+Idets=6
+leading test 00000011
+leading test 00000101
+leading test 00000110
+leading test 00001001
+leading test 00001010
+leading test 00001100
+Jdets 2
+leading test 00000001
+leading test 00000010
+1SOMO->SOMO
+Done MEij
+
+     -1.00       0.00
+      0.00      -1.00
+      0.00       0.00
+      0.00       0.00
+     -1.00       0.00
+      0.00      -1.00
+Done MEij
+Done blas BFI
+
+     -1.00      -1.00
+     -0.50      -0.50
+Done blas BFI
+1Done CSFICSFJApqij
+
+     -2.04
+     -0.71
+1Done CSFICSFJApqij
+#+end_example
+
+- [ ] 2 somos and 4 somos
+
+#+name: promatrixSOMOSOMO24
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double ApqIJGood[1][1]=
+{
+    { 1.4142135623730950488016887242096980785696718753769480731766797379 }
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *CSFICSFJApqIJ;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 4;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 1;
+    orbq = 4;
+
+    Jsomo = (1 << NMO)-1;
+    Isomo = (1 << NMO-2)-1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
+
+    printf("1Done CSFICSFJApqij\n");
+    printRealMatrix(CSFICSFJApqIJ,rows,cols);
+    printf("1Done CSFICSFJApqij\n");
+
+
+    //for(int i=0;i<rows;i++){
+    //    for(int j=0;j<cols;j++){
+    //        munit_assert_double_equal(CSFICSFJApqIJ[i*cols + j],ApqIJGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(CSFICSFJApqIJ);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: promatrixSOMOSOMO24
+#+begin_example
+
+BF to det I
+
+      0.71       0.71
+
+BF to det I
+
+Gen det basis J
+
+      0.50       0.50       0.00       0.00       0.50       0.50
+      0.00       0.50       0.50       0.50       0.50       0.00
+
+Gen det basis  J
+Idets=2
+leading test 00000001
+leading test 00000010
+Jdets 6
+leading test 00000011
+leading test 00000101
+leading test 00000110
+leading test 00001001
+leading test 00001010
+leading test 00001100
+2DOMO->VMO
+Done MEij
+
+     -1.00       0.00       0.00       0.00      -1.00       0.00
+      0.00      -1.00       0.00       0.00       0.00      -1.00
+Done MEij
+Done blas BFI
+
+     -0.71      -0.71       0.00       0.00      -0.71      -0.71
+Done blas BFI
+1Done CSFICSFJApqij
+
+     -2.04      -0.71
+1Done CSFICSFJApqij
+#+end_example
+
+- [ ] 6 somos and 4 somos
+
+#+name: promatrixSOMOSOMO64
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double ApqIJGood[1][1]=
+{
+    { 1.4142135623730950488016887242096980785696718753769480731766797379 }
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *CSFICSFJApqIJ;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 6;
+    orbq = 1;
+
+    Isomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    //printf("\n");
+    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    //printf("\n");
+
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
+
+    printf("1Done CSFICSFJApqij\n");
+    printRealMatrix(CSFICSFJApqIJ,rows,cols);
+    printf("1Done CSFICSFJApqij\n");
+
+
+    //for(int i=0;i<rows;i++){
+    //    for(int j=0;j<cols;j++){
+    //        munit_assert_double_equal(CSFICSFJApqIJ[i*cols + j],ApqIJGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(CSFICSFJApqIJ);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: promatrixSOMOSOMO64
+#+begin_example
+
+BF to det I
+
+      0.35       0.35       0.00       0.00       0.00       0.35       0.00       0.35       0.00       0.00       0.00       0.00       0.35       0.00       0.35       0.00       0.00       0.00       0.35       0.35
+      0.00       0.35       0.35       0.00       0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.35       0.35       0.00       0.35       0.35       0.00
+      0.00       0.00       0.35       0.35       0.00       0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00       0.35       0.35       0.00       0.35       0.35       0.00       0.00
+      0.00       0.00       0.00       0.00       0.35       0.35       0.00       0.00       0.35       0.35       0.35       0.35       0.00       0.00       0.35       0.35       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.35       0.35       0.35       0.35       0.00       0.00       0.35       0.35       0.35       0.35       0.00       0.00       0.00       0.00       0.00
+
+BF to det I
+
+Gen det basis J
+
+      0.50       0.50       0.00       0.00       0.50       0.50
+      0.00       0.50       0.50       0.50       0.50       0.00
+
+Gen det basis  J
+Idets=20
+leading test 00000111
+leading test 00001011
+leading test 00001101
+leading test 00001110
+leading test 00010011
+leading test 00010101
+leading test 00010110
+leading test 00011001
+leading test 00011010
+leading test 00011100
+leading test 00100011
+leading test 00100101
+leading test 00100110
+leading test 00101001
+leading test 00101010
+leading test 00101100
+leading test 00110001
+leading test 00110010
+leading test 00110100
+leading test 00111000
+Jdets 6
+leading test 00000011
+leading test 00000101
+leading test 00000110
+leading test 00001001
+leading test 00001010
+leading test 00001100
+1SOMO->SOMO
+Done MEij
+
+      1.00       0.00       0.00       0.00       0.00       0.00
+      0.00       1.00       0.00       0.00       0.00       0.00
+      0.00       0.00       1.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       1.00       0.00       0.00
+      0.00       0.00       0.00       0.00       1.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       1.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      1.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       1.00       0.00       0.00       0.00       0.00
+      0.00       0.00       1.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       1.00       0.00       0.00
+      0.00       0.00       0.00       0.00       1.00       0.00
+      0.00       0.00       0.00       0.00       0.00       1.00
+Done MEij
+Done blas BFI
+
+      0.71       0.71       0.00       0.00       0.71       0.71
+      0.00       0.71       0.71       0.71       0.71       0.00
+      0.00       0.35       0.35       0.35       0.35       0.00
+      0.00       0.35       0.35       0.35       0.35       0.00
+      0.35       0.35       0.00       0.00       0.35       0.35
+Done blas BFI
+1Done CSFICSFJApqij
+
+      2.38       0.90
+      1.62       1.69
+      1.39       0.78
+      1.53       1.02
+      1.02       0.35
+1Done CSFICSFJApqij
 #+end_example

@@ -294,7 +294,7 @@ void getDetlist(Node *inode, int isomo, int NSOMOMax, int *vecBF, int *detlist){
 void getDetlistDriver(Tree *dettree, int NSOMOMax, int *detlist){
     int isomo = 0;
     int vecBF[NSOMOMax];
-    getDetlist((dettree->rootNode), isomo, NSOMOMax, vecBF, detlist);
+    if(dettree->rootNode->addr > 1) getDetlist((dettree->rootNode), isomo, NSOMOMax, vecBF, detlist);
 }
 
 void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets){

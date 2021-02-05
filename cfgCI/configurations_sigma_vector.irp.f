@@ -11,24 +11,37 @@
   ! required for the calculation of prototype arrays.
   END_DOC
   NSOMOMax = 8
-  NBFMax = 14
-  NCSFMax = 14 ! TODO: NCSFs for MS=0
+  ! Note that here we need NSOMOMax + 2 sizes
+  NBFMax = 42
+  NCSFMax = 42 ! TODO: NCSFs for MS=0
+  maxDetDimPerBF =  252
   NMO = NSOMOMax ! TODO: remove this
   integer i,j,k,l
   integer startdet,enddet
   integer ncfg,ncfgprev
   integer NSOMO
+  integer dimcsfpercfg
   integer detDimperBF
   real*8 :: coeff
-  maxDetDimPerBF = 0
+  integer MS
+  integer ncfgpersomo
   detDimperBF = 0
-  ncfgprev = 0
-  dimBasisCSF = 0
-  do i = 2-iand(elec_alpha_num-elec_beta_num,1), elec_num,2
-  ncfg = cfg_seniority_index(i) - ncfgprev
-  detDimperBF = max(1,int((binom(i,(i+1)/2)-binom(i,((i+1)/2)+1))))
-  dimBasisCSF += ncfg * detDimperBF
-  if(detDimperBF > maxDetDimPerBF) maxDetDimPerBF = detDimperBF
+  MS = elec_alpha_num-elec_beta_num
+  ! number of cfgs = number of dets for 0 somos
+  dimBasisCSF = cfg_seniority_index(0)-1
+  ncfgprev = cfg_seniority_index(0)-1
+  do i = 0-iand(MS,1), NSOMOMax-2,2
+     if(cfg_seniority_index(i+2) == -1)then
+        ncfgpersomo = N_configuration
+     else
+        ncfgpersomo = cfg_seniority_index(i+2)
+     endif
+  ncfg = ncfgpersomo - 1 - ncfgprev
+  !detDimperBF = max(1,nint((binom(i,(i+1)/2))))
+  dimcsfpercfg = max(1,nint((binom(i,(i+1)/2)-binom(i,((i+1)/2)+1))))
+  dimBasisCSF += ncfg * dimcsfpercfg
+  print *,i,">",ncfg,",",detDimperBF,">",dimcsfpercfg
+  !if(detDimperBF > maxDetDimPerBF) maxDetDimPerBF = detDimperBF
   ncfgprev = ncfg
   enddo
   END_PROVIDER
@@ -49,7 +62,10 @@
   real*8    :: tempBuffer(NBFMax,maxDetDimPerBF)
   real*8    :: tempCoeff(maxDetDimPerBF)
   MS = elec_alpha_num - elec_beta_num
-  do i = 2-iand(elec_alpha_num-elec_beta_num,1), elec_num,2
+  print *,"Maxbfdim=",NBFMax
+  print *,"Maxdetdim=",maxDetDimPerBF
+  print *,"dimBasisCSF=",dimBasisCSF
+  do i = 2-iand(elec_alpha_num-elec_beta_num,1), NSOMOMax,2
     Isomo = IBSET(0_8, i) - 1_8
     ! rows = Ncsfs
     ! cols = Ndets
@@ -59,9 +75,9 @@
 
   integer s, bfIcfg
   integer countcsf
-  countcsf = 0
+  countcsf = 1
   integer countdet
-  countdet = 0
+  countdet = 1
   integer istate
   istate = 1
   do i = 1,N_configuration
@@ -74,7 +90,7 @@
       enddo
 
 
-      s = 0
+      s = 1
       do k=1,N_int
         if (psi_configuration(k,1,i) == 0_bit_kind) cycle
         s = s + popcnt(psi_configuration(k,1,i))
@@ -85,7 +101,6 @@
       ! can be more efficient
       tempBuffer = DetToCSFTransformationMatrix(s,:,:)
 
-       print *,"calling dgemm 3"
        call dgemm('N','N', NBFMax, 1, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_config(countcsf), size(psi_coef_config,1))
       !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
 
@@ -118,7 +133,7 @@
   print *,"NSOMOMax = ",NSOMOMax
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
   ! Type
-  ! 1. SOMO -> VMO
+  ! 1. SOMO -> SOMO
   do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i-2,i-2, 2
@@ -126,11 +141,16 @@
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
-        do k = 1,NSOMOMax
-           do l = 1,NSOMOMax
+        do k = 1,i
+           do l = 1,i
               ! Define Jsomo
+              if(k.NE.l)then
               Jsomo = IBCLR(Isomo, k-1)
               Jsomo = IBCLR(Jsomo, l-1)
+              else
+                 Isomo = ISHFT(1_8,i)-1
+                 Jsomo = ISHFT(1_8,j)-1
+              endif
 
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
@@ -161,19 +181,25 @@
   ! Type
   ! 2. DOMO -> VMO
   do i = 0, NSOMOMax, 2
+     Isomo = ISHFT(1_8,i)-1
      tmpsomo = ISHFT(1_8,i)-1
      do j = i+2,i+2, 2
         Jsomo = ISHFT(1_8,j)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
-        do k = 1,NSOMOMax
-           do l = 1,NSOMOMax
-              Isomo = IBCLR(tmpsomo,i-1)
-              Isomo = IBCLR(Isomo,j-1)
+        do k = 1,i
+           do l = 1,i
+              if(k .NE. l) then
+              Isomo = IBCLR(tmpsomo,k-1)
+              Isomo = IBCLR(Isomo,l-1)
 
               ! Define Jsomo
               Jsomo = ISHFT(1_8,i)-1;
+              else
+                 Isomo = ISHFT(1_8,i)-1
+                 Jsomo = ISHFT(1_8,j)-1
+              endif
 
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
@@ -202,7 +228,7 @@
      end do
   end do
   ! Type
-  ! 3. DOMO -> VMO
+  ! 3. DOMO -> SOMO
   do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
@@ -210,12 +236,17 @@
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
-        do k = 1,NSOMOMax
-           do l = 1,NSOMOMax
+        do k = 1,i
+           do l = 1,i
+              if(k.NE.l)then
               Isomo = ISHFT(1_8,i+1)-1
-              Isomo = IBCLR(Isomo,j)
-              Jsomo = ISHFT(1_8,i+1)-1
-              Jsomo = IBCLR(Jsomo,i)-1
+              Isomo = IBCLR(Isomo,k)
+              Jsomo = ISHFT(1_8,j+1)-1
+              Jsomo = IBCLR(Jsomo,l)
+              else
+                 Isomo = ISHFT(1_8,i)-1
+                 Jsomo = ISHFT(1_8,j)-1
+              endif
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
                    MS,                       &
@@ -243,18 +274,23 @@
      end do
   end do
   ! Type
-  ! 4. DOMO -> SOMO
+  ! 4. SOMO -> VMO
   do i = 0, NSOMOMax, 2
-     do j = i-2,i+2, 2
+     do j = i,i, 2
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
-        do k = 1,NSOMOMax
-           do l = 1,NSOMOMax
+        do k = 1,i
+           do l = 1,i
+              if(k.NE.l)then
               Isomo = ISHFT(1_8,i+1)-1
-              Isomo = IBCLR(Isomo,i)
-              Jsomo = ISHFT(1_8,i+1)-1
-              Jsomo = IBCLR(Jsomo,j)-1
+              Isomo = IBCLR(Isomo,k)
+              Jsomo = ISHFT(1_8,j+1)-1
+              Jsomo = IBCLR(Jsomo,l)
+              else
+                 Isomo = ISHFT(1_8,i)-1
+                 Jsomo = ISHFT(1_8,j)-1
+              endif
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
                    MS,                       &
@@ -315,23 +351,38 @@
   cols = -1
   integer*8 MS
   MS = 0
+  touch AIJpqMatrixDimsList
   real*8,dimension(:,:),allocatable :: meMatrix
+  integer maxdim
+  maxdim = max(rowsmax,colsmax)
   ! allocate matrix
-  allocate(meMatrix(rowsmax,colsmax))
+  allocate(meMatrix(maxdim,maxdim))
+  print *,"rowsmax =",rowsmax," colsmax=",colsmax
   print *,"NSOMOMax = ",NSOMOMax
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
   ! Type
   ! 1. SOMO -> SOMO
+  print *,"Doing SOMO -> SOMO"
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i-2,i-2, 2
         if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
-        do k = 1,NSOMOMax
-           do l = 1,NSOMOMax
+        print *,"i,j=",i,j
+        do k = 1,i
+           do l = 1,i
 
               ! Define Jsomo
-              Jsomo = IBCLR(Isomo, k-1)
-              Jsomo = IBCLR(Jsomo, l-1)
+              if(k .NE. l) then
+                 Jsomo = IBCLR(Isomo, k-1)
+                 Jsomo = IBCLR(Jsomo, l-1)
+              else
+                 Isomo = ISHFT(1_8,i)-1
+                 Jsomo = ISHFT(1_8,j)-1
+              endif
+
+              print *,"k,l=",k,l
+              call debug_spindet(Jsomo,1)
+              call debug_spindet(Isomo,1)
 
               AIJpqContainer(i,j,1,k,l,:,:) = 0.0d0
               call getApqIJMatrixDims(Isomo,           &
@@ -365,25 +416,39 @@
   end do
   ! Type
   ! 2. DOMO -> VMO
+  print *,"Doing DOMO -> VMO"
   do i = 2, NSOMOMax, 2
+     Isomo = ISHFT(1_8,i)-1
      tmpsomo = ISHFT(1_8,i)-1
      do j = i+2,i+2, 2
         if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
-        do k = 1,NSOMOMax
-           do l = 1,NSOMOMax
-              Isomo = IBCLR(tmpsomo,i-1)
-              Isomo = IBCLR(Isomo,j-1)
+        Jsomo = ISHFT(1_8,j)-1
+        do k = 1,i
+           do l = 1,i
+              if(k .NE. l) then
+                 Isomo = IBCLR(tmpsomo,k-1)
+                 Isomo = IBCLR(Isomo,l-1)
+                 ! Define Jsomo
+                 Jsomo = ISHFT(1_8,j)-1;
+              else
+                 Isomo = ISHFT(1_8,j)-1
+                 Isomo = IBCLR(Isomo,1-1)
+                 Isomo = IBCLR(Isomo,j-1)
+                 Jsomo = ISHFT(1_8,j)-1
+              endif
 
-              ! Define Jsomo
-              Jsomo = ISHFT(1_8,i)-1;
+              print *,"k,l=",k,l
+              call debug_spindet(Jsomo,1)
+              call debug_spindet(Isomo,1)
 
-              AIJpqContainer(i,j,2,k,l,:,:) = 0.0d0
+              !AIJpqContainer(i,j,2,k,l,:,:) = 0.0d0
               call getApqIJMatrixDims(Isomo,           &
                    Jsomo, &
                    MS,                       &
                    rows,                     &
                    cols)
 
+              print *,"Done Dims"
               orbp = k
               orbq = l
               ! fill matrix
@@ -403,23 +468,34 @@
                     AIJpqContainer(i,j,2,k,l,ri,ci) = meMatrix(ri, ci)
                  end do
               end do
+              print *,"Done allocate"
            end do
         end do
      end do
   end do
   ! Type
   ! 3. SOMO -> VMO
+  print *,"Doing SOMO -> VMO"
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
-        Jsomo = ISHFT(1_8,i)-1
+        Jsomo = ISHFT(1_8,j)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
-        do k = 1,NSOMOMax
-           do l = 1,NSOMOMax
+        do k = 1,i
+           do l = 1,i
+              if(k .NE. l) then
               Isomo = ISHFT(1_8,i+1)-1
-              Isomo = IBCLR(Isomo,j)
-              Jsomo = ISHFT(1_8,i+1)-1
-              Jsomo = IBCLR(Jsomo,i)-1
+              Isomo = IBCLR(Isomo,k)
+              Jsomo = ISHFT(1_8,j+1)-1
+              Jsomo = IBCLR(Jsomo,l)
+              else
+                 Isomo = ISHFT(1_8,i)-1
+                 Jsomo = ISHFT(1_8,j)-1
+              endif
+
+              print *,"k,l=",k,l
+              call debug_spindet(Jsomo,1)
+              call debug_spindet(Isomo,1)
 
               AIJpqContainer(i,j,3,k,l,:,:) = 0.0d0
               call getApqIJMatrixDims(Isomo,           &
@@ -453,15 +529,23 @@
   end do
   ! Type
   ! 4. DOMO -> SOMO
+  print *,"Doing DOMO -> SOMO"
   do i = 2, NSOMOMax, 2
+     Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
+        Jsomo = ISHFT(1_8,i)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
-        do k = 1,NSOMOMax
-           do l = 1,NSOMOMax
+        do k = 1,i
+           do l = 1,i
+              if(k .NE. l) then
               Isomo = ISHFT(1_8,i+1)-1
-              Isomo = IBCLR(Isomo,i)
-              Jsomo = ISHFT(1_8,i+1)-1
-              Jsomo = IBCLR(Jsomo,j)-1
+              Isomo = IBCLR(Isomo,k)
+              Jsomo = ISHFT(1_8,j+1)-1
+              Jsomo = IBCLR(Jsomo,l)
+              else
+                 Isomo = ISHFT(1_8,i)-1
+                 Jsomo = ISHFT(1_8,j)-1
+              endif
 
               AIJpqContainer(i,j,4,k,l,:,:) = 0.0d0
               call getApqIJMatrixDims(Isomo,           &
