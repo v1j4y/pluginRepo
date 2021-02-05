@@ -29,22 +29,23 @@
       integer cols
       integer*8 MS
       print *, N_int
-      print *,N_int
-      cc = "Hello"
-      print *,"Ndet=",psi_det_size, "Nconfig=",N_configuration
-      do i = 1, 6
-         call debug_spindet(psi_configuration(N_int,1,i),N_int)
-         call debug_spindet(psi_configuration(N_int,2,i),N_int)
-         print *,"with mask"
-         call debug_spindet(iand(reunion_of_act_virt_bitmask,psi_configuration(N_int,1,i)),1)
-         call debug_spindet(iand(reunion_of_act_virt_bitmask,psi_configuration(N_int,2,i)),1)
-      end do
+      !cc = "Hello"
+      !print *,"Ndet=",psi_det_size, "Nconfig=",N_configuration
+      !do i = 1, 6
+      !   call debug_spindet(psi_configuration(N_int,1,i),N_int)
+      !   call debug_spindet(psi_configuration(N_int,2,i),N_int)
+      !   print *,"with mask"
+      !   call debug_spindet(iand(reunion_of_act_virt_bitmask,psi_configuration(N_int,1,i)),1)
+      !   call debug_spindet(iand(reunion_of_act_virt_bitmask,psi_configuration(N_int,2,i)),1)
+      !end do
 
   integer(bit_kind) :: Icfg(N_INT,2)
   integer(bit_kind) :: alphas_Icfg(N_INT,2,200)
   integer(bit_kind) :: connectedI_alpha(N_INT,2,200)
   integer(bit_kind) :: psi_configuration_out(N_INT,2,400)
   real*8            :: psi_coef_out(N_configuration)
+  real*8            :: psi_coef_out_det(N_det)
+  logical           :: psi_coef_out_init(N_configuration)
   integer           :: excitationIds(2,200)
   integer           :: excitationTypes(200)
   integer  :: Nalphas_Icfg, nconnectedI, rowsikpq, colsikpq
@@ -53,17 +54,33 @@
   integer :: totcolsTKI
   integer :: rowsTKI
   integer :: moi, moj, mok, mol, l,m
+  real*8  :: norm_coef_cfg
+  real*8  :: norm_coef_det
   real*8,dimension(:,:),allocatable :: TKI
   real*8,dimension(:,:),allocatable  :: GIJpqrs
   real*8,dimension(:,:),allocatable  :: TKIGIJ
   real*8, external :: mo_two_e_integral
 
   MS = 0
+  norm_coef_cfg=0.d0
+
+  psi_coef_out=0.d0
+  psi_coef_out_init = .False.
 
   do i = 1,N_configuration
      print *, "i=",i,"coef=",psi_coef_config(i)
-     psi_coef_out(i)=0.d0
+     call debug_spindet(psi_configuration(1,1,i),N_int)
+     call debug_spindet(psi_configuration(1,2,i),N_int)
+     norm_coef_cfg += psi_coef_config(i)*psi_coef_config(i)
   enddo
+  print *,"norm = ",norm_coef_cfg
+  call convertWFfromCSFtoDET(psi_coef_out,psi_coef_out_det)
+  norm_coef_det=0
+  do i = 1,N_det
+     !print *, "i=",i,"coef=",psi_coef_out_det(i)
+     norm_coef_det += psi_coef_out_det(i)*psi_coef_out_det(i)
+  enddo
+  print *,"norm = ",norm_coef_det, " size=",N_det
 
   ! Loop over all selected configurations
   do i = 1,N_configuration
@@ -99,10 +116,10 @@
            !print *,k, Nalphas_Icfg
            !call debug_spindet(alphas_Icfg(1,1,k),N_int)
            !call debug_spindet(alphas_Icfg(1,2,k),N_int)
-           !print *,"----------------Icfg------- Isingle=",j
-           !call debug_spindet(connectedI_alpha(1,1,j),N_int)
-           !call debug_spindet(connectedI_alpha(1,2,j),N_int)
-           !print *,"----------------",NSOMOalpha,NSOMOI,"ex=",extype,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
+            print *,"----------------Icfg------- Isingle=",j
+            call debug_spindet(connectedI_alpha(1,1,j),N_int)
+            call debug_spindet(connectedI_alpha(1,2,j),N_int)
+            print *,"----------------",NSOMOalpha,NSOMOI,"ex=",extype,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
         end do
 
         !print *,"total columnTKI=",totcolsTKI
@@ -158,10 +175,10 @@
         end do
 
 
-        print *,"TKI matrix"
-        call printMatrix(TKI,rowsTKI,totcolsTKI)
-        print *,"GIJpqrs matrix"
-        call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
+        !print *,"TKI matrix"
+        !call printMatrix(TKI,rowsTKI,totcolsTKI)
+        !print *,"GIJpqrs matrix"
+        !call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
 
         ! Do big BLAS
         ! TODO TKI, size(TKI,1)*size(TKI,2)
@@ -169,8 +186,8 @@
           TKI, size(TKI,1), GIJpqrs, size(GIJpqrs,1), 0.d0, &
           TKIGIJ , size(TKIGIJ,1) )
 
-        print *,"TKIGIJ matrix"
-        call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
+        !print *,"TKIGIJ matrix"
+        !call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
 
         ! Collect the result
         do j = 1,nconnectedI
@@ -185,6 +202,7 @@
            do m = 1,colsikpq
               do l = 1,rowsTKI
                  psi_coef_out(totcolsTKI + m) += AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * TKIGIJ(l,j)
+                 psi_coef_out_init(totcolsTKI+m) = .True.
               enddo
            enddo
            totcolsTKI += colsikpq
@@ -200,7 +218,7 @@
   end do
 
   do i = 1,N_configuration
-     print *, "i=",i,"coef=",psi_coef_config(i),psi_coef_out(i)
+     print *, "i=",i,"coef=",psi_coef_config(i),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
   enddo
 
   end

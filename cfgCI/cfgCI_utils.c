@@ -383,16 +383,22 @@ void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, doubl
     ************************************/
     // First transform matrix using BLAS
     //double *bfIApqIJ = malloc(rowsbftodetI*colsbftodetI*sizeof(double));
+    double *tmpcsftodet = malloc(rowsI*colsbftodetI*sizeof(double));
 
     int transA=false;
     int transB=false;
-    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, csftodetmatrix, transA, transB);
+    callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, tmpcsftodet, transA, transB);
+    for(int i=0;i<rowsI;i++)
+        for(int j=0;j<colsbftodetI;j++){
+            csftodetmatrix[j*rowsI + i] = fabs(tmpcsftodet[i*colsbftodetI + j]);
+        }
 
     //printf("rowsI=%d colsI=%d rowsbftodetI=%d colsbftodetI=%d\n",rowsI,colsI,rowsbftodetI,colsbftodetI);
     // Garbage collection
     if(rowsI + colsI > 0) free(overlapMatrixI);
     if(rowsI + colsI > 0) free(orthoMatrixI);
     if(rowsbftodetI + colsbftodetI > 0) free(bftodetmatrixI);
+    if(rowsI + colsbftodetI > 0) free(tmpcsftodet);
 }
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
@@ -929,6 +935,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
 
     int maskI;
     int nelecatI;
+    int noccorbI;
     unsigned int maskleft;
     unsigned int maskright;
     unsigned int psomo;
@@ -954,7 +961,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
         switch (case_type){
             case 1:
                 // SOMO -> SOMO
-                printf("1SOMO->SOMO\n");
+                //printf("1SOMO->SOMO\n");
                 // Find the orbital ids in model space
                 maskleft  =  (0 | ((1<<(p))-1));
                 maskright =  (0 | ((1<<(q))-1));
@@ -985,7 +992,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                 break;
             case 2:
                 // DOMO -> VMO
-                printf("1DOMO->VMO\n");
+                //printf("1DOMO->VMO\n");
                 // Find the orbital ids in model space
                 // As seen in Jsomo
                 // Here we apply a^{\dagger}_p a_q |J>
@@ -1016,14 +1023,14 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                 break;
             case 3:
                 // (SOMO -> VMO or DOMO -> SOMO)
-                printf("1SOMO->VMO and DOMO->SOMO\n");
-                int noccorbI = __builtin_popcount(Isomo & (1<<(orbI-1)));
+                //printf("1SOMO->VMO and DOMO->SOMO\n");
+                noccorbI = __builtin_popcount(Isomo & (1<<(orbI-1)));
 
-                printf("I=%d J=%d (%d %d) nocc=%d\n",Isomo,Jsomo,p,q,noccorbI);
+                //printf("I=%d J=%d (%d %d) nocc=%d\n",Isomo,Jsomo,p,q,noccorbI);
                 switch (noccorbI){
                     case 0:
                         // Case: DOMO -> SOMO
-                        printf("DOMO->SOMO, %d,%d\n",p,q);
+                        //printf("DOMO->SOMO, %d,%d\n",p,q);
                         // Find the orbital ids in model space
                         // p is from Jsomo
                         // q is from Isomo
@@ -1050,7 +1057,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         break;
                     case 1:
                         // Case: SOMO -> VMO
-                        printf("SOMO->VMO, %d,%d\n",p,q);
+                        //printf("SOMO->VMO, %d,%d\n",p,q);
                         // Find the orbital ids in model space
                         // p is from Isomo
                         // q is from Jsomo
@@ -1101,7 +1108,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
         switch (case_type){
             case 1:
                 // SOMO -> SOMO
-                printf("2SOMO->SOMO\n");
+                //printf("2SOMO->SOMO\n");
                 // Find the orbital ids in model space
                 maskleft  =  (0 | ((1<<(p))-1));
                 maskright =  (0 | ((1<<(q))-1));
@@ -1132,7 +1139,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                 break;
             case 2:
                 // DOMO -> VMO
-                printf("2DOMO->VMO\n");
+                //printf("2DOMO->VMO\n");
                 // Find the orbital ids in model space
                 // As seen in Jsomo
                 // Here we apply a^{\dagger}_p a_q |J>
@@ -1165,13 +1172,13 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                 // (SOMO -> VMO or DOMO -> SOMO)
                 // if Isomo[p] == 1 => SOMO -> VMO
                 // if Isomo[p] == 0 => DOMO -> SOMO
-                printf("2SOMO->VMO and DOMO->SOMO\n");
-                int noccorbI = (Isomo & (1<<(orbI-1)));
+                //printf("2SOMO->VMO and DOMO->SOMO\n");
+                noccorbI = __builtin_popcount(Isomo & (1<<(orbI-1)));
 
                 switch (noccorbI){
                     case 0:
                         // Case: DOMO -> SOMO
-                        printf("DOMO->SOMO, %d,%d\n",p,q);
+                        //printf("DOMO->SOMO, %d,%d\n",p,q);
                         // Find the orbital ids in model space
                         // p is from Jsomo
                         // q is from Isomo
@@ -1184,12 +1191,12 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
-                            printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
+                            //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
                             int phase=1;
                             // Apply remove and shft on Isomo
                             idet = applyRemoveShftAddDOMOSOMO(idet, p, q, &phase);
-                            printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
-                            printf(" %d\n",phase);
+                            //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
+                            //printf(" %d\n",phase);
                             for(int j=0;j<ndetJ;j++){
                                 int jdet = (detlistJ[j]);
                                 if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
@@ -1198,7 +1205,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         break;
                     case 1:
                         // Case: SOMO -> VMO
-                        printf("SOMO->VMO, %d,%d\n",p,q);
+                        //printf("SOMO->VMO, %d,%d\n",p,q);
                         // Find the orbital ids in model space
                         // p is from Isomo
                         // q is from Jsomo
@@ -1395,12 +1402,12 @@ void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowv
         for(int j = 0; j < NSOMO; j++)
             inpdet[j] = detslist[i*NSOMO + j];
         findAddofDetDriver(dettree, NSOMO, inpdet, &addr);
-        //rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
+        rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
         // Upon transformation from
         // SOMO to DET basis,
         // all dets have the same phase
         // Is this true ?
-        rowvec[addr] = 1.0/sqrt(fac);
+        //rowvec[addr] = 1.0/sqrt(fac);
     }
 
     free(detslist);
@@ -1636,17 +1643,17 @@ void getApqIJMatrixDims(int64_t Isomo, int64_t Jsomo, int64_t MS, int32_t *rowso
     //printf("Enter in get ApqIJ Dim CSF basis\n");
     int NSOMOI=0;
     int NSOMOJ=0;
-    printf("Isomo=%ld Jsomo=%ld\n",Isomo,Jsomo);
+    //printf("Isomo=%ld Jsomo=%ld\n",Isomo,Jsomo);
     getSetBits(Isomo, &NSOMOI);
     getSetBits(Jsomo, &NSOMOJ);
-    printf("NsomoI=%d NsomoJ=%d\n",NSOMOI,NSOMOJ);
+    //printf("NsomoI=%d NsomoJ=%d\n",NSOMOI,NSOMOJ);
     int NBFI=0;
     int NBFJ=0;
     getncsfs(NSOMOI, MS, &NBFI);
     getncsfs(NSOMOJ, MS, &NBFJ);
     (*rowsout) = NBFI;
     (*colsout) = NBFJ;
-    printf("\t >> %d %d\n",NBFI,NBFJ);
+    //printf("\t >> %d %d\n",NBFI,NBFJ);
 }
 
 void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int64_t MS, int64_t NMO, double **CSFICSFJApqIJptr, int *rowsout, int *colsout){
@@ -1830,7 +1837,7 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
 
     //printf("\nBF to det I\n");
     //printRealMatrix(bftodetmatrixI, rowsbftodetI, colsbftodetI);
-    printf("\nBF to det I\n");
+    //printf("\nBF to det I\n");
 
     /***********************************
                    Doing J
