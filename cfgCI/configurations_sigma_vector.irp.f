@@ -59,8 +59,10 @@
   integer   :: rows, cols, i, j, k
   integer   :: startdet, enddet
   integer*8 MS
-  real*8    :: tempBuffer(NBFMax,maxDetDimPerBF)
-  real*8    :: tempCoeff(maxDetDimPerBF)
+  integer ndetI
+  integer :: getNSOMO
+  real*8,dimension(:,:),allocatable    :: tempBuffer
+  real*8,dimension(:),allocatable    :: tempCoeff
   MS = elec_alpha_num - elec_beta_num
   print *,"Maxbfdim=",NBFMax
   print *,"Maxdetdim=",maxDetDimPerBF
@@ -70,8 +72,13 @@
     Isomo = IBSET(0_8, i) - 1_8
     ! rows = Ncsfs
     ! cols = Ndets
+    bfIcfg = max(1,int((binom(i,(i+1)/2)-binom(i,((i+1)/2)+1))))
+    ndetI = max(1,int((binom(i,(i+1)/2))))
+
+    allocate(tempBuffer(bfIcfg,ndetI))
     call getCSFtoDETTransformationMatrix(Isomo, MS, NBFMax, maxDetDimPerBF, tempBuffer)
-    DetToCSFTransformationMatrix(i,:,:) =  tempBuffer
+    DetToCSFTransformationMatrix(i,:bfIcfg,:ndetI) =  tempBuffer
+    deallocate(tempBuffer)
   enddo
 
   integer s, bfIcfg
@@ -84,14 +91,17 @@
   do i = 1,N_configuration
       startdet = psi_configuration_to_psi_det(1,i)
       enddet = psi_configuration_to_psi_det(2,i)
+      ndetI = enddet-startdet+1
 
+      allocate(tempCoeff(ndetI))
+      countdet = 1
       do j = startdet, enddet
         tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)
         countdet += 1
       enddo
 
 
-      s = 1
+      s = 0
       do k=1,N_int
         if (psi_configuration(k,1,i) == 0_bit_kind) cycle
         s = s + popcnt(psi_configuration(k,1,i))
@@ -100,11 +110,14 @@
 
       ! perhaps blocking with CFGs of same seniority
       ! can be more efficient
-      tempBuffer = DetToCSFTransformationMatrix(s,:,:)
+      allocate(tempBuffer(bfIcfg,ndetI))
+      tempBuffer = DetToCSFTransformationMatrix(s,:bfIcfg,:ndetI)
 
-       call dgemm('N','N', NBFMax, 1, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_config(countcsf), size(psi_coef_config,1))
-      !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
+       call dgemm('N','N', bfIcfg, 1, ndetI, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_config(countcsf), size(psi_coef_config,1))
+       !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
 
+      deallocate(tempCoeff)
+      deallocate(tempBuffer)
       countcsf += bfIcfg
   enddo
 

@@ -84,6 +84,10 @@ Provide all the singles excitations.
 
   MS = 0
 
+  do i = 1,N_configuration
+     print *, "i=",i,"coef=",psi_coef_config(i)
+  enddo
+
   ! Loop over all selected configurations
   do i = 1,N_configuration
      Icfg(1,1) = psi_configuration(1,1,i)
@@ -160,7 +164,7 @@ Provide all the singles excitations.
            print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha
            do l = 1,rowsTKI
               do m = 1,colsikpq
-                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m)! * psi_coef_config(j)
+                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * psi_coef_config(j)
               enddo
            enddo
            do m = 1,colsikpq
