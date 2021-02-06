@@ -566,13 +566,13 @@ int main(){
 
     convertCSFtoDetBasis(Isomo, MS, rows, cols, csftodetmatrix);
 
-    printRealMatrix(csftodetmatrix,rows,cols);
+    printRealMatrix(csftodetmatrix,cols,rows);
     printf("test_ortho_matrix_NSOMO4=%d\n",test_ortho_matrix);
 
     // Garbage collection
     free(csftodetmatrix);
 
-    RETURN(test_ortho_matrix);
+    return(test_ortho_matrix);
 }
 
 
@@ -582,8 +582,12 @@ int main(){
 #+RESULTS: testcsftodet4somo
 #+begin_example
 
-      0.58      -0.29      -0.29      -0.29      -0.29       0.58
-      0.00       0.50      -0.50      -0.50       0.50       0.00
+      0.58       0.00
+     -0.29       0.50
+     -0.29      -0.50
+     -0.29      -0.50
+     -0.29       0.50
+      0.58       0.00
 test_ortho_matrix_NSOMO4=0
 #+end_example
 
@@ -595,31 +599,28 @@ a = numpy.array([[1,0],[numpy.sqrt(1/3),numpy.sqrt(4/3)]])
 b = numpy.array([[0.5,-0.5,0,0,-0.5,0.5],[0,0.5,-0.5,-0.5,0.5,0]])
 d = numpy.array([[1.0,-0.5],[-0.5,1.0]])
 print(a)
-print(b[0])
-print(b[1])
-print(b[0]*numpy.sqrt(4./3.) + b[1]*numpy.sqrt(1./3.))
-c = numpy.dot(a,b)
-print(c)
-print(numpy.dot(c,b.T))
-print(numpy.dot(c,b.T))
-print(numpy.dot(a,d))
+b[0] = b[0]*numpy.sqrt(4./3.) + b[1]*numpy.sqrt(1./3.)
+b[1] = b[1]
+print(b)
+c = numpy.array([-0.3,0.2,0.1,0.1,0.2,-0.3])
+#c = c/numpy.linalg.norm(c)
+print(numpy.linalg.norm(c))
+print(numpy.dot(b,c))
+print(numpy.linalg.norm(numpy.dot(b,c)))
+#print(numpy.dot(b,b.T))
+#print(numpy.dot(c,b.T))
+#print(numpy.dot(a,d))
 #+end_src
 
 #+RESULTS:
 #+begin_example
 [[1.         0.        ]
  [0.57735027 1.15470054]]
-[ 0.5 -0.5  0.   0.  -0.5  0.5]
-[ 0.   0.5 -0.5 -0.5  0.5  0. ]
-[ 0.57735027 -0.28867513 -0.28867513 -0.28867513 -0.28867513  0.57735027]
-[[ 0.5        -0.5         0.          0.         -0.5         0.5       ]
- [ 0.28867513  0.28867513 -0.57735027 -0.57735027  0.28867513  0.28867513]]
-[[ 1.        -0.5      ]
- [ 0.         0.8660254]]
-[[ 1.        -0.5      ]
- [ 0.         0.8660254]]
-[[ 1.        -0.5      ]
- [ 0.         0.8660254]]
+[[ 0.57735027 -0.28867513 -0.28867513 -0.28867513 -0.28867513  0.57735027]
+ [ 0.          0.5        -0.5        -0.5         0.5         0.        ]]
+0.5291502622129182
+[-0.51961524  0.1       ]
+0.529150262212918
 #+end_example
 
 - [ ] small 5 by 20 : 6 SOMOs

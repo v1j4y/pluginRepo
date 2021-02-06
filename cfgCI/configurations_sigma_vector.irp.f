@@ -124,6 +124,7 @@
        call dgemm('N','N', bfIcfg, 1, ndetI, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_config(countcsf), size(psi_coef_config,1))
        !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
 
+      call printMatrix(psi_coef_config(countcsf),bfIcfg,1)
       deallocate(tempCoeff)
       deallocate(tempBuffer)
       countcsf += bfIcfg
