@@ -56,12 +56,12 @@ via BLAS level 3 operations.
   ! The maximum number of SOMOs for the current calculation.
   ! required for the calculation of prototype arrays.
   END_DOC
-  NSOMOMax = 8
+  NSOMOMax = cfg_nsomo_max + 2
   ! Note that here we need NSOMOMax + 2 sizes
-  NBFMax = 42
-  NCSFMax = 42 ! TODO: NCSFs for MS=0
-  maxDetDimPerBF =  252
-  NMO = NSOMOMax ! TODO: remove this
+  NCSFMax = max(1,nint((binom(NSOMOMax,(NSOMOMax+1)/2)-binom(NSOMOMax,((NSOMOMax+1)/2)+1)))) ! TODO: NCSFs for MS=0
+  NBFMax = NCSFMax
+  maxDetDimPerBF = max(1,nint((binom(NSOMOMax,(NSOMOMax+1)/2))))
+  NMO = n_act_orb 
   integer i,j,k,l
   integer startdet,enddet
   integer ncfg,ncfgprev
