@@ -41,6 +41,7 @@
   dimcsfpercfg = max(1,nint((binom(i,(i+1)/2)-binom(i,((i+1)/2)+1))))
   dimBasisCSF += ncfg * dimcsfpercfg
   print *,i,">",ncfg,",",detDimperBF,">",dimcsfpercfg
+  if(cfg_seniority_index(i+2) == -1) EXIT
   !if(detDimperBF > maxDetDimPerBF) maxDetDimPerBF = detDimperBF
   ncfgprev = ncfg
   enddo
