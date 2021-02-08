@@ -48,7 +48,8 @@
   END_PROVIDER
 
   BEGIN_PROVIDER [ real*8, DetToCSFTransformationMatrix, (0:NSOMOMax,NBFMax,maxDetDimPerBF)]
- &BEGIN_PROVIDER [ real*8, psi_coef_config, (dimBasisCSF)]
+ &BEGIN_PROVIDER [ real*8, psi_coef_config,  (dimBasisCSF)]
+ &BEGIN_PROVIDER [ integer, psi_config_data, (N_configuration,NBFMax)]
   use cfunctions
   implicit none
   BEGIN_DOC
@@ -131,7 +132,9 @@
       call printMatrix(psi_coef_config(countcsf+1),bfIcfg,1)
       deallocate(tempCoeff)
       deallocate(tempBuffer)
+      psi_config_data(i,1) = countcsf + 1
       countcsf += bfIcfg
+      psi_config_data(i,2) = countcsf
   enddo
   print *,"Norm det=",norm_det1, size(psi_coef_config,1), " Dim csf=", countcsf
 

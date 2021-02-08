@@ -69,6 +69,11 @@
   psi_coef_out_init = .False.
 
   print *,"CSF basis dim=",dimBasisCSF
+  do i = 1,N_configuration
+     print *,i,">",psi_config_data(i,1),psi_config_data(i,2)
+     call debug_spindet(psi_configuration(1,1,i),N_int)
+     call debug_spindet(psi_configuration(1,2,i),N_int)
+  enddo
   do i = 1,dimBasisCSF
      print *, "i=",i,"coef=",psi_coef_config(i)
      !call debug_spindet(psi_configuration(1,1,i),N_int)
@@ -92,17 +97,19 @@
      call obtain_associated_alphaI(i, Icfg, alphas_Icfg, Nalphas_Icfg)
      ! TODO : remove doubly excited for return
      print *,i,"Nalphas = ",Nalphas_Icfg
+     call debug_spindet(Icfg(1,1),N_int)
+     call debug_spindet(Icfg(1,2),N_int)
      ! Here we do 2x the loop. One to count for the size of the matrix, then we compute.
      do k = 1,Nalphas_Icfg
         print *,"Kalpha=",k
-        !call debug_spindet(alphas_Icfg(1,1,k),N_int)
-        !call debug_spindet(alphas_Icfg(1,2,k),N_int)
+        call debug_spindet(alphas_Icfg(1,1,k),N_int)
+        call debug_spindet(alphas_Icfg(1,2,k),N_int)
         ! Now generate all singly excited with respect to a given alpha CFG
         call obtain_connected_I_foralpha(i,alphas_Icfg(:,:,k),connectedI_alpha,idxs_connectedI_alpha,nconnectedI,excitationIds,excitationTypes)
 
         print *,k,"----> nconnected = ",nconnectedI
         totcolsTKI = 0
-        rowsTKI = 1
+        rowsTKI = -1
         do j = 1,nconnectedI
            NSOMOalpha = getNSOMO(alphas_Icfg(:,:,k))
            NSOMOI = getNSOMO(connectedI_alpha(:,:,j))
@@ -113,12 +120,14 @@
            rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
            colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
            totcolsTKI += colsikpq
-           if(rowsTKI .LT. rowsikpq) then
-              print *,"Something is wrong in sigma-vector", rowsTKI, rowsikpq, "(p,q)=",pmodel,qmodel,"ex=",extype,"na=",NSOMOalpha," nI=",NSOMOI
+           if(rowsTKI .LT. rowsikpq .AND. rowsTKI .NE. -1) then
+              print *,">",j,"Something is wrong in sigma-vector", rowsTKI, rowsikpq, "(p,q)=",pmodel,qmodel,"ex=",extype,"na=",NSOMOalpha," nI=",NSOMOI
               !rowsTKI = rowsikpq
+           else
+              rowsTKI = rowsikpq
            endif
            !print *,"----------------alpha------"
-           !print *,k, Nalphas_Icfg
+           print *,k, Nalphas_Icfg, "idxI=",idxs_connectedI_alpha(j)
            !call debug_spindet(alphas_Icfg(1,1,k),N_int)
            !call debug_spindet(alphas_Icfg(1,2,k),N_int)
            !print *,"----------------Icfg------- Isingle=",j
