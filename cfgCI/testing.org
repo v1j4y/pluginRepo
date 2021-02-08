@@ -861,7 +861,8 @@ int main(){
     printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
     printf("\n");
 
-    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+    //callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
 
     printf("1Done MEij\n");
     printRealMatrix(MEij,rows,cols);
@@ -889,10 +890,30 @@ int main(){
 #+begin_example
 leading test 00000011
 leading test 00000000
-1Done MEij
+
+BF to det I
+
+     -0.71      -0.71
+
+BF to det I
+
+Gen det basis J
+
+      1.00
+
+Gen det basis  J
+Done MEij
 
       1.00
       1.00
+Done MEij
+Done blas BFI
+
+     -1.41
+Done blas BFI
+1Done MEij
+
+     -1.41
 1Done MEij
 #+end_example
 
@@ -1788,8 +1809,8 @@ const double MEijGood[20][6]=
 };
 
 int main(){
-    int test_MEij_SOMO_SOMO_matrix = -1;
-    double *MEij;
+    int test_CSFICSFJApqIJ_SOMO_SOMO_matrix = -1;
+    double *CSFICSFJApqIJ;
     int rows, cols;
     rows = 0;
     cols = 0;
@@ -1816,25 +1837,25 @@ int main(){
     printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
     printf("\n");
 
-    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
 
-    printf("1Done MEij\n");
-    printRealMatrix(MEij,rows,cols);
-    printf("1Done MEij\n");
+    printf("1Done CSFICSFIApqIJ\n");
+    printRealMatrix(CSFICSFJApqIJ,rows,cols);
+    printf("1Done CSFICSFIApqIJ\n");
 
 
     //for(int i=0;i<20;i++){
     //    for(int j=0;j<5;j++){
-    //        munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+    //        munit_assert_double_equal(CSFICSFIApqIJ[i*cols + j],CSFICSFIApqIJGood[i][j],6);
     //    }
     //}
 
-    test_MEij_SOMO_SOMO_matrix = 0;
+    test_CSFICSFJApqIJ_SOMO_SOMO_matrix = 0;
 
     // Garbage collection
-    free(MEij);
+    free(CSFICSFJApqIJ);
 
-    return(test_MEij_SOMO_SOMO_matrix);
+    return(test_CSFICSFJApqIJ_SOMO_SOMO_matrix);
 }
 
 
@@ -1845,11 +1866,34 @@ int main(){
 isomo=12 jsomo=15
 leading test 00001100
 leading test 00001111
-1Done MEij
 
-      0.00       0.00       0.00       0.00       0.00       0.00
-      0.00       0.00       0.00       0.00       0.00       0.00
-1Done MEij
+BF to det I
+
+     -0.71      -0.71
+
+BF to det I
+
+Gen det basis J
+
+      0.50       0.50       0.00       0.00       0.50       0.50
+      0.00      -0.50      -0.50      -0.50      -0.50       0.00
+
+Gen det basis  J
+In calc det mes 1 2
+2DOMO->VMO
+Done MEij
+
+      0.00       1.00       1.00       0.00       0.00       0.00
+      0.00       0.00       0.00       1.00       1.00       0.00
+Done MEij
+Done blas BFI
+
+      0.00      -0.71      -0.71      -0.71      -0.71       0.00
+Done blas BFI
+1Done CSFICSFIApqIJ
+
+      0.00       1.41
+1Done CSFICSFIApqIJ
 #+end_example
 
 

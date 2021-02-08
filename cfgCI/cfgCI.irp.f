@@ -42,6 +42,7 @@
   integer(bit_kind) :: Icfg(N_INT,2)
   integer(bit_kind) :: alphas_Icfg(N_INT,2,200)
   integer(bit_kind) :: connectedI_alpha(N_INT,2,200)
+  integer           :: idxs_connectedI_alpha(200)
   integer(bit_kind) :: psi_configuration_out(N_INT,2,400)
   real*8            :: psi_coef_out(dimBasisCSF)
   real*8            :: psi_coef_out_det(N_det)
@@ -94,14 +95,14 @@
      ! Here we do 2x the loop. One to count for the size of the matrix, then we compute.
      do k = 1,Nalphas_Icfg
         print *,"Kalpha=",k
-        call debug_spindet(alphas_Icfg(1,1,k),N_int)
-        call debug_spindet(alphas_Icfg(1,2,k),N_int)
+        !call debug_spindet(alphas_Icfg(1,1,k),N_int)
+        !call debug_spindet(alphas_Icfg(1,2,k),N_int)
         ! Now generate all singly excited with respect to a given alpha CFG
-        call obtain_connected_I_foralpha(i,alphas_Icfg(:,:,k),connectedI_alpha,nconnectedI,excitationIds,excitationTypes)
+        call obtain_connected_I_foralpha(i,alphas_Icfg(:,:,k),connectedI_alpha,idxs_connectedI_alpha,nconnectedI,excitationIds,excitationTypes)
 
         print *,k,"----> nconnected = ",nconnectedI
         totcolsTKI = 0
-        rowsTKI = 0
+        rowsTKI = 1
         do j = 1,nconnectedI
            NSOMOalpha = getNSOMO(alphas_Icfg(:,:,k))
            NSOMOI = getNSOMO(connectedI_alpha(:,:,j))
@@ -112,15 +113,18 @@
            rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
            colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
            totcolsTKI += colsikpq
-           if(rowsTKI .LT. rowsikpq) rowsTKI = rowsikpq
+           if(rowsTKI .LT. rowsikpq) then
+              print *,"Something is wrong in sigma-vector", rowsTKI, rowsikpq, "(p,q)=",pmodel,qmodel,"ex=",extype,"na=",NSOMOalpha," nI=",NSOMOI
+              !rowsTKI = rowsikpq
+           endif
            !print *,"----------------alpha------"
            !print *,k, Nalphas_Icfg
            !call debug_spindet(alphas_Icfg(1,1,k),N_int)
            !call debug_spindet(alphas_Icfg(1,2,k),N_int)
-            print *,"----------------Icfg------- Isingle=",j
-            call debug_spindet(connectedI_alpha(1,1,j),N_int)
-            call debug_spindet(connectedI_alpha(1,2,j),N_int)
-            print *,"----------------",NSOMOalpha,NSOMOI,"ex=",extype,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
+           !print *,"----------------Icfg------- Isingle=",j
+           !call debug_spindet(connectedI_alpha(1,1,j),N_int)
+           !call debug_spindet(connectedI_alpha(1,2,j),N_int)
+           !print *,"----------------",NSOMOalpha,NSOMOI,"ex=",extype,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
         end do
 
         !print *,"total columnTKI=",totcolsTKI
@@ -159,7 +163,7 @@
            !print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha
            do l = 1,rowsTKI
               do m = 1,colsikpq
-                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * psi_coef_config(j)
+                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * psi_coef_config(idxs_connectedI_alpha(j)+m-1)
               enddo
            enddo
            do m = 1,colsikpq
@@ -176,10 +180,10 @@
         end do
 
 
-        !print *,"TKI matrix"
-        !call printMatrix(TKI,rowsTKI,totcolsTKI)
-        !print *,"GIJpqrs matrix"
-        !call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
+        print *,"TKI matrix"
+        call printMatrix(TKI,rowsTKI,totcolsTKI)
+        print *,"GIJpqrs matrix"
+        call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
 
         ! Do big BLAS
         ! TODO TKI, size(TKI,1)*size(TKI,2)
@@ -187,10 +191,11 @@
           TKI, size(TKI,1), GIJpqrs, size(GIJpqrs,1), 0.d0, &
           TKIGIJ , size(TKIGIJ,1) )
 
-        !print *,"TKIGIJ matrix"
-        !call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
+        print *,"TKIGIJ matrix"
+        call printMatrix(TKIGIJ,rowsTKI,nconnectedI)
 
         ! Collect the result
+        totcolsTKI = 0
         do j = 1,nconnectedI
            NSOMOalpha = getNSOMO(alphas_Icfg(:,:,k))
            NSOMOI     = getNSOMO(connectedI_alpha(:,:,j))
@@ -200,10 +205,11 @@
            call convertOrbIdsToModelSpaceIds(alphas_Icfg(:,:,k), connectedI_alpha(:,:,j), p, q, extype, pmodel, qmodel)
            rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
            colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
+           !print *,">j=",j,rowsikpq,colsikpq, ">>",totcolsTKI,",",idxs_connectedI_alpha(j)
            do m = 1,colsikpq
               do l = 1,rowsTKI
-                 psi_coef_out(totcolsTKI + m) += AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * TKIGIJ(l,j)
-                 psi_coef_out_init(totcolsTKI+m) = .True.
+                 psi_coef_out(idxs_connectedI_alpha(j)+m-1) += AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * TKIGIJ(l,j)
+                 psi_coef_out_init(idxs_connectedI_alpha(j)+m-1) = .True.
               enddo
            enddo
            totcolsTKI += colsikpq
