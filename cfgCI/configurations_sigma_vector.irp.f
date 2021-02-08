@@ -435,7 +435,7 @@
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
   ! Type
   ! 1. SOMO -> SOMO
-  print *,"Doing SOMO -> SOMO"
+  !print *,"Doing SOMO -> SOMO"
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i-2,i-2, 2
@@ -489,7 +489,7 @@
   end do
   ! Type
   ! 2. DOMO -> VMO
-  print *,"Doing DOMO -> VMO"
+  !print *,"Doing DOMO -> VMO"
   do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      tmpsomo = ISHFT(1_8,i+2)-1
@@ -510,9 +510,9 @@
                  Jsomo = ISHFT(1_8,j)-1
               endif
 
-              print *,"k,l=",k,l
-              call debug_spindet(Jsomo,1)
-              call debug_spindet(Isomo,1)
+              !print *,"k,l=",k,l
+              !call debug_spindet(Jsomo,1)
+              !call debug_spindet(Isomo,1)
 
               !AIJpqContainer(i,j,2,k,l,:,:) = 0.0d0
               call getApqIJMatrixDims(Isomo,           &
@@ -533,8 +533,7 @@
                    meMatrix,                 &
                    rows,                     &
                    cols)
-             print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
-             call printMatrix(meMatrix,rows,cols)
+             !print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
               ! i -> j
              do ri = 1,rows
                  do ci = 1,cols
@@ -547,7 +546,7 @@
   end do
   ! Type
   ! 3. SOMO -> VMO
-  print *,"Doing SOMO -> VMO"
+  !print *,"Doing SOMO -> VMO"
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
@@ -601,7 +600,7 @@
   end do
   ! Type
   ! 4. DOMO -> SOMO
-  print *,"Doing DOMO -> SOMO"
+  !print *,"Doing DOMO -> SOMO"
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
