@@ -43,9 +43,9 @@
   integer(bit_kind) :: alphas_Icfg(N_INT,2,200)
   integer(bit_kind) :: connectedI_alpha(N_INT,2,200)
   integer(bit_kind) :: psi_configuration_out(N_INT,2,400)
-  real*8            :: psi_coef_out(N_configuration)
+  real*8            :: psi_coef_out(dimBasisCSF)
   real*8            :: psi_coef_out_det(N_det)
-  logical           :: psi_coef_out_init(N_configuration)
+  logical           :: psi_coef_out_init(dimBasisCSF)
   integer           :: excitationIds(2,200)
   integer           :: excitationTypes(200)
   integer  :: Nalphas_Icfg, nconnectedI, rowsikpq, colsikpq
@@ -67,13 +67,14 @@
   psi_coef_out=0.d0
   psi_coef_out_init = .False.
 
-  do i = 1,N_configuration
+  print *,"CSF basis dim=",dimBasisCSF
+  do i = 1,dimBasisCSF
      print *, "i=",i,"coef=",psi_coef_config(i)
-     call debug_spindet(psi_configuration(1,1,i),N_int)
-     call debug_spindet(psi_configuration(1,2,i),N_int)
+     !call debug_spindet(psi_configuration(1,1,i),N_int)
+     !call debug_spindet(psi_configuration(1,2,i),N_int)
      norm_coef_cfg += psi_coef_config(i)*psi_coef_config(i)
   enddo
-  print *,"norm = ",norm_coef_cfg
+  print *,"norm CFG = ",norm_coef_cfg
   call convertWFfromCSFtoDET(psi_coef_out,psi_coef_out_det)
   norm_coef_det=0
   do i = 1,N_det
@@ -217,7 +218,7 @@
      end do
   end do
 
-  do i = 1,N_configuration
+  do i = 1,dimBasisCSF
      print *, "i=",i,"coef=",psi_coef_config(i),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
   enddo
 

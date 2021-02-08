@@ -334,6 +334,18 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
 
 }
 
+void get_phase_cfg_to_qp(int *inpdet, int NSOMO, int *phaseout){
+    int nbetas=0;
+    (*phaseout) = 1;
+    for(int i=0;i<NSOMO;i++){
+        if(inpdet[i] == 1)
+            (*phaseout) *= nbetas % 2 == 0 ? 1:-1;
+        else
+            nbetas += 1;
+    }
+    return;
+}
+
 void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, double *csftodetmatrix){
 
     //printf("In convert csf to det\n");
@@ -390,7 +402,7 @@ void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, doubl
     callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, tmpcsftodet, transA, transB);
     for(int i=0;i<rowsI;i++)
         for(int j=0;j<colsbftodetI;j++){
-            csftodetmatrix[j*rowsI + i] = fabs(tmpcsftodet[i*colsbftodetI + j]);
+            csftodetmatrix[j*rowsI + i] = tmpcsftodet[i*colsbftodetI + j];
         }
 
     //printf("rowsI=%d colsI=%d rowsbftodetI=%d colsbftodetI=%d\n",rowsI,colsI,rowsbftodetI,colsbftodetI);
@@ -1093,7 +1105,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
         } // end select
 
     } // end orbI > orbJ
-    else if(p < q){
+    else if(orbI < orbJ){
         // CASE 2 orbI < orbJ
         p = orbI;
         q = orbJ;
@@ -1397,12 +1409,15 @@ void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowv
 
     // Now get the addresses
     int inpdet[NSOMO];
+    int phase_cfg_to_qp=1;
     int addr = -1;
     for(int i = 0; i < npairs; i++){
         for(int j = 0; j < NSOMO; j++)
             inpdet[j] = detslist[i*NSOMO + j];
         findAddofDetDriver(dettree, NSOMO, inpdet, &addr);
-        rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
+        // Calculate the phase for cfg to QP2 conversion
+        get_phase_cfg_to_qp(inpdet, NSOMO, &phase_cfg_to_qp);
+        rowvec[addr] = 1.0 * phaselist[i]*phase_cfg_to_qp/sqrt(fac);
         // Upon transformation from
         // SOMO to DET basis,
         // all dets have the same phase
@@ -1923,11 +1938,12 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
     transA = false;
     transB = true;
     callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, tmpCSFICSFJApqIJ, transA, transB);
+    //printRealMatrix(tmpCSFICSFJApqIJ,rowsI,rowsJ);
 
     // Transfer to actual buffer in Fortran order
     for(int i = 0; i < rowsI; i++)
         for(int j = 0; j < rowsJ; j++)
-            CSFICSFJApqIJ[j*14 + i] = tmpCSFICSFJApqIJ[i*rowsJ + j];
+            CSFICSFJApqIJ[j*rowsI + i] = tmpCSFICSFJApqIJ[i*rowsJ + j];
 
 
     //printf("ME CSF basis\n");

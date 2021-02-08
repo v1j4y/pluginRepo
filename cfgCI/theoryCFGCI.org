@@ -315,6 +315,7 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
 void int_to_bin_digit(int64_t in, int count, int* out);
 void printRealMatrix(double *orthoMatrix, int rows, int cols);
 void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int colB, double *C, bool transA, bool transB);
+void get_phase_cfg_to_qp(int *inpdet, int NSOMO, int *phaseout);
 
 #endif
 #+end_src
@@ -775,7 +776,7 @@ respectively and \(s\) represents the total number of pairs in \(V_r\) and
 \(V_s\). The total number of pairs are the same in \(V_r\) and \(V_s\) if they
 belong to the same spin subspace.
 
-**** TODO [4/8] Make the orthonormalization matrix
+**** TODO [5/10] Make the orthonormalization matrix
 
 - [X] Calculate the number of SOMOs in the input CFG.
 
@@ -1128,6 +1129,29 @@ void genDetBasis(Tree *dettree, int Isomo, int MS, int *ndets){
 }
 #+end_src
 
+- [X] Calculate phase
+
+  The convention in my code is all fermions (alpha and beta) are according to the
+  orbital index i.e. (alpha,beta) (alpha,beta) ...
+  Where as, the convention in QP2 is according to the convention where
+  all alphas are ordered before the beta electrons.
+  This function calculates the pahse due to a convertion from my ordering to this ordering.
+
+#+name: calcphase
+#+begin_src C :main no :noweb yes :tangle cfgCI_utils.c
+void get_phase_cfg_to_qp(int *inpdet, int NSOMO, int *phaseout){
+    int nbetas=0;
+    (*phaseout) = 1;
+    for(int i=0;i<NSOMO;i++){
+        if(inpdet[i] == 1)
+            (*phaseout) *= nbetas % 2 == 0 ? 1:-1;
+        else
+            nbetas += 1;
+    }
+    return;
+}
+#+end_src
+
 - [X] Generate BF to Det matrix
 
   Here we generate the matrix of transformation from BF basis to
@@ -1177,12 +1201,15 @@ void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowv
 
     // Now get the addresses
     int inpdet[NSOMO];
+    int phase_cfg_to_qp=1;
     int addr = -1;
     for(int i = 0; i < npairs; i++){
         for(int j = 0; j < NSOMO; j++)
             inpdet[j] = detslist[i*NSOMO + j];
         findAddofDetDriver(dettree, NSOMO, inpdet, &addr);
-        rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
+        // Calculate the phase for cfg to QP2 conversion
+        get_phase_cfg_to_qp(inpdet, NSOMO, &phase_cfg_to_qp);
+        rowvec[addr] = 1.0 * phaselist[i]*phase_cfg_to_qp/sqrt(fac);
         // Upon transformation from
         // SOMO to DET basis,
         // all dets have the same phase
@@ -1480,7 +1507,7 @@ void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, doubl
     callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, tmpcsftodet, transA, transB);
     for(int i=0;i<rowsI;i++)
         for(int j=0;j<colsbftodetI;j++){
-            csftodetmatrix[j*rowsI + i] = fabs(tmpcsftodet[i*colsbftodetI + j]);
+            csftodetmatrix[j*rowsI + i] = tmpcsftodet[i*colsbftodetI + j];
         }
 
     //printf("rowsI=%d colsI=%d rowsbftodetI=%d colsbftodetI=%d\n",rowsI,colsI,rowsbftodetI,colsbftodetI);
@@ -2460,7 +2487,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
         } // end select
 
     } // end orbI > orbJ
-    else if(p < q){
+    else if(orbI < orbJ){
         // CASE 2 orbI < orbJ
         p = orbI;
         q = orbJ;
@@ -3455,11 +3482,12 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
     transA = false;
     transB = true;
     callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, tmpCSFICSFJApqIJ, transA, transB);
+    //printRealMatrix(tmpCSFICSFJApqIJ,rowsI,rowsJ);
 
     // Transfer to actual buffer in Fortran order
     for(int i = 0; i < rowsI; i++)
         for(int j = 0; j < rowsJ; j++)
-            CSFICSFJApqIJ[j*14 + i] = tmpCSFICSFJApqIJ[i*rowsJ + j];
+            CSFICSFJApqIJ[j*rowsI + i] = tmpCSFICSFJApqIJ[i*rowsJ + j];
 
 
     //printf("ME CSF basis\n");
