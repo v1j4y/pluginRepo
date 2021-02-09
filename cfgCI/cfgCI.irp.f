@@ -81,13 +81,6 @@
      norm_coef_cfg += psi_coef_config(i)*psi_coef_config(i)
   enddo
   print *,"norm CFG = ",norm_coef_cfg
-  call convertWFfromCSFtoDET(psi_coef_out,psi_coef_out_det)
-  norm_coef_det=0
-  do i = 1,N_det
-     !print *, "i=",i,"coef=",psi_coef_out_det(i)
-     norm_coef_det += psi_coef_out_det(i)*psi_coef_out_det(i)
-  enddo
-  print *,"norm = ",norm_coef_det, " size=",N_det
 
   ! Loop over all selected configurations
   do i = 1,N_configuration
@@ -127,7 +120,7 @@
               rowsTKI = rowsikpq
            endif
            !print *,"----------------alpha------"
-           print *,k, Nalphas_Icfg, "idxI=",idxs_connectedI_alpha(j)
+           !print *,k, Nalphas_Icfg, "idxI=",idxs_connectedI_alpha(j)
            !call debug_spindet(alphas_Icfg(1,1,k),N_int)
            !call debug_spindet(alphas_Icfg(1,2,k),N_int)
            !print *,"----------------Icfg------- Isingle=",j
@@ -236,5 +229,40 @@
   do i = 1,dimBasisCSF
      print *, "i=",i,"coef=",psi_coef_config(i),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
   enddo
+
+  integer::N_st_loc,startdet,enddet,countdet,ndetI
+  real*8 ::psi_energy_loc(1)
+  double precision ::psi_s2_loc(N_det,1)
+  real*8 ::psi_energy_loc2
+  double precision ::psi_coef_out_loc2(N_det,1)
+  real*8 :: coefcontrib
+  double precision :: hij
+  integer(bit_kind)::tmp_det(N_int)
+  integer(bit_kind)::tmp_det2(N_int)
+  integer(bit_kind)::tmp_tmp2det(N_int,2)
+  integer(bit_kind)::tmp_tmp2det2(N_int,2)
+  N_st_loc=1
+  psi_energy_loc2=0.d0
+  !call u_0_H_u_0(psi_energy_loc2,psi_s2_loc,psi_coef,N_det,psi_det,N_int,N_st_loc,psi_det_size)
+  call H_S2_u_0_nstates_openmp(psi_coef_out_loc2,psi_s2_loc,psi_coef,1,N_det)
+
+  psi_coef_out_det = 0.d0
+
+  call convertWFfromCSFtoDET(psi_coef_out,psi_coef_out_det)
+  print *,"energy=",psi_energy_loc2," psi_s2=",psi_s2_loc
+  norm_coef_det=0.d0
+  countdet=1
+  do i = 1,N_configuration
+     startdet = psi_configuration_to_psi_det(1,i)
+     enddet = psi_configuration_to_psi_det(2,i)
+     ndetI = enddet-startdet+1
+
+     do k=1,ndetI
+        norm_coef_det += psi_coef_out_det(countdet)*psi_coef_out_det(countdet)
+        print *, "i=",i,ndetI," > ",psi_coef_out_det(startdet+k-1)," >> ",psi_coef_out_loc2(startdet+k-1,1)
+     enddo
+     countdet += ndetI
+  enddo
+  print *,"norm = ",norm_coef_det, " size=",N_det
 
   end

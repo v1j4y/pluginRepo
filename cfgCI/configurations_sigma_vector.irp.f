@@ -140,7 +140,7 @@
 
   END_PROVIDER
 
-  subroutine convertWFfromCSFtoDET(psi_coef_cfg, psi_coef_det)
+  subroutine convertWFfromCSFtoDET(psi_coef_cfg_in, psi_coef_det)
     implicit none
     BEGIN_DOC
     ! Documentation for convertCSFtoDET
@@ -148,7 +148,7 @@
     ! in CFG basis to DET basis using the
     ! transformation matrix provided before.
     END_DOC
-    real*8,intent(in)  :: psi_coef_cfg(N_configuration)
+    real*8,intent(in)  :: psi_coef_cfg_in(dimBasisCSF)
     real*8,intent(out) :: psi_coef_det(N_det)
     integer s, bfIcfg
     integer countcsf
@@ -183,7 +183,7 @@
        allocate(tempCoeff(bfIcfg))
 
        do j = 1,bfIcfg
-          tempCoeff(j) = psi_coef_config(countcsf)
+          tempCoeff(j) = psi_coef_cfg_in(countcsf)
           countcsf += 1
        enddo
        print *,"dimcoef=",bfIcfg
