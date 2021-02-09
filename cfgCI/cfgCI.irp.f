@@ -41,15 +41,19 @@
 
   integer(bit_kind) :: Icfg(N_INT,2)
   integer(bit_kind) :: alphas_Icfg(N_INT,2,200)
+  integer(bit_kind) :: singlesI(N_INT,2,200)
   integer(bit_kind) :: connectedI_alpha(N_INT,2,200)
+  integer           :: idxs_singlesI(200)
   integer           :: idxs_connectedI_alpha(200)
   integer(bit_kind) :: psi_configuration_out(N_INT,2,400)
   real*8            :: psi_coef_out(dimBasisCSF)
   real*8            :: psi_coef_out_det(N_det)
   logical           :: psi_coef_out_init(dimBasisCSF)
+  integer           :: excitationIds_single(2,200)
+  integer           :: excitationTypes_single(200)
   integer           :: excitationIds(2,200)
   integer           :: excitationTypes(200)
-  integer  :: Nalphas_Icfg, nconnectedI, rowsikpq, colsikpq
+  integer  :: Nalphas_Icfg, nconnectedI, rowsikpq, colsikpq, nsinglesI
   integer  :: extype,NSOMOalpha,Nsomoi,p,q,pmodel,qmodel
   integer :: getNSOMO
   integer :: totcolsTKI
@@ -84,8 +88,18 @@
 
   ! Loop over all selected configurations
   do i = 1,N_configuration
+
      Icfg(1,1) = psi_configuration(1,1,i)
      Icfg(1,2) = psi_configuration(1,2,i)
+
+     !!! Single Excitations !!!
+     call generate_all_singles_cfg_with_type(Icfg,singlesI,idxs_singlesI,excitationIds_single,excitationTypes_single,nsinglesI,N_int)
+
+
+
+     !!! Double Excitations !!!
+
+
      ! Returns all unique (checking the past) singly excited cfgs connected to I
      call obtain_associated_alphaI(i, Icfg, alphas_Icfg, Nalphas_Icfg)
      ! TODO : remove doubly excited for return
@@ -175,7 +189,7 @@
                  mok = excitationIds(2,j)
                  moj = excitationIds(1,l)
                  mol = excitationIds(2,l)
-                 GIJpqrs(totcolsTKI+m,l) = mo_two_e_integral(moi,moj,mok,mol)
+                 GIJpqrs(totcolsTKI+m,l) = 0.5*mo_two_e_integral(moi,moj,mok,mol)
               enddo
            enddo
            totcolsTKI += colsikpq

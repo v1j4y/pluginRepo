@@ -49,7 +49,7 @@
 
   BEGIN_PROVIDER [ real*8, DetToCSFTransformationMatrix, (0:NSOMOMax,NBFMax,maxDetDimPerBF)]
  &BEGIN_PROVIDER [ real*8, psi_coef_config,  (dimBasisCSF)]
- &BEGIN_PROVIDER [ integer, psi_config_data, (N_configuration,NBFMax)]
+ &BEGIN_PROVIDER [ integer, psi_config_data, (N_configuration,2)]
   use cfunctions
   implicit none
   BEGIN_DOC
