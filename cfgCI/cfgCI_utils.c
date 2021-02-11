@@ -276,6 +276,30 @@ void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int 
 
 }
 
+
+void getOverlapMatrix_withDet(double *bftodetmatrix, int rowsbftodetI, int colsbftodetI, int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols, int *NSOMOout){
+
+    int NBF = 0;
+    int NSOMO = 0;
+
+    Tree bftree = (Tree){  .rootNode = NULL, .NBF = -1 };
+    bftree.rootNode = malloc(sizeof(Node));
+    (*bftree.rootNode) = (Node){ .C0 = NULL, .C1 = NULL, .PREV = NULL, .addr = 0, .cpl = -1, .iSOMO = -1};
+
+    generateAllBFs(Isomo, MS, &bftree, &NBF, &NSOMO);
+
+    (*NSOMOout) = NSOMO;
+
+    // Initialize overlap matrix
+    (*overlapMatrixptr) = malloc(NBF*NBF*sizeof(double));
+    (*rows) = NBF;
+    (*cols) = NBF;
+
+    int transA=false;
+    int transB=true;
+    callBlasMatxMat(bftodetmatrix, rowsbftodetI, colsbftodetI, bftodetmatrix, rowsbftodetI, colsbftodetI, (*overlapMatrixptr), transA, transB);
+}
+
 void getSetBits(int64_t n, int *nsetbits){
     int count = 0;
     while(n){
@@ -334,7 +358,7 @@ void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix)
 
 }
 
-void get_phase_cfg_to_qp(int *inpdet, int NSOMO, int *phaseout){
+void get_phase_cfg_to_qp_inpList(int *inpdet, int NSOMO, int *phaseout){
     int nbetas=0;
     (*phaseout) = 1;
     for(int i=0;i<NSOMO;i++){
@@ -343,6 +367,24 @@ void get_phase_cfg_to_qp(int *inpdet, int NSOMO, int *phaseout){
         else
             nbetas += 1;
     }
+    return;
+}
+
+void get_phase_cfg_to_qp_inpInt(int inpdet, double *phaseout){
+    int nbetas=0;
+    (*phaseout) = 1.0;
+    int count=0;
+    int mask=0;
+    while(inpdet > 0){
+        mask = (1<<count);
+        if(__builtin_popcount(inpdet & mask)==1){
+            (*phaseout) *= nbetas % 2 == 0 ? 1.0:-1.0;
+            inpdet = inpdet ^ mask;
+        }
+        else nbetas += 1;
+        count += 1;
+    }
+    //(*phaseout) = 1.0;
     return;
 }
 
@@ -399,11 +441,17 @@ void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, doubl
 
     int transA=false;
     int transB=false;
+    double phaseAll = -1.0;
     callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, tmpcsftodet, transA, transB);
-    for(int i=0;i<rowsI;i++)
+    for(int i=0;i<rowsI;i++){
+        phaseAll = -1.0;
         for(int j=0;j<colsbftodetI;j++){
-            csftodetmatrix[j*rowsI + i] = tmpcsftodet[i*colsbftodetI + j];
+            if(tmpcsftodet[i*colsbftodetI + j] > 0.0) phaseAll = 1.0;
         }
+        for(int j=0;j<colsbftodetI;j++){
+            csftodetmatrix[j*rowsI + i] = tmpcsftodet[i*colsbftodetI + j]*phaseAll;
+        }
+    }
 
     //printf("rowsI=%d colsI=%d rowsbftodetI=%d colsbftodetI=%d\n",rowsI,colsI,rowsbftodetI,colsbftodetI);
     // Garbage collection
@@ -948,6 +996,8 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
     int maskI;
     int nelecatI;
     int noccorbI;
+    double phaseI=1.0;
+    double phaseJ=1.0;
     unsigned int maskleft;
     unsigned int maskright;
     unsigned int psomo;
@@ -994,10 +1044,12 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                     int phase=1;
                     // Apply remove and shft on Isomo
                     idet = applyRemoveShftSOMOSOMO(idet, p, q, &phase);
+                    //get_phase_cfg_to_qp_inpInt(detlistI[i], &phaseI);
                     //printf(" -> "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));
                     //printf(" %d\n",phase);
                     for(int j=0;j<ndetJ;j++){
                         int jdet = (detlistJ[j]);
+                        //get_phase_cfg_to_qp_inpInt(detlistJ[j], &phaseJ);
                         if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
                     }
                 }
@@ -1020,8 +1072,10 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                 for(int i=0;i<ndetI;i++){
                     // Get phase
                     int idet = detlistI[i];
+                    //get_phase_cfg_to_qp_inpInt(detlistI[i], &phaseI);
                     for(int j=0;j<ndetJ;j++){
                         int jdet = (detlistJ[j]);
+                        //get_phase_cfg_to_qp_inpInt(detlistJ[j], &phaseJ);
                         //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));                // Calculate phase
                         // Calculate phase
                         int phase=1;
@@ -1055,6 +1109,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
+                            //get_phase_cfg_to_qp_inpInt(detlistI[i], &phaseI);
                             //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
                             int phase=1;
                             // Apply remove and shft on Isomo
@@ -1063,6 +1118,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                             //printf(" %d\n",phase);
                             for(int j=0;j<ndetJ;j++){
                                 int jdet = (detlistJ[j]);
+                                //get_phase_cfg_to_qp_inpInt(detlistJ[j], &phaseJ);
                                 if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
                             }
                         }
@@ -1082,6 +1138,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
+                            //get_phase_cfg_to_qp_inpInt(detlistI[i], &phaseI);
                             //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
                             int phase=1;
                             // Apply remove and shft on Isomo
@@ -1090,6 +1147,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                             //printf(" %d\n",phase);
                             for(int j=0;j<ndetJ;j++){
                                 int jdet = (detlistJ[j]);
+                                //get_phase_cfg_to_qp_inpInt(detlistJ[j], &phaseJ);
                                 if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
                             }
                         }
@@ -1137,6 +1195,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                 //printf("\np=%d q=%d  (%d %d)\n",q,p,psomo,qsomo);
                 for(int i=0;i<ndetI;i++){
                     int idet = detlistI[i];
+                    //get_phase_cfg_to_qp_inpInt(detlistI[i], &phaseI);
                     //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
                     int phase=1;
                     // Apply remove and shft on Isomo
@@ -1145,6 +1204,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                     //printf(" %d\n",phase);
                     for(int j=0;j<ndetJ;j++){
                         int jdet = (detlistJ[j]);
+                        //get_phase_cfg_to_qp_inpInt(detlistJ[j], &phaseJ);
                         if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
                     }
                 }
@@ -1167,8 +1227,10 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                 for(int i=0;i<ndetI;i++){
                     // Get phase
                     int idet = detlistI[i];
+                    //get_phase_cfg_to_qp_inpInt(detlistI[i], &phaseI);
                     for(int j=0;j<ndetJ;j++){
                         int jdet = (detlistJ[j]);
+                        //get_phase_cfg_to_qp_inpInt(detlistJ[j], &phaseJ);
                         //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(jdet));                // Calculate phase
                         // Calculate phase
                         int phase=1;
@@ -1203,6 +1265,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
+                            //get_phase_cfg_to_qp_inpInt(detlistI[i], &phaseI);
                             //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
                             int phase=1;
                             // Apply remove and shft on Isomo
@@ -1211,6 +1274,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                             //printf(" %d\n",phase);
                             for(int j=0;j<ndetJ;j++){
                                 int jdet = (detlistJ[j]);
+                                //get_phase_cfg_to_qp_inpInt(detlistJ[j], &phaseJ);
                                 if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
                             }
                         }
@@ -1230,6 +1294,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
+                            //get_phase_cfg_to_qp_inpInt(detlistI[i], &phaseI);
                             //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(idet));                // Calculate phase
                             int phase=1;
                             // Apply remove and shft on Isomo
@@ -1238,6 +1303,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                             //printf(" %d\n",phase);
                             for(int j=0;j<ndetJ;j++){
                                 int jdet = (detlistJ[j]);
+                                //get_phase_cfg_to_qp_inpInt(detlistJ[j], &phaseJ);
                                 if(idet == jdet) matelemdetbasis[i*ndetJ + j] = 1.0*phase;
                             }
                         }
@@ -1259,7 +1325,8 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
         // orbI = VMO
         // orbI = SOMO
         // orbI = DOMO
-        int noccorbI = (Isomo & (1<<(orbI-1)));
+        //printf("CASE: orbI == orbJ %d %d ->%d\n",orbI,orbJ, Isomo);
+        int noccorbI = __builtin_popcount((Isomo & (1<<(orbI-1))));
         switch (noccorbI){
             case 0:
                 // Matrix is 0
@@ -1416,8 +1483,9 @@ void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowv
             inpdet[j] = detslist[i*NSOMO + j];
         findAddofDetDriver(dettree, NSOMO, inpdet, &addr);
         // Calculate the phase for cfg to QP2 conversion
-        get_phase_cfg_to_qp(inpdet, NSOMO, &phase_cfg_to_qp);
+        get_phase_cfg_to_qp_inpList(inpdet, NSOMO, &phase_cfg_to_qp);
         rowvec[addr] = 1.0 * phaselist[i]*phase_cfg_to_qp/sqrt(fac);
+        //rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
         // Upon transformation from
         // SOMO to DET basis,
         // all dets have the same phase
@@ -1685,23 +1753,6 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     /***********************************
                    Doing I
     ************************************/
-    // Fill matrix
-    int rowsI = 0;
-    int colsI = 0;
-
-    getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
-
-    //printf("\nDone Overlap Matrix I\n");
-    //printRealMatrix(overlapMatrixI, rowsI, colsI);
-    //printf("\nDone Overlap Matrix I\n");
-
-    orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
-
-    gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
-
-    //printf("\nDone Gram-Schmidt orthonormalization I\n");
-    //printRealMatrix(orthoMatrixI, rowsI, colsI);
-    //printf("\nGen det basis I \n");
 
     int rowsbftodetI, colsbftodetI;
 
@@ -1711,26 +1762,31 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     printRealMatrix(bftodetmatrixI, rowsbftodetI, colsbftodetI);
     printf("\nBF to det I\n");
 
+    // Fill matrix
+    int rowsI = 0;
+    int colsI = 0;
+
+    //getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+    //printf("\nDone Overlap Matrix I\n");
+    //printRealMatrix(overlapMatrixI, rowsI, colsI);
+    //printf("\nDone Overlap Matrix I\n");
+    getOverlapMatrix_withDet(bftodetmatrixI, rowsbftodetI, colsbftodetI, Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+
+    //printf("\nDone Overlap Matrix I\n");
+    //printRealMatrix(overlapMatrixI, rowsI, colsI);
+    //printf("\nDone Overlap Matrix I\n");
+
+    orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
+
+    gramSchmidt(overlapMatrixI, rowsI, colsI, orthoMatrixI);
+
+    printf("\nDone Gram-Schmidt orthonormalization I\n");
+    printRealMatrix(orthoMatrixI, rowsI, colsI);
+    printf("\nGen det basis I \n");
+
     /***********************************
                    Doing J
     ************************************/
-
-    int rowsJ = 0;
-    int colsJ = 0;
-    // Fill matrix
-    getOverlapMatrix(Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
-
-    //printf("\nDone overlap J\n");
-    //printRealMatrix(overlapMatrixJ, rowsJ, colsJ);
-    //printf("\nDone overlap J\n");
-
-    orthoMatrixJ = malloc(rowsJ*colsJ*sizeof(double));
-
-    gramSchmidt(overlapMatrixJ, rowsJ, colsJ, orthoMatrixJ);
-
-    //printf("\nDone Gram-Schmidt orthonormalization\n");
-    //printRealMatrix(orthoMatrixJ, rowsJ, colsJ);
-    //printf("\nDone Gram-Schmidt orthonormalization\n");
 
 
     int rowsbftodetJ, colsbftodetJ;
@@ -1742,6 +1798,27 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     printf("\nGen det basis J \n");
     printRealMatrix(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ);
     printf("\nGen det basis  J\n");
+
+    int rowsJ = 0;
+    int colsJ = 0;
+    // Fill matrix
+    //getOverlapMatrix(Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
+    //printf("\nDone overlap J\n");
+    //printRealMatrix(overlapMatrixJ, rowsJ, colsJ);
+    //printf("\nDone overlap J\n");
+    getOverlapMatrix_withDet(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ, Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
+
+    printf("\nDone overlap J\n");
+    printRealMatrix(overlapMatrixJ, rowsJ, colsJ);
+    printf("\nDone overlap J\n");
+
+    orthoMatrixJ = malloc(rowsJ*colsJ*sizeof(double));
+
+    gramSchmidt(overlapMatrixJ, rowsJ, colsJ, orthoMatrixJ);
+
+    printf("\nDone Gram-Schmidt orthonormalization\n");
+    printRealMatrix(orthoMatrixJ, rowsJ, colsJ);
+    printf("\nDone Gram-Schmidt orthonormalization\n");
 
     int rowsA = 0;
     int colsA = 0;

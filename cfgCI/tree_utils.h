@@ -42,6 +42,7 @@ void getIslands(int NSOMO, int *BF1, int *BF2, int *nislands, int *phasefactor);
 void generateAllBFs(int64_t Isomo, int64_t MS, Tree *bftree, int *NBF, int *NSOMO);
 void getSetBits(int64_t n, int *nsetbits);
 void getOverlapMatrix(int64_t Isomo, int64_t MS, double **overlapMatrixptr, int *rows, int *cols, int *NSOMOout);
+void getOverlapMatrix_withDet(double *bftodetmatrixI, int rowsbftodetI, int colsbftodetI, int64_t Isomo, int64_t MS, double **overlapMatrixI, int *rowsI, int *colsI, int *NSOMO);
 void gramSchmidt(double *overlapMatrix, int rows, int cols, double *orthoMatrix);
 
 
@@ -80,6 +81,7 @@ void convertBFtoDetBasis(int64_t Isomo, int MS, double **bftodetmatrixptr, int *
 void int_to_bin_digit(int64_t in, int count, int* out);
 void printRealMatrix(double *orthoMatrix, int rows, int cols);
 void callBlasMatxMat(double *A, int rowA, int colA, double *B, int rowB, int colB, double *C, bool transA, bool transB);
-void get_phase_cfg_to_qp(int *inpdet, int NSOMO, int *phaseout);
+void get_phase_cfg_to_qp_inpList(int *inpdet, int NSOMO, int *phaseout);
+void get_phase_cfg_to_qp_inpInt(int inpdet, double *phaseout);
 
 #endif
