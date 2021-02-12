@@ -159,6 +159,9 @@ subroutine calculate_preconditioner_cfg(diag_energies)
            vmotype(nvmos) = 1
         end if
      enddo
+     print *,"I=",i
+     call debug_spindet(psi_configuration(1,1,i),N_int)
+     call debug_spindet(psi_configuration(1,2,i),N_int)
 
      do k=1,nholes
         p = listholes(k)
@@ -169,10 +172,11 @@ subroutine calculate_preconditioner_cfg(diag_energies)
         do l=1,nholes
            q = listholes(l)
            noccq = holetype(l)
+           print *,"--------------- K=",p," L=",q
 
            ! one-electron term
            if(p.EQ.q) then
-              hpp = noccq * mo_one_e_integrals(q,q)
+              hpp = noccq * h_core_ri(p,q)!mo_one_e_integrals(q,q)
            else
               hpp = 0.d0
            endif
@@ -182,9 +186,11 @@ subroutine calculate_preconditioner_cfg(diag_energies)
               ! coulomb term
               ! (pp,qq) = <pq|pq>
               if(p.EQ.q) then
-                 diag_energies(j) += hpp + 0.5d0 * (noccp * noccq * mo_two_e_integral(p,q,p,q) - noccp * mo_two_e_integral(p,q,p,q))
+                 diag_energies(j) += hpp + 0.5d0 * (noccp * noccq * mo_two_e_integral(p,q,p,q)) !- noccp * mo_two_e_integral(p,q,p,q))
+                 print *,"hpp=",hpp,"diga= ",diag_energies(j)
               else
                  diag_energies(j) +=       0.5d0 * noccp * noccq * mo_two_e_integral(p,q,p,q)
+                 print *,"diga= ",diag_energies(j)
               endif
            enddo
         enddo
@@ -197,6 +203,7 @@ subroutine calculate_preconditioner_cfg(diag_energies)
            q = listvmos(l)
            noccq = vmotype(l)
            if (p.EQ.q) cycle
+           print *,"--------------- K=",p," L=",q
 
            ! ERI term
            ! (pk,kq) = <pq|kk>
@@ -222,8 +229,8 @@ subroutine calculate_preconditioner_cfg(diag_energies)
                  do jj=1,cols
                     meCC = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)
                     meCC *= meCC
-                    diag_energies(starti+ii-1) += 0.5d0 * (mo_two_e_integral(p,p,q,q) * meCC - noccp * mo_two_e_integral(p,p,q,q))
-                    print *,"SOMO->VMO",mo_two_e_integral(p,p,q,q),meCC,NSOMOI,NSOMOJ,"|",rows,cols,">",pmodel,qmodel
+                    diag_energies(starti+ii-1) += 0.5d0 * (mo_two_e_integral(p,p,q,q) * meCC)
+                    print *,"SOMO->VMO",mo_two_e_integral(p,p,q,q),meCC,NSOMOI,NSOMOJ,"|",rows,cols,">",pmodel,qmodel," diag=",diag_energies(starti+ii-1)
                     cntj += 1
                  enddo
                  cnti += 1
@@ -252,9 +259,8 @@ subroutine calculate_preconditioner_cfg(diag_energies)
                  do jj=1,cols
                     meCC = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)
                     meCC *= meCC
-                    diag_energies(starti+ii-1) += 0.5d0 * (mo_two_e_integral(p,p,q,q) * meCC - noccp * mo_two_e_integral(p,p,q,q))
-                    print *,"SOMO->SOMO",mo_two_e_integral(p,p,q,q),meCC,pmodel,qmodel,"|",Isomo,Jsomo, "|pq",p,q,"noccp=",noccp, &
-                         "contrib=",0.5d0 * (mo_two_e_integral(p,p,q,q) * meCC - noccp * mo_two_e_integral(p,p,q,q)),NSOMOI,NSOMOJ,"|",rows,cols,">",pmodel,qmodel
+                    diag_energies(starti+ii-1) += 0.25d0 * (mo_two_e_integral(p,p,q,q) * meCC )
+                    print *,"SOMO->SOMO",mo_two_e_integral(p,p,q,q),meCC,NSOMOI,NSOMOJ,"|",rows,cols,">",pmodel,qmodel," diag=",diag_energies(starti+ii-1)
                     cntj += 1
                  enddo
                  cnti += 1
@@ -281,8 +287,8 @@ subroutine calculate_preconditioner_cfg(diag_energies)
                  do jj=1,cols
                     meCC = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)
                     meCC *= meCC
-                    diag_energies(starti+ii-1) += 0.5d0 * (mo_two_e_integral(p,p,q,q) * meCC - noccp * mo_two_e_integral(p,p,q,q))
-                    print *,"DOMO->VMO",mo_two_e_integral(p,p,q,q),meCC,NSOMOI,NSOMOJ,"|",rows,cols,">",pmodel,qmodel
+                    diag_energies(starti+ii-1) += 0.5d0 * (mo_two_e_integral(p,p,q,q) * meCC)
+                    print *,"DOMO->VMO",mo_two_e_integral(p,p,q,q),meCC,NSOMOI,NSOMOJ,"|",rows,cols,">",pmodel,qmodel," diag=",diag_energies(starti+ii-1)
                     cntj += 1
                  enddo
                  cnti += 1
@@ -310,8 +316,8 @@ subroutine calculate_preconditioner_cfg(diag_energies)
                  do jj=1,cols
                     meCC = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)
                     meCC *= meCC
-                    diag_energies(starti+ii-1) += 0.5d0 * (mo_two_e_integral(p,p,q,q) * meCC - noccp * mo_two_e_integral(p,p,q,q))
-                    print *,"DOMO->SOMO",mo_two_e_integral(p,p,q,q),meCC,NSOMOI,NSOMOJ,"|",rows,cols,">",pmodel,qmodel
+                    diag_energies(starti+ii-1) += 0.5d0 * (mo_two_e_integral(p,p,q,q) * meCC)
+                    print *,"DOMO->SOMO",mo_two_e_integral(p,p,q,q),meCC,NSOMOI,NSOMOJ,"|",rows,cols,">",pmodel,qmodel," diag=",diag_energies(starti+ii-1)
                     cntj += 1
                  enddo
                  cnti += 1
@@ -354,7 +360,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   END_DOC
   real*8,intent(out):: psi_coef_out_det(N_det)
   integer(bit_kind) :: Icfg(N_INT,2)
-  integer :: i,j,k,l,p,q,noccp,noccq, ii, jj, m, n, idxI, kk
+  integer :: i,j,k,l,p,q,noccp,noccq, ii, jj, m, n, idxI, kk, nocck,orbk
   integer(bit_kind) :: alphas_Icfg(N_INT,2,200)
   integer(bit_kind) :: singlesI(N_INT,2,200)
   integer(bit_kind) :: connectedI_alpha(N_INT,2,200)
@@ -516,10 +522,10 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         do ii = starti, endi
            cntj  = 1
            do jj = startj, endj
-              psi_coef_out(jj) += AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj) *   &
-                  psi_coef_config(ii) * mo_one_e_integrals(p,q)
+              meCC1 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)
+              psi_coef_out(jj) += meCC1 * psi_coef_config(ii) * h_core_ri(p,q)
               psi_coef_out_init(jj) = .True.
-              print *,ii,jj,"CC=",AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj),"mo=",mo_one_e_integrals(p,q),"Coef=",AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)*mo_one_e_integrals(p,q)
+              print *,jj,"sing=",h_core_ri(p,q), meCC1,psi_coef_out(jj)
               cntj += 1
            enddo
            cnti += 1
@@ -527,44 +533,69 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
 
         !!! Two-electron contribution !!!
         do k=1,nholes
+           orbk = listholes(k)
+           nocck = holetype(k)
            if(k.EQ.p .OR. k.EQ.q) then
-              fac2eints = 0.5d0
+              ! 2e integral of the type
+              ! (pq,kk) = <pk,qk>
+              ! and
+              ! (kk,pq) = <kp,kq>
+              moi = p
+              mok = q
+              moj = orbk
+              mol = orbk
+              !fac2eints *= mo_two_e_integral(moi,moj,mok,mol)
+              fac2eints = 0.5d0 * get_two_e_integral(moi,mok,moj,mol,mo_integrals_map) * (nocck)
            else
-              fac2eints = 1.0d0
+              ! 2e integral of the type
+              ! (pq,kk) = <pk,qk>
+              ! and
+              ! (kk,pq) = <kp,kq>
+              moi = p
+              mok = q
+              moj = orbk
+              mol = orbk
+              ! 2 * 0.5 since we do this toice
+              ! <I|E_{kk}E_{pq}|J> and <I|E_{pq}E_{kk}|J>
+              !fac2eints *= mo_two_e_integral(moi,moj,mok,mol)
+              fac2eints = 1.0d0 * get_two_e_integral(moi,mok,moj,mol,mo_integrals_map) * nocck
            endif
 
-           ! 2e integral of the type
-           ! (pq,kk) = <pk,qk>
-           ! and
-           ! (kk,pq) = <kp,kq>
-           moi = p
-           mok = q
-           moj = k
-           mol = k
-           !fac2eints *= mo_two_e_integral(moi,moj,mok,mol)
-           fac2eints *= get_two_e_integral(moi,mok,moj,mol,mo_integrals_map)
 
            cnti = 1
            cntj = 1
            do ii = starti, endi
-              cntk  = 1
-              do kk = startj, endj
-                 meCC1 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntk)
-                 cntj = 1
-                 do jj = starti, endi
-                    if(jj.EQ.ii) then
-                       cntj+=1
-                       cycle
-                    endif
-                    meCC2 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cntj,cntk)
-                    psi_coef_out(jj) += meCC1*meCC2 * psi_coef_config(ii) * fac2eints
-                    psi_coef_out_init(jj) = .True.
-                    cntj+=1
-                 enddo
-                 cntk += 1
+              cntj  = 1
+              do jj = startj, endj
+                 meCC1 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)
+                 psi_coef_out(jj) += meCC1* psi_coef_config(ii) * fac2eints
+                 psi_coef_out_init(jj) = .True.
+                 print *,jj,"doub=",get_two_e_integral(moi,mok,moj,mol,mo_integrals_map),meCC1,psi_coef_out(jj)
+                 cntj+=1
               enddo
               cnti += 1
            enddo
+           !cnti = 1
+           !cntj = 1
+           !do ii = starti, endi
+           !   cntk  = 1
+           !   do kk = startj, endj
+           !      meCC1 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntk)
+           !      cntj = 1
+           !      do jj = starti, endi
+           !         if(jj.EQ.ii) then
+           !            cntj+=1
+           !            cycle
+           !         endif
+           !         meCC2 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cntj,cntk)
+           !         psi_coef_out(jj) += meCC1*meCC2 * psi_coef_config(ii) * fac2eints
+           !         psi_coef_out_init(jj) = .True.
+           !         cntj+=1
+           !      enddo
+           !      cntk += 1
+           !   enddo
+           !   cnti += 1
+           !enddo
         enddo
         ! Undo setting in listholes
         if(POPCNT(IAND(Jsomo,IBSET(0_8,q-1))) .EQ. 1) then
@@ -633,10 +664,10 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
            !print *,k, Nalphas_Icfg, "idxI=",idxs_connectedI_alpha(j)
            !call debug_spindet(alphas_Icfg(1,1,k),N_int)
            !call debug_spindet(alphas_Icfg(1,2,k),N_int)
-           !print *,"----------------Icfg------- Isingle=",j
-           !call debug_spindet(connectedI_alpha(1,1,j),N_int)
-           !call debug_spindet(connectedI_alpha(1,2,j),N_int)
-           !print *,"----------------",NSOMOalpha,NSOMOI,"ex=",extype,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
+            print *,"----------------Jcfg------- Isingle=",j
+            call debug_spindet(connectedI_alpha(1,1,j),N_int)
+            call debug_spindet(connectedI_alpha(1,2,j),N_int)
+            print *,"----------------",NSOMOalpha,NSOMOI,"ex=",extype,pmodel,qmodel,"(",rowsikpq,colsikpq,")"
         enddo
 
         !print *,"total columnTKI=",totcolsTKI
@@ -679,12 +710,12 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
            do m = 1,colsikpq
               do l = 1,nconnectedI
                  ! <ij|kl> = (ik|jl)
-                 moi = excitationIds(1,j)
-                 mok = excitationIds(2,j)
-                 moj = excitationIds(2,l)
-                 mol = excitationIds(1,l)
-                 !print *,"(",m,l,")",moi,mok,moj,mol
-                 GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(moi,moj,mok,mol)
+                 moi = excitationIds(1,j) ! p
+                 mok = excitationIds(2,j) ! q
+                 moj = excitationIds(2,l) ! s
+                 mol = excitationIds(1,l) ! r
+                 print *,"integrals (",m,l,")",moi,mok,moj,mol
+                 GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(moi,moj,mok,mol) ! g(pq,sr) = <ps,qr>
               enddo
            enddo
            totcolsTKI += colsikpq
@@ -743,8 +774,8 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   ! Add the diagonal contribution
   do i = 1,dimBasisCSF
      print *, "i=",i,"coef=",psi_coef_config(i),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
-     psi_coef_out(i) += 1.0d0*diag_energies(i)*psi_coef_config(i)
-     !psi_coef_out(i) = diag_energies(i)
+     psi_coef_out(i) += 0.0d0*diag_energies(i)*psi_coef_config(i)
+     !psi_coef_out(i) = diag_energies(i)*psi_coef_config(i)
      print *, "i=",i,"coef=",psi_coef_out(i)
   enddo
 

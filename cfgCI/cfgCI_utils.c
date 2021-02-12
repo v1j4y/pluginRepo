@@ -362,7 +362,7 @@ void get_phase_cfg_to_qp_inpList(int *inpdet, int NSOMO, int *phaseout){
     int nbetas=0;
     (*phaseout) = 1;
     for(int i=0;i<NSOMO;i++){
-        if(inpdet[i] == 1)
+        if(inpdet[i] == 0)
             (*phaseout) *= nbetas % 2 == 0 ? 1:-1;
         else
             nbetas += 1;
@@ -444,10 +444,10 @@ void convertCSFtoDetBasis(int64_t Isomo, int MS, int rowsmax, int colsmax, doubl
     double phaseAll = -1.0;
     callBlasMatxMat(orthoMatrixI, rowsI, colsI, bftodetmatrixI, rowsbftodetI, colsbftodetI, tmpcsftodet, transA, transB);
     for(int i=0;i<rowsI;i++){
-        phaseAll = -1.0;
-        for(int j=0;j<colsbftodetI;j++){
-            if(tmpcsftodet[i*colsbftodetI + j] > 0.0) phaseAll = 1.0;
-        }
+        phaseAll = 1.0;
+        //for(int j=0;j<colsbftodetI;j++){
+        //    if(tmpcsftodet[i*colsbftodetI + j] > 0.0) phaseAll = 1.0;
+        //}
         for(int j=0;j<colsbftodetI;j++){
             csftodetmatrix[j*rowsI + i] = tmpcsftodet[i*colsbftodetI + j]*phaseAll;
         }
@@ -513,7 +513,8 @@ int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
         na = __builtin_popcount(tmpdet);
         nb = abs(p-q) - na;
         //printf("\nna=%d nb=%d\n",na,nb);
-        int nfermions = occatp == 0 ? nb : na;
+        //int nfermions = occatp == 0 ? nb : na;
+        int nfermions = na+nb;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         int tmpdetq1 = outdet & maskpxq;
@@ -533,7 +534,8 @@ int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
         na = __builtin_popcount(tmpdet);
         nb = abs(p-q) - na;
         //printf("\nna=%d nb=%d\n",na,nb);
-        int nfermions = occatp == 0 ? nb : na;
+        //int nfermions = occatp == 0 ? nb : na;
+        int nfermions = na+nb;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         // start with p
@@ -591,7 +593,8 @@ int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
         nb = abs(p-q) - na;
         //printf("\nna=%d nb=%d\n",na,nb);
         // spin obb to that at q is moving
-        int nfermions = occatq == 0 ? na : nb;
+        //int nfermions = occatq == 0 ? na : nb;
+        int nfermions = na+nb;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         int tmpdetq1 = outdet & maskpxq;
@@ -607,7 +610,8 @@ int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
         nb = abs(p-q) - na;
         //printf("\nna=%d nb=%d\n",na,nb);
         // spin obb to that at q is moving
-        int nfermions = occatq == 0 ? na : nb;
+        //int nfermions = occatq == 0 ? na : nb;
+        int nfermions = na+nb;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         // start with p
@@ -657,7 +661,8 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
     na = __builtin_popcount(tmpdet);
     nb = abs(p-q)-1 - na;
     //printf("\nna=%d nb=%d\n",na,nb);
-    int nfermions = occatp == 0 ? nb : na;
+    //int nfermions = occatp == 0 ? nb : na;
+    int nfermions = occatp == 0 ? na+nb+1 : na+nb;
     (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
     // Step 2: shift
@@ -1483,9 +1488,9 @@ void getbftodetfunction(Tree *dettree, int NSOMO, int MS, int *BF1, double *rowv
             inpdet[j] = detslist[i*NSOMO + j];
         findAddofDetDriver(dettree, NSOMO, inpdet, &addr);
         // Calculate the phase for cfg to QP2 conversion
-        get_phase_cfg_to_qp_inpList(inpdet, NSOMO, &phase_cfg_to_qp);
-        rowvec[addr] = 1.0 * phaselist[i]*phase_cfg_to_qp/sqrt(fac);
-        //rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
+        //get_phase_cfg_to_qp_inpList(inpdet, NSOMO, &phase_cfg_to_qp);
+        //rowvec[addr] = 1.0 * phaselist[i]*phase_cfg_to_qp/sqrt(fac);
+        rowvec[addr] = 1.0 * phaselist[i]/sqrt(fac);
         // Upon transformation from
         // SOMO to DET basis,
         // all dets have the same phase
@@ -1904,11 +1909,22 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
     /***********************************
                    Doing I
     ************************************/
+
+    int rowsbftodetI, colsbftodetI;
+
+    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
+
+    //printf("\nBF to det I\n");
+    //printRealMatrix(bftodetmatrixI, rowsbftodetI, colsbftodetI);
+    //printf("\nBF to det I\n");
+
     // Fill matrix
     int rowsI = 0;
     int colsI = 0;
 
-    getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+    //getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+    //getOverlapMatrix(Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
+    getOverlapMatrix_withDet(bftodetmatrixI, rowsbftodetI, colsbftodetI, Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
 
     //printf("\nIsomo=%ld MS=%ld NSOMO=%d (%d,%d)\n",Isomo,MS,NSOMO, rowsI, colsI);
     //printf("\nDone Overlap Matrix I\n");
@@ -1923,22 +1939,25 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
     //printRealMatrix(orthoMatrixI, rowsI, colsI);
     //printf("\nGen det basis I \n");
 
-    int rowsbftodetI, colsbftodetI;
-
-    convertBFtoDetBasis(Isomo, MS, &bftodetmatrixI, &rowsbftodetI, &colsbftodetI);
-
-    //printf("\nBF to det I\n");
-    //printRealMatrix(bftodetmatrixI, rowsbftodetI, colsbftodetI);
-    //printf("\nBF to det I\n");
-
     /***********************************
                    Doing J
     ************************************/
 
+    int rowsbftodetJ, colsbftodetJ;
+
+    convertBFtoDetBasis(Jsomo, MS, &bftodetmatrixJ, &rowsbftodetJ, &colsbftodetJ);
+
+    //printf("dims BFtoDetJ rowsbftodetJ=%d colsbftodetJ=%d\n",rowsbftodetJ,colsbftodetJ);
+
+    //printf("\nGen det basis J \n");
+    //printRealMatrix(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ);
+    //printf("\nGen det basis  J\n");
+
     int rowsJ = 0;
     int colsJ = 0;
     // Fill matrix
-    getOverlapMatrix(Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
+    //getOverlapMatrix(Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
+    getOverlapMatrix_withDet(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ, Jsomo, MS, &overlapMatrixJ, &rowsJ, &colsJ, &NSOMO);
 
     //printf("\nDone overlap J\n");
     //printRealMatrix(overlapMatrixJ, rowsJ, colsJ);
@@ -1952,16 +1971,6 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
     //printRealMatrix(orthoMatrixJ, rowsJ, colsJ);
     //printf("\nDone Gram-Schmidt orthonormalization\n");
 
-
-    int rowsbftodetJ, colsbftodetJ;
-
-    convertBFtoDetBasis(Jsomo, MS, &bftodetmatrixJ, &rowsbftodetJ, &colsbftodetJ);
-
-    //printf("dims BFtoDetJ rowsbftodetJ=%d colsbftodetJ=%d\n",rowsbftodetJ,colsbftodetJ);
-
-    //printf("\nGen det basis J \n");
-    //printRealMatrix(bftodetmatrixJ, rowsbftodetJ, colsbftodetJ);
-    //printf("\nGen det basis  J\n");
 
     int rowsA = 0;
     int colsA = 0;

@@ -61,7 +61,7 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
 
   p = 0
   q = 0
-  do i=idxI,N_configuration
+  do i=idxI+1,N_configuration
      Isomo = Ialpha(1,1)
      Idomo = Ialpha(1,2)
      Jsomo = psi_configuration(1,1,i)
@@ -79,11 +79,11 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
      !print *,"-I--i=",i,diffSOMO,diffDOMO!Isomo,Jsomo,ndiffSOMO,ndiffDOMO
      !print *,POPCNT(IEOR(diffSOMO,diffDOMO)), ndiffDOMO
      if(POPCNT(IEOR(diffSOMO,diffDOMO)) .LE. 1 .AND. ndiffDOMO .LT. 3) then
-     call debug_spindet(Isomo,1)
-     call debug_spindet(Idomo,1)
-     print *,"-J--i=",i,Idomo,Jdomo,">",N_configuration
-     call debug_spindet(Jsomo,1)
-     call debug_spindet(Jdomo,1)
+     !call debug_spindet(Isomo,1)
+     !call debug_spindet(Idomo,1)
+     !print *,"-J--i=",i,Idomo,Jdomo,">",N_configuration
+     !call debug_spindet(Jsomo,1)
+     !call debug_spindet(Jdomo,1)
         select case(ndiffDOMO)
         case (0)
            ! SOMO -> VMO

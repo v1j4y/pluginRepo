@@ -73,11 +73,12 @@ via BLAS level 3 operations.
   integer ncfgpersomo
   detDimperBF = 0
   MS = elec_alpha_num-elec_beta_num
+  print *,"NSOMOMax=",NSOMOMax, cfg_seniority_index(0)
   ! number of cfgs = number of dets for 0 somos
   dimBasisCSF = cfg_seniority_index(0)-1
   ncfgprev = cfg_seniority_index(0)
   do i = 0-iand(MS,1)+2, NSOMOMax,2
-     if(cfg_seniority_index(i) == -1)then
+     if(cfg_seniority_index(i) .EQ. -1)then
         ncfgpersomo = N_configuration + 1
      else
         ncfgpersomo = cfg_seniority_index(i)
@@ -91,6 +92,13 @@ via BLAS level 3 operations.
   !if(detDimperBF > maxDetDimPerBF) maxDetDimPerBF = detDimperBF
   ncfgprev = cfg_seniority_index(i)
   enddo
+  if(NSOMOMax .EQ. elec_num)then
+        ncfgpersomo = N_configuration + 1
+        ncfg = ncfgpersomo - ncfgprev
+        dimcsfpercfg = max(1,nint((binom(i-2,(i-2+1)/2)-binom(i-2,((i-2+1)/2)+1))))
+        dimBasisCSF += ncfg * dimcsfpercfg
+        print *,i,">(",ncfg,ncfgprev,ncfgpersomo,")",",",detDimperBF,">",dimcsfpercfg, " | dimbas= ", dimBasisCSF
+  endif
   END_PROVIDER
   #+end_src
 
@@ -717,10 +725,17 @@ end subroutine get_phase_qp_to_cfg
         do k = 1,i
            do l = 1,i
               if(k .NE. l) then
-              Isomo = ISHFT(1_8,i+1)-1
-              Isomo = IBCLR(Isomo,k-1)
-              Jsomo = ISHFT(1_8,j+1)-1
-              Jsomo = IBCLR(Jsomo,l-1)
+                 if(k.GT.l) then
+                    Isomo = ISHFT(1_8,i+1)-1
+                    Isomo = IBCLR(Isomo,k-1)
+                    Jsomo = ISHFT(1_8,j+1)-1
+                    Jsomo = IBCLR(Jsomo,l-1)
+                 else
+                    Isomo = ISHFT(1_8,i+1)-1
+                    Isomo = IBCLR(Isomo,k-1)
+                    Jsomo = ISHFT(1_8,j+1)-1
+                    Jsomo = IBCLR(Jsomo,l-1)
+                 endif
               else
                  Isomo = ISHFT(1_8,i)-1
                  Jsomo = ISHFT(1_8,j)-1
@@ -737,8 +752,18 @@ end subroutine get_phase_qp_to_cfg
                    rows,                     &
                    cols)
 
-              orbp = k
-              orbq = l
+              if(k.NE.l)then
+                 if(k.GT.l)then
+                    orbp = k+1
+                    orbq = l
+                 else
+                    orbp = k
+                    orbq = l+1
+                 endif
+              else
+                 orbp = k
+                 orbq = l
+              endif
               allocate(meMatrix(rows,cols))
               meMatrix = 0.0d0
               ! fill matrix
