@@ -104,7 +104,7 @@ end subroutine get_phase_qp_to_cfg
 
 
   BEGIN_PROVIDER [ real*8, DetToCSFTransformationMatrix, (0:NSOMOMax,NBFMax,maxDetDimPerBF)]
- &BEGIN_PROVIDER [ real*8, psi_coef_config,  (dimBasisCSF)]
+ &BEGIN_PROVIDER [ real*8, psi_coef_config,  (dimBasisCSF,1)]
  &BEGIN_PROVIDER [ integer, psi_config_data, (N_configuration,2)]
   use cfunctions
   implicit none
@@ -164,7 +164,7 @@ end subroutine get_phase_qp_to_cfg
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
-         print *,">>",Ialpha,Ibeta,phasedet
+         !print *,">>",Ialpha,Ibeta,phasedet
          tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)*phasedet
          !tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)
          norm_det1 += tempCoeff(countdet)*tempCoeff(countdet)
@@ -188,10 +188,10 @@ end subroutine get_phase_qp_to_cfg
        print *,"csftodetdim=",bfIcfg,ndetI
        call printMatrix(tempBuffer,bfIcfg,ndetI)
 
-       call dgemm('N','N', bfIcfg, 1, ndetI, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_config(countcsf+1), size(psi_coef_config,1))
+       call dgemm('N','N', bfIcfg, 1, ndetI, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_config(countcsf+1,1), size(psi_coef_config,1))
        !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
 
-      call printMatrix(psi_coef_config(countcsf+1),bfIcfg,1)
+      call printMatrix(psi_coef_config(countcsf+1,1),bfIcfg,1)
       deallocate(tempCoeff)
       deallocate(tempBuffer)
       psi_config_data(i,1) = countcsf + 1
@@ -250,7 +250,7 @@ end subroutine get_phase_qp_to_cfg
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
-         print *,">>",Ialpha,Ibeta,phasedet
+         !print *,">>",Ialpha,Ibeta,phasedet
          tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)*phasedet
          !tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)
          norm_det1 += tempCoeff(countdet)*tempCoeff(countdet)
@@ -348,16 +348,17 @@ end subroutine get_phase_qp_to_cfg
        !call dgemm('T','N', ndetI, 1, bfIcfg, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_det(countdet,1), size(psi_coef_det,1))
        call dgemm('T','N', ndetI, 1, bfIcfg, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, tmp_psi_coef_det, size(tmp_psi_coef_det,1))
 
-       !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
+       !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf,1), 1)
 
        print *,"result"
        call printMatrix(tmp_psi_coef_det,ndetI,1)
+       
        countdet = 1
        do j=startdet,enddet
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
-         print *,">>",Ialpha,Ibeta,phasedet
+         !print *,">>",Ialpha,Ibeta,phasedet
          psi_coef_det(psi_configuration_to_psi_det_data(j),1) = tmp_psi_coef_det(countdet)*phasedet
          countdet += 1
        enddo

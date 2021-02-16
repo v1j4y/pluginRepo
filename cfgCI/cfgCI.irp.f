@@ -306,7 +306,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   !  2. CSF to DET back transcormation
   ! returns : psi_coef_out_det :
   END_DOC
-  real*8,intent(out):: psi_coef_out_det(N_det)
+  real*8,intent(out):: psi_coef_out_det(N_det,1)
   integer(bit_kind) :: Icfg(N_INT,2)
   integer :: i,j,k,l,p,q,noccp,noccq, ii, jj, m, n, idxI, kk, nocck,orbk
   integer(bit_kind) :: alphas_Icfg(N_INT,2,200)
@@ -359,10 +359,10 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
      call debug_spindet(psi_configuration(1,2,i),N_int)
   enddo
   do i = 1,dimBasisCSF
-     print *, "i=",i,"coef=",psi_coef_config(i), "diagE=",diag_energies(i)
+     print *, "i=",i,"coef=",psi_coef_config(i,1), "diagE=",diag_energies(i)
      !call debug_spindet(psi_configuration(1,1,i),N_int)
      !call debug_spindet(psi_configuration(1,2,i),N_int)
-     norm_coef_cfg += psi_coef_config(i)*psi_coef_config(i)
+     norm_coef_cfg += psi_coef_config(i,1)*psi_coef_config(i,1)
   enddo
   print *,"norm CFG = ",norm_coef_cfg
 
@@ -471,7 +471,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
            cntj  = 1
            do jj = startj, endj
               meCC1 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)
-              psi_coef_out(jj) += meCC1 * psi_coef_config(ii) * h_core_ri(p,q)
+              psi_coef_out(jj) += meCC1 * psi_coef_config(ii,1) * h_core_ri(p,q)
               psi_coef_out_init(jj) = .True.
               print *,jj,"sing=",h_core_ri(p,q), meCC1,psi_coef_out(jj)
               cntj += 1
@@ -516,7 +516,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
               cntj  = 1
               do jj = startj, endj
                  meCC1 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)
-                 psi_coef_out(jj) += meCC1* psi_coef_config(ii) * fac2eints
+                 psi_coef_out(jj) += meCC1* psi_coef_config(ii,1) * fac2eints
                  psi_coef_out_init(jj) = .True.
                  print *,jj,"doub=",get_two_e_integral(moi,mok,moj,mol,mo_integrals_map),meCC1,psi_coef_out(jj)
                  cntj+=1
@@ -536,7 +536,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
            !            cycle
            !         endif
            !         meCC2 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cntj,cntk)
-           !         psi_coef_out(jj) += meCC1*meCC2 * psi_coef_config(ii) * fac2eints
+           !         psi_coef_out(jj) += meCC1*meCC2 * psi_coef_config(ii,1) * fac2eints
            !         psi_coef_out_init(jj) = .True.
            !         cntj+=1
            !      enddo
@@ -558,7 +558,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   ! Add the diagonal contribution
   print *,"Done singles"
   do i = 1,dimBasisCSF
-     print *, "i=",i,"coef=",psi_coef_config(i),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
+     print *, "i=",i,"coef=",psi_coef_config(i,1),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
   enddo
 
   !!! Double Excitations !!!
@@ -652,7 +652,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
            !print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha
            do l = 1,rowsTKI
               do m = 1,colsikpq
-                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * psi_coef_config(idxs_connectedI_alpha(j)+m-1)
+                 TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * psi_coef_config(idxs_connectedI_alpha(j)+m-1,1)
               enddo
            enddo
            do m = 1,colsikpq
@@ -721,9 +721,9 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
 
   ! Add the diagonal contribution
   do i = 1,dimBasisCSF
-     print *, "i=",i,"coef=",psi_coef_config(i),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
-     !psi_coef_out(i) += 0.0d0*diag_energies(i)*psi_coef_config(i)
-     psi_coef_out(i) = diag_energies(i)*psi_coef_config(i)
+     print *, "i=",i,"coef=",psi_coef_config(i,1),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
+     !psi_coef_out(i) += 0.0d0*diag_energies(i)*psi_coef_config(i,1)
+     psi_coef_out(i) = diag_energies(i)*psi_coef_config(i,1)
      print *, "i=",i,"coef=",psi_coef_out(i)
   enddo
 
@@ -759,12 +759,12 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
      ndetI = enddet-startdet+1
 
      do k=1,ndetI
-        !norm_coef_det += psi_coef_out_det(countdet)*psi_coef_out_det(countdet)
+        !norm_coef_det += psi_coef_out_det(countdet,1)*psi_coef_out_det(countdet,1)
         norm_coef_det += psi_coef(countdet,1)*psi_coef(countdet,1)
         norm_coef_loc += psi_coef_out_loc2(countdet,1)*psi_coef_out_loc2(countdet,1)
         energy_qp2 += psi_coef_out_loc2(countdet,1)*psi_coef(countdet,1)
-        energy_hpsi += psi_coef_out_det(countdet)*psi_coef(countdet,1)
-        print *, "i=",i,ndetI," > ",psi_coef_out_det(startdet+k-1)," >> ",psi_coef_out_loc2(startdet+k-1,1)
+        energy_hpsi += psi_coef_out_det(countdet,1)*psi_coef(countdet,1)
+        print *, "i=",i,ndetI," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)
      enddo
      countdet += ndetI
   enddo
@@ -801,39 +801,39 @@ end subroutine calculate_sigma_vector
       END_DOC
       integer         :: i,j,k,l,p,q
       real*8          :: normcfg, normdet
-      real*8          :: psi_coef_out_det(N_det)
+      real*8          :: psi_coef_out_det(N_det,1)
       real*8          :: diag_energies(dimBasisCSF)
       real*8          :: psi_coef_cfg_out(dimBasisCSF,1)
       real*8          :: psi_coef_det_out(n_det,1)
       integer         :: s, bfIcfg, countcsf
-      !call calculate_preconditioner_cfg(diag_energies)
-      !do i=1,N_configuration
-      !   print *,i,">",diag_energies(i)
-      !enddo
-      !call calculate_sigma_vector_cfg(psi_coef_out_det)
+      call calculate_preconditioner_cfg(diag_energies)
+      do i=1,N_configuration
+         print *,i,">",diag_energies(i)
+      enddo
+      call calculate_sigma_vector_cfg(psi_coef_out_det)
       normcfg = 0.d0
       normdet = 0.d0
       call convertWFfromDETtoCSF(psi_coef,psi_coef_cfg_out)
-      countcsf = 1
-      do i=1,N_configuration
-         s = 0
-         do k=1,N_int
-            if (psi_configuration(k,1,i) == 0_bit_kind) cycle
-            s = s + popcnt(psi_configuration(k,1,i))
-         enddo
-         bfIcfg = max(1,nint((binom(s,(s+1)/2)-binom(s,((s+1)/2)+1))))
+      !countcsf = 1
+      !do i=1,N_configuration
+      !   s = 0
+      !   do k=1,N_int
+      !      if (psi_configuration(k,1,i) == 0_bit_kind) cycle
+      !      s = s + popcnt(psi_configuration(k,1,i))
+      !   enddo
+      !   bfIcfg = max(1,nint((binom(s,(s+1)/2)-binom(s,((s+1)/2)+1))))
 
-         do j = 1,bfIcfg
-            print *,countcsf,">",psi_coef_cfg_out(countcsf,1)
-            normcfg += psi_coef_cfg_out(countcsf,1)*psi_coef_cfg_out(countcsf,1)
-            countcsf += 1
-         enddo
+      !   do j = 1,bfIcfg
+      !      print *,countcsf,">",psi_coef_cfg_out(countcsf,1)
+      !      normcfg += psi_coef_cfg_out(countcsf,1)*psi_coef_cfg_out(countcsf,1)
+      !      countcsf += 1
+      !   enddo
 
-      enddo
-      call convertWFfromCSFtoDET(psi_coef_cfg_out,psi_coef_det_out)
-      do i=1,n_det
-         print *,i,">",psi_coef_det_out(i,1), psi_coef(i,1)
-         normdet += psi_coef_det_out(i,1)*psi_coef_det_out(i,1)
-      enddo
+      !enddo
+      !call convertWFfromCSFtoDET(psi_coef_cfg_out,psi_coef_det_out)
+      !do i=1,n_det
+      !   print *,i,">",psi_coef_det_out(i,1), psi_coef(i,1)
+      !   normdet += psi_coef_det_out(i,1)*psi_coef_det_out(i,1)
+      !enddo
       print *,"Norm cfg = ",normcfg," Norm det=",normdet
       end
