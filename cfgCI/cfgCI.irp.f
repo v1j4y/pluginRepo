@@ -722,8 +722,8 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   ! Add the diagonal contribution
   do i = 1,dimBasisCSF
      print *, "i=",i,"coef=",psi_coef_config(i),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
-     psi_coef_out(i) += 0.0d0*diag_energies(i)*psi_coef_config(i)
-     !psi_coef_out(i) = diag_energies(i)*psi_coef_config(i)
+     !psi_coef_out(i) += 0.0d0*diag_energies(i)*psi_coef_config(i)
+     psi_coef_out(i) = diag_energies(i)*psi_coef_config(i)
      print *, "i=",i,"coef=",psi_coef_out(i)
   enddo
 
@@ -800,11 +800,40 @@ end subroutine calculate_sigma_vector
 !     TODO : Put the documentation of the program here
       END_DOC
       integer         :: i,j,k,l,p,q
+      real*8          :: normcfg, normdet
       real*8          :: psi_coef_out_det(N_det)
       real*8          :: diag_energies(dimBasisCSF)
-      call calculate_preconditioner_cfg(diag_energies)
+      real*8          :: psi_coef_cfg_out(dimBasisCSF,1)
+      real*8          :: psi_coef_det_out(n_det,1)
+      integer         :: s, bfIcfg, countcsf
+      !call calculate_preconditioner_cfg(diag_energies)
+      !do i=1,N_configuration
+      !   print *,i,">",diag_energies(i)
+      !enddo
+      !call calculate_sigma_vector_cfg(psi_coef_out_det)
+      normcfg = 0.d0
+      normdet = 0.d0
+      call convertWFfromDETtoCSF(psi_coef,psi_coef_cfg_out)
+      countcsf = 1
       do i=1,N_configuration
-         print *,i,">",diag_energies(i)
+         s = 0
+         do k=1,N_int
+            if (psi_configuration(k,1,i) == 0_bit_kind) cycle
+            s = s + popcnt(psi_configuration(k,1,i))
+         enddo
+         bfIcfg = max(1,nint((binom(s,(s+1)/2)-binom(s,((s+1)/2)+1))))
+
+         do j = 1,bfIcfg
+            print *,countcsf,">",psi_coef_cfg_out(countcsf,1)
+            normcfg += psi_coef_cfg_out(countcsf,1)*psi_coef_cfg_out(countcsf,1)
+            countcsf += 1
+         enddo
+
       enddo
-      call calculate_sigma_vector_cfg(psi_coef_out_det)
+      call convertWFfromCSFtoDET(psi_coef_cfg_out,psi_coef_det_out)
+      do i=1,n_det
+         print *,i,">",psi_coef_det_out(i,1), psi_coef(i,1)
+         normdet += psi_coef_det_out(i,1)*psi_coef_det_out(i,1)
+      enddo
+      print *,"Norm cfg = ",normcfg," Norm det=",normdet
       end

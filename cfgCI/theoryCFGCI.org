@@ -1866,19 +1866,25 @@ void makePrototypeMatrices(int nel, int norb, double spin);
   (byte & 0x01 ? '1' : '0')
 
 int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
-    // CSF: 1 2 1 1 1 1 1 1 1 1
-    // DET: 1   0 0 1 1 0 0 1 0
-    //        |         |
-    //        p         q
+    // CSF: 1 1 1 1 0 1
+    // DET: 1 0 1 0   1
+    //        |     |
+    //        p     q
+    //        p = 4
+    //        q = 1
     //
     //          result
     //
-    // CSF: 1 1 1 1 1 1 2 1 1 1
-    // DET: 1 0 0 0 1 1   0 1 0
+    // CSF: 1 0 1 1 1 1
+    // DET: 1   1 0 0 1
     // maskp:
-    //      0 1 1 1 1 1 1 1 1 1
+    //      0   1 1 1 1
     // maskq:
-    //      0 0 0 0 0 0 0 1 1 1
+    //      0   0 0 0 1
+    // maskpxq:
+    //      0   1 1 1 0
+    // maskqxqi:
+    //      1   0 0 0 1
     int maskp  = (1UL << p)-1;
     int maskq  = (1UL << q)-1;
     int maskpxq = (maskp ^ maskq);
@@ -1887,24 +1893,20 @@ int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
     // Step 1: remove
     // clear bits from p
     int outdet = idet;
-    int occatp = idet & (1UL << (p-1));
-    //printf("occatp=%d\n",occatp);
+    int occatp = __builtin_popcount(idet & (1UL << (p-1)));
+    //printf("\noccatp=%d\n",occatp);
+    // remove the bit at p
     outdet &= ~(1UL << (p-1));
 
     // Step 2: shift
     if(q > p){
         // start with q
-        // shift middle electrons to left
-
-        //// This is because we dont need q but need p
-        //maskpxq = maskpxq >> 1;
-        //maskpxqi = ~(maskpxq);
 
         // calculate the phase
         int na, nb;
         int tmpdet = outdet & (maskpxq);
         na = __builtin_popcount(tmpdet);
-        nb = abs(p-q) - na;
+        nb = __builtin_popcount(maskpxq) - na;
         //printf("\nna=%d nb=%d\n",na,nb);
         //int nfermions = occatp == 0 ? nb : na;
         int nfermions = na+nb;
@@ -1914,10 +1916,11 @@ int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
         int tmpdetq2 = outdet & maskpxqi;
         tmpdetq1 = tmpdetq1 >> 1;
         outdet = tmpdetq1 | tmpdetq2;
+        // put electron at q
+        outdet = occatp == 0 ? outdet : outdet | (1UL<<(q-1));
     }
     else{
-
-        // This is because we dont need p but need q
+        // shift bit to right
         maskpxq = maskpxq >> 1;
         maskpxqi = ~(maskpxq);
 
@@ -1925,7 +1928,7 @@ int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
         int na, nb;
         int tmpdet = outdet & (maskpxq);
         na = __builtin_popcount(tmpdet);
-        nb = abs(p-q) - na;
+        nb = __builtin_popcount(maskpxq) - na;
         //printf("\nna=%d nb=%d\n",na,nb);
         //int nfermions = occatp == 0 ? nb : na;
         int nfermions = na+nb;
@@ -1937,28 +1940,28 @@ int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
         int tmpdetp2 = outdet & maskpxqi;
         tmpdetp1 = tmpdetp1 << 1;
         outdet = tmpdetp1 | tmpdetp2;
+        // put electron at q
+        outdet = occatp == 0 ? outdet : outdet | (1UL<<(q-1));
     }
-
-    // Step 3: Add bit at q
-    if(occatp > 0) outdet |= (1UL << (q-1));
 
     // Done
     return(outdet);
 }
+
 int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
     // CSF: 1 2 1 1 1 1 1 1 1 1
     // DET: 1   0 0 1 1 0 0 1 0
-    //        |         |
-    //        p         q
+    //          |       |
+    //          p       q
     //
     //          result
     //
     // CSF: 1 1 1 1 1 1 2 1 1 1
     // DET: 1 0 0 0 1 1   0 1 0
     // maskp:
-    //      0 1 1 1 1 1 1 1 1 1
+    //      0   1 1 1 1 1 1 1 1
     // maskq:
-    //      0 0 0 0 0 0 0 1 1 1
+    //      0 0 0 0 0 0 1 1 1 1
     int maskp  = (1UL << p)-1;
     int maskq  = (1UL << q)-1;
     int maskpxq = (maskp ^ maskq);
@@ -1967,44 +1970,46 @@ int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
     // Step 1: remove
     // clear bits from q
     int outdet = idet;
-    int occatq = idet & (1UL << (q-1));
+    int occatq = __builtin_popcount(idet & (1UL << (q-1)));
     outdet &= ~(1UL << (q-1));
 
     // Step 2: shift
     if(q > p){
         // start with q
-        // shift middle electrons to left
 
-        // This is because we dont need q but need p
+        // shift mask between p and q
         maskpxq = maskpxq >> 1;
         maskpxqi = ~(maskpxq);
-
         // calculate the phase
         int na, nb;
         int tmpdet = outdet & (maskpxq);
         na = __builtin_popcount(tmpdet);
-        nb = abs(p-q) - na;
-        //printf("\nna=%d nb=%d\n",na,nb);
+        nb = __builtin_popcount(maskpxq) - na;
+        //printf("\n1na=%d nb=%d\n",na,nb);
         // spin obb to that at q is moving
         //int nfermions = occatq == 0 ? na : nb;
-        int nfermions = na+nb;
+        int nfermions = na + nb + 1;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         int tmpdetq1 = outdet & maskpxq;
         int tmpdetq2 = outdet & maskpxqi;
         tmpdetq1 = tmpdetq1 << 1;
         outdet = tmpdetq1 | tmpdetq2;
+
+        // Step 3: Add bit at p + 1
+        outdet = occatq == 1 ? outdet | (1UL<<(p-1)) : outdet;
     }
     else{
+
         // calculate the phase
         int na, nb;
         int tmpdet = outdet & (maskpxq);
         na = __builtin_popcount(tmpdet);
-        nb = abs(p-q) - na;
-        //printf("\nna=%d nb=%d\n",na,nb);
+        nb = __builtin_popcount(maskpxq) - na;
+        //printf("\n2na=%d nb=%d\n",na,nb);
         // spin obb to that at q is moving
         //int nfermions = occatq == 0 ? na : nb;
-        int nfermions = na+nb;
+        int nfermions = na + nb + 1;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         // start with p
@@ -2013,10 +2018,10 @@ int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
         int tmpdetp2 = outdet & maskpxqi;
         tmpdetp1 = tmpdetp1 >> 1;
         outdet = tmpdetp1 | tmpdetp2;
-    }
 
-    // Step 3: Add bit at p
-    if(occatq > 0) outdet |= (1UL << (p-1));
+        // Step 3: Add bit at p
+        outdet = occatq == 1 ? outdet | (1UL<<(p-1)) : outdet;
+    }
 
     // Done
     return(outdet);
@@ -2055,11 +2060,12 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
     nb = abs(p-q)-1 - na;
     //printf("\nna=%d nb=%d\n",na,nb);
     //int nfermions = occatp == 0 ? nb : na;
-    int nfermions = occatp == 0 ? na+nb+1 : na+nb;
-    (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
     // Step 2: shift
     if(q > p){
+        int nfermions = occatp == 0 ? na+nb : na+nb+1;
+        //printf("\nnfermi=%d\n",nfermions);
+        (*phase) = nfermions % 2 == 0 ? 1 : -1;
         // start with q
         // shift everything left of q
         int tmpdetq1 = outdet & maskq;
@@ -2074,6 +2080,9 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
         outdet = tmpdetp1 | tmpdetp2;
     }
     else{
+        int nfermions = occatp == 0 ? na+nb+1 : na+nb;
+        //printf("\nnfermi=%d\n",nfermions);
+        (*phase) = nfermions % 2 == 0 ? 1 : -1;
         // start with p
         // shift everything left of p
         int tmpdetp1 = outdet & maskp;
@@ -2506,6 +2515,12 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         // Case: DOMO -> SOMO
                         //printf("DOMO->SOMO, %d,%d\n",p,q);
                         // Find the orbital ids in model space
+                        // Ex:
+                        //      2 1 1 1 1
+                        //      p     q
+                        //      1 1 1 2 1
+                        // p = 4
+                        // q = 2
                         // p is from Jsomo
                         // q is from Isomo
                         maskleft = ((1<<(p))-1);
@@ -2514,6 +2529,9 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         qsomo = __builtin_popcount(Isomo & maskright);
                         p = psomo;
                         q = qsomo;
+                        //printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskleft));
+                        //printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskright));
+                        //printf("I=%d J=%d (%d %d) nocc=%d\n",Isomo,Jsomo,p,q,noccorbI);
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
@@ -2535,6 +2553,12 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         // Case: SOMO -> VMO
                         //printf("SOMO->VMO, %d,%d\n",p,q);
                         // Find the orbital ids in model space
+                        // Ex:
+                        //      1 1 1 0 1
+                        //      p     q
+                        //      0 1 1 1 1
+                        // p = 4
+                        // q = 1
                         // p is from Isomo
                         // q is from Jsomo
                         maskleft = ((1<<(p))-1);
@@ -2543,6 +2567,9 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         qsomo = __builtin_popcount(Jsomo & maskright);
                         p = psomo;
                         q = qsomo;
+                        //printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskleft));
+                        //printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskright));
+                        //printf("I=%d J=%d (%d %d) nocc=%d\n",Isomo,Jsomo,p,q,noccorbI);
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
@@ -2662,6 +2689,12 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         // Case: DOMO -> SOMO
                         //printf("DOMO->SOMO, %d,%d\n",p,q);
                         // Find the orbital ids in model space
+                        // Ex:
+                        //      1 1 1 2 1
+                        //      q     p
+                        //      2 1 1 1 1
+                        // p = 1
+                        // q = 4
                         // p is from Jsomo
                         // q is from Isomo
                         maskleft = ((1<<(p))-1);
@@ -2670,6 +2703,9 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         qsomo = __builtin_popcount(Isomo & maskright);
                         p = psomo;
                         q = qsomo;
+                        //printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskleft));
+                        //printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskright));
+                        //printf("I=%d J=%d (%d %d) nocc=%d\n",Isomo,Jsomo,p,q,noccorbI);
 
                         for(int i=0;i<ndetI;i++){
                             int idet = detlistI[i];
@@ -2691,6 +2727,12 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
                         // Case: SOMO -> VMO
                         //printf("SOMO->VMO, %d,%d\n",p,q);
                         // Find the orbital ids in model space
+                        // Ex:
+                        //      0 1 1 1 1
+                        //      q     p
+                        //      1 1 1 0 1
+                        // p = 2
+                        // q = 4
                         // p is from Isomo
                         // q is from Jsomo
                         maskleft = ((1<<(p))-1);
@@ -2767,7 +2809,7 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
 
 - Testing (SOMO-> VMO)
 
-  #+begin_src C
+  #+begin_src C :includes '(<stdlib.h>)
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)  \
@@ -2781,67 +2823,76 @@ void calcMEdetpairGeneral(int *detlistI, int *detlistJ, int orbI, int orbJ, int 
   (byte & 0x01 ? '1' : '0')
 
 int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
-    // CSF: 1 2 1 1 1 1 1 1 1 1
-    // DET: 1   0 0 1 1 0 0 1 0
-    //        |         |
-    //        p         q
+    // CSF: 1 1 1 1 0 1
+    // DET: 1 0 1 0   1
+    //        |     |
+    //        p     q
+    //        p = 4
+    //        q = 1
     //
     //          result
     //
-    // CSF: 1 1 1 1 1 1 2 1 1 1
-    // DET: 1 0 0 0 1 1   0 1 0
+    // CSF: 1 0 1 1 1 1
+    // DET: 1   1 0 0 1
     // maskp:
-    //      0 1 1 1 1 1 1 1 1 1
+    //      0   1 1 1 1
     // maskq:
-    //      0 0 0 0 0 0 0 1 1 1
+    //      0   0 0 0 1
+    // maskpxq:
+    //      0   1 1 1 0
+    // maskqxqi:
+    //      1   0 0 0 1
     int maskp  = (1UL << p)-1;
     int maskq  = (1UL << q)-1;
     int maskpxq = (maskp ^ maskq);
     int maskpxqi = ~(maskp ^ maskq);
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskpxq));
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskpxqi));
 
     // Step 1: remove
     // clear bits from p
     int outdet = idet;
-    int occatp = idet & (1UL << (p-1));
+    int occatp = __builtin_popcount(idet & (1UL << (p-1)));
     printf("\noccatp=%d\n",occatp);
+    // remove the bit at p
     outdet &= ~(1UL << (p-1));
 
     // Step 2: shift
     if(q > p){
         // start with q
-        // shift middle electrons to left
-
-        //// This is because we dont need q but need p
-        //maskpxq = maskpxq >> 1;
-        //maskpxqi = ~(maskpxq);
 
         // calculate the phase
         int na, nb;
         int tmpdet = outdet & (maskpxq);
         na = __builtin_popcount(tmpdet);
-        nb = abs(p-q) - na;
+        nb = __builtin_popcount(maskpxq) - na;
         printf("\nna=%d nb=%d\n",na,nb);
-        int nfermions = occatp == 0 ? nb : na;
+        //int nfermions = occatp == 0 ? nb : na;
+        int nfermions = na+nb;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         int tmpdetq1 = outdet & maskpxq;
         int tmpdetq2 = outdet & maskpxqi;
         tmpdetq1 = tmpdetq1 >> 1;
         outdet = tmpdetq1 | tmpdetq2;
+        // put electron at q
+        outdet = occatp == 0 ? outdet : outdet | (1UL<<(q-1));
     }
     else{
-
-        // This is because we dont need p but need q
+        // shift bit to right
         maskpxq = maskpxq >> 1;
         maskpxqi = ~(maskpxq);
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskpxq));
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskpxqi));
 
         // calculate the phase
         int na, nb;
         int tmpdet = outdet & (maskpxq);
         na = __builtin_popcount(tmpdet);
-        nb = abs(p-q) - na;
+        nb = __builtin_popcount(maskpxq) - na;
         printf("\nna=%d nb=%d\n",na,nb);
-        int nfermions = occatp == 0 ? nb : na;
+        //int nfermions = occatp == 0 ? nb : na;
+        int nfermions = na+nb;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         // start with p
@@ -2850,38 +2901,43 @@ int applyRemoveShftAddSOMOVMO(int idet, int p, int q, int *phase){
         int tmpdetp2 = outdet & maskpxqi;
         tmpdetp1 = tmpdetp1 << 1;
         outdet = tmpdetp1 | tmpdetp2;
+        // put electron at q
+        outdet = occatp == 0 ? outdet : outdet | (1UL<<(q-1));
     }
-
-    // Step 3: Add bit at q
-    if(occatp > 0) outdet |= (1UL << (q-1));
 
     // Done
     return(outdet);
 }
-printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(7 + 32));
+//printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(7 + 32));
+//int phase=0;
+//int outdet = applyRemoveShftAddSOMOVMO(7+32,2,4,&phase);
+//printf("\nphase=%d\n",phase);
+//printf("\noutdet=%d\n",outdet);
+//printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(12));
 int phase=0;
-int outdet = applyRemoveShftAddSOMOVMO(7+32,2,4,&phase);
+int outdet = applyRemoveShftAddSOMOVMO(12,4,2,&phase);
 printf("\nphase=%d\n",phase);
 printf("\noutdet=%d\n",outdet);
 printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
   #+end_src
 
   #+RESULTS:
-  |           |      |        |
-  | leading   | test | 100111 |
-  | occatp=2  |      |        |
-  |           |      |        |
-  | na=1      | nb=1 |        |
-  |           |      |        |
-  | occatp=8  |      |        |
-  |           |      |        |
-  | na=1      | nb=1 |        |
-  |           |      |        |
-  | phase=-1  |      |        |
-  |           |      |        |
-  | outdet=39 |      |        |
-  |           |      |        |
-  | leading   | test | 100111 |
+|           |      |          |
+| leading   | test |     1100 |
+| leading   | test |     1100 |
+| leading   | test | 11110011 |
+| occatp=1  |      |          |
+|           |      |          |
+| leading   | test |      110 |
+| leading   | test | 11111001 |
+| na=1      | nb=1 |          |
+|           |      |          |
+| phase=1   |      |          |
+|           |      |          |
+| outdet=10 |      |          |
+|           |      |          |
+| leading   | test |     1010 |
 
 - Testing DOMO -> SOMO
 
@@ -2901,17 +2957,17 @@ printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
 int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
     // CSF: 1 2 1 1 1 1 1 1 1 1
     // DET: 1   0 0 1 1 0 0 1 0
-    //        |         |
-    //        p         q
+    //          |       |
+    //          p       q
     //
     //          result
     //
     // CSF: 1 1 1 1 1 1 2 1 1 1
     // DET: 1 0 0 0 1 1   0 1 0
     // maskp:
-    //      0 1 1 1 1 1 1 1 1 1
+    //      0   1 1 1 1 1 1 1 1
     // maskq:
-    //      0 0 0 0 0 0 0 1 1 1
+    //      0 0 0 0 0 0 1 1 1 1
     int maskp  = (1UL << p)-1;
     int maskq  = (1UL << q)-1;
     int maskpxq = (maskp ^ maskq);
@@ -2926,36 +2982,42 @@ int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
     // Step 2: shift
     if(q > p){
         // start with q
-        // shift middle electrons to left
 
-        // This is because we dont need q but need p
+        // shift at q
         maskpxq = maskpxq >> 1;
         maskpxqi = ~(maskpxq);
-
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskpxq));
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(maskpxqi));
         // calculate the phase
         int na, nb;
         int tmpdet = outdet & (maskpxq);
         na = __builtin_popcount(tmpdet);
-        nb = abs(p-q) - na;
+        nb = __builtin_popcount(maskpxq) - na;
         printf("\n1na=%d nb=%d\n",na,nb);
         // spin obb to that at q is moving
-        int nfermions = occatq == 0 ? na : nb;
+        //int nfermions = occatq == 0 ? na : nb;
+        int nfermions = na + nb + 1;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         int tmpdetq1 = outdet & maskpxq;
         int tmpdetq2 = outdet & maskpxqi;
         tmpdetq1 = tmpdetq1 << 1;
         outdet = tmpdetq1 | tmpdetq2;
+
+        // Step 3: Add bit at p + 1
+        outdet = occatq == 1 ? outdet | (1UL<<(p-1)) : outdet;
     }
     else{
+
         // calculate the phase
         int na, nb;
         int tmpdet = outdet & (maskpxq);
         na = __builtin_popcount(tmpdet);
-        nb = abs(p-q) - na;
+        nb = __builtin_popcount(maskpxq) - na;
         printf("\n2na=%d nb=%d\n",na,nb);
         // spin obb to that at q is moving
-        int nfermions = occatq == 0 ? na : nb;
+        //int nfermions = occatq == 0 ? na : nb;
+        int nfermions = na + nb + 1;
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
         // start with p
@@ -2964,10 +3026,10 @@ int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
         int tmpdetp2 = outdet & maskpxqi;
         tmpdetp1 = tmpdetp1 >> 1;
         outdet = tmpdetp1 | tmpdetp2;
-    }
 
-    // Step 3: Add bit at p
-    if(occatq > 0) outdet |= (1UL << (p-1));
+        // Step 3: Add bit at p
+        outdet = occatq == 1 ? outdet | (1UL<<(p-1)) : outdet;
+    }
 
     // Done
     return(outdet);
@@ -2977,21 +3039,23 @@ int applyRemoveShftAddDOMOSOMO(int idet, int p, int q, int *phase){
 //int outdet = applyRemoveShftAddDOMOSOMO(7+32,2,4,&phase);
 //printf("\nphase=%d\n",phase);
 //printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
-printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(2));
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(12));
 int phase=0;
-int outdet = applyRemoveShftAddDOMOSOMO(2,2,1,&phase);
+int outdet = applyRemoveShftAddDOMOSOMO(12,2,4,&phase);
 printf("\nphase=%d\n",phase);
 printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
 #+end_src
 
 #+RESULTS:
-|          |      |    |
-| leading  | test | 10 |
-| 2na=1    | nb=0 |    |
-|          |      |    |
-| phase=-1 |      |    |
-|          |      |    |
-| leading  | test |  1 |
+|          |      |          |
+| leading  | test |     1010 |
+| leading  | test |      110 |
+| leading  | test | 11111001 |
+| 1na=1    | nb=1 |          |
+|          |      |          |
+| phase=-1 |      |          |
+|          |      |          |
+| leading  | test |      110 |
 
 - Testing SOMO -> SOMO and DOMO -> VMO
 
@@ -3041,11 +3105,12 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
     nb = abs(p-q)-1 - na;
     printf("\nna=%d nb=%d\n",na,nb);
     //int nfermions = occatp == 0 ? nb : na;
-    int nfermions = occatp == 0 ? na+nb+1 : na+nb;
-    (*phase) = nfermions % 2 == 0 ? 1 : -1;
 
     // Step 2: shift
     if(q > p){
+        int nfermions = occatp == 0 ? na+nb : na+nb+1;
+        printf("\nnfermi=%d\n",nfermions);
+        (*phase) = nfermions % 2 == 0 ? 1 : -1;
         // start with q
         // shift everything left of q
         int tmpdetq1 = outdet & maskq;
@@ -3060,6 +3125,9 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
         outdet = tmpdetp1 | tmpdetp2;
     }
     else{
+        int nfermions = occatp == 0 ? na+nb+1 : na+nb;
+        printf("\nnfermi=%d\n",nfermions);
+        (*phase) = nfermions % 2 == 0 ? 1 : -1;
         // start with p
         // shift everything left of p
         int tmpdetp1 = outdet & maskp;
@@ -3082,19 +3150,28 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
 //int outdet = applyRemoveShftSOMOSOMO(3+32,5,1,&phase);
 //printf("phase=%d\n",phase);
 //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
-printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(2));
+// SOMO -> SOMO
+//printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(1));
+//int phase=0;
+//int outdet = applyRemoveShftSOMOSOMO(1,2,1,&phase);
+//printf("phase=%d\n",phase);
+//printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
+// DOMO -> VMO
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(10));
 int phase=0;
-int outdet = applyRemoveShftSOMOSOMO(2,2,1,&phase);
+int outdet = applyRemoveShftSOMOSOMO(10,1,4,&phase);
 printf("phase=%d\n",phase);
 printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
 #+end_src
 
 #+RESULTS:
-|         |      |    |
-| leading | test | 10 |
-| na=0    | nb=0 |    |
-| phase=1 |      |    |
-| leading | test |  0 |
+|          |      |      |
+| leading  | test | 1010 |
+| na=1     | nb=1 |      |
+|          |      |      |
+| nfermi=2 |      |      |
+| phase=1  |      |      |
+| leading  | test |    1 |
 
 #+begin_src C
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
@@ -3974,6 +4051,7 @@ printf("hello\n");
 printf("%d\n",1<<1);
 printf("%d\n",__builtin_popcount( 3 & 4));
 printf("%d\n",3 ^ 2);
+printf("%ul\n",(1UL<<3-1));
 #+end_src
 
 #+RESULTS:
@@ -3981,3 +4059,4 @@ printf("%d\n",3 ^ 2);
 |     2 |
 |     0 |
 |     1 |
+|    4l |
