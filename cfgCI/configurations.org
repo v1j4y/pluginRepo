@@ -346,7 +346,7 @@ end subroutine get_phase_qp_to_cfg
     END_DOC
     real*8,intent(in)  :: psi_coef_cfg_in(dimBasisCSF,1)
     real*8,intent(out) :: psi_coef_det(N_det,1)
-    real*8             :: tmp_psi_coef_det(N_det)
+    real*8             :: tmp_psi_coef_det(maxDetDimPerBF)
     integer s, bfIcfg
     integer countcsf
     integer countdet
@@ -395,18 +395,20 @@ end subroutine get_phase_qp_to_cfg
        print *,"csftodetdim=",bfIcfg,ndetI
        call printMatrix(tempBuffer,bfIcfg,ndetI)
 
-       call dgemm('T','N', ndetI, 1, bfIcfg, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_det(countdet,1), size(psi_coef_det,1))
+       !call dgemm('T','N', ndetI, 1, bfIcfg, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_det(countdet,1), size(psi_coef_det,1))
+       call dgemm('T','N', ndetI, 1, bfIcfg, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, tmp_psi_coef_det, size(tmp_psi_coef_det,1))
 
        !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
 
        print *,"result"
-       call printMatrix(psi_coef_det(countdet,1),ndetI,1)
+       call printMatrix(tmp_psi_coef_det,ndetI,1)
+       countdet = 1
        do j=startdet,enddet
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
          print *,">>",Ialpha,Ibeta,phasedet
-         psi_coef_det(countdet,1) *= phasedet
+         psi_coef_det(psi_configuration_to_psi_det_data(j),1) = tmp_psi_coef_det(countdet)*phasedet
          countdet += 1
        enddo
 
@@ -415,19 +417,19 @@ end subroutine get_phase_qp_to_cfg
        !countdet += ndetI
     enddo
 
-    countdet = 1
-    tmp_psi_coef_det = psi_coef_det(:,1)
-    do i=1,N_configuration
-       startdet = psi_configuration_to_psi_det(1,i)
-       enddet = psi_configuration_to_psi_det(2,i)
-       ndetI = enddet-startdet+1
-       print *,i,">>>",startdet,enddet
-       do k=1,ndetI
-          !psi_coef_det(startdet+k-1,1) = tmp_psi_coef_det(countdet)
-          psi_coef_det(countdet,1) = tmp_psi_coef_det(startdet+k-1)
-          countdet += 1
-       enddo
-    enddo
+    !countdet = 1
+    !tmp_psi_coef_det = psi_coef_det(:,1)
+    !do i=1,N_configuration
+    !   startdet = psi_configuration_to_psi_det(1,i)
+    !   enddet = psi_configuration_to_psi_det(2,i)
+    !   ndetI = enddet-startdet+1
+    !   print *,i,">>>",startdet,enddet
+    !   do k=1,ndetI
+    !      !psi_coef_det(startdet+k-1,1) = tmp_psi_coef_det(countdet)
+    !      psi_coef_det(countdet,1) = tmp_psi_coef_det(startdet+k-1)
+    !      countdet += 1
+    !   enddo
+    !enddo
 
     print *,"End ncsfs=",countcsf
 
