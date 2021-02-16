@@ -70,9 +70,10 @@ subroutine get_phase_qp_to_cfg(Ialpha, Ibeta, phaseout)
   integer*8,intent(in) :: Ibeta
   real*8,intent(out) :: phaseout
   integer*8          :: mask, deta, detb
-  integer            :: nbetas, count
-  nbetas = 0
-  mask = 0
+  integer*8          :: nbetas
+  integer            :: count
+  nbetas = 0_8
+  mask = 0_8
   count = 0
   deta = Ialpha
   detb = Ibeta
@@ -372,7 +373,8 @@ end subroutine get_phase_qp_to_cfg
        ndetI = enddet-startdet+1
        print *,i,">>>",startdet,enddet
        do k=1,ndetI
-          psi_coef_det(startdet+k-1,1) = tmp_psi_coef_det(countdet)
+          !psi_coef_det(startdet+k-1,1) = tmp_psi_coef_det(countdet)
+          psi_coef_det(countdet,1) = tmp_psi_coef_det(startdet+k-1)
           countdet += 1
        enddo
     enddo
