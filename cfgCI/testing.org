@@ -4542,3 +4542,321 @@ Done blas BFI
      -1.22       0.71
 1Done MEij
 #+end_example
+
+
+* Testing CSFs
+
+** CSFs with 2 somos
+
+- [ ] Small case with 2 somos
+
+#+name: csf2somo
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double ApqIJGood[1][1]=
+{
+    { 1.4142135623730950488016887242096980785696718753769480731766797379 }
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *csftodetmatrix;
+    int rows, cols;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 2;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 1;
+    orbq = 2;
+
+    Isomo = (1 << NMO)-1;
+    rows = 1;
+    cols = 2;
+    //Jsomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    // Isomo
+    csftodetmatrix = malloc(rows*cols*sizeof(double));
+    convertCSFtoDetBasis(Isomo, MS, rows, cols, csftodetmatrix);
+
+    //getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
+
+    printf("1Done MEij\n");
+    printRealMatrix(csftodetmatrix,rows,cols);
+    printf("1Done MEij\n");
+
+
+    //for(int i=0;i<rows;i++){
+    //    for(int j=0;j<cols;j++){
+    //        munit_assert_double_equal(CSFICSFJApqIJ[i*cols + j],ApqIJGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(csftodetmatrix);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: csf2somo
+#+begin_example
+leading test 00000011
+leading test 00000000
+1Done MEij
+
+      0.71      -0.71
+1Done MEij
+#+end_example
+
+** CSF with 4 somos
+
+- [ ] CSF with 4 somos
+
+#+name: csf4somo
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double ApqIJGood[1][1]=
+{
+    { 1.4142135623730950488016887242096980785696718753769480731766797379 }
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *csftodetmatrix;
+    int rows, cols;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 4;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 1;
+    orbq = 2;
+
+    Isomo = (1 << NMO)-1;
+    rows = 2;
+    cols = 6;
+    //Jsomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    // Isomo
+    csftodetmatrix = malloc(rows*cols*sizeof(double));
+    convertCSFtoDetBasis(Isomo, MS, rows, cols, csftodetmatrix);
+
+    //getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
+
+    printf("1Done MEij\n");
+    printRealMatrix(csftodetmatrix,cols,rows);
+    printf("1Done MEij\n");
+
+
+    //for(int i=0;i<rows;i++){
+    //    for(int j=0;j<cols;j++){
+    //        munit_assert_double_equal(CSFICSFJApqIJ[i*cols + j],ApqIJGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(csftodetmatrix);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: csf4somo
+#+begin_example
+leading test 00001111
+leading test 00000011
+1Done MEij
+
+      0.58       0.00
+     -0.29       0.50
+     -0.29      -0.50
+     -0.29      -0.50
+     -0.29       0.50
+      0.58       0.00
+1Done MEij
+#+end_example
+
+** CSF with 6 somos
+
+
+#+name: csf6somo
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double ApqIJGood[1][1]=
+{
+    { 1.4142135623730950488016887242096980785696718753769480731766797379 }
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *csftodetmatrix;
+    int rows, cols;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 4;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 1;
+    orbq = 2;
+
+    Isomo = (1 << NMO)-1;
+    rows = 4;
+    cols = 14;
+    //Jsomo = (1 << NMO)-1;
+    Jsomo = (1 << NMO-2)-1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    // Isomo
+    csftodetmatrix = malloc(rows*cols*sizeof(double));
+    convertCSFtoDetBasis(Isomo, MS, rows, cols, csftodetmatrix);
+
+    //getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
+
+    printf("1Done MEij\n");
+    printRealMatrix(csftodetmatrix,cols,rows);
+    printf("1Done MEij\n");
+
+
+    //for(int i=0;i<rows;i++){
+    //    for(int j=0;j<cols;j++){
+    //        munit_assert_double_equal(CSFICSFJApqIJ[i*cols + j],ApqIJGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(csftodetmatrix);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
