@@ -2818,6 +2818,128 @@ leading test 00001111
 #+end_example
 
 
+** TODO [/] SOMO -> VMO type
+
+- [X] Edge case 2 and 0 Somos
+
+#+name: mematrixSOMOVMO12
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[20][6]=
+{
+    { 1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      1.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      1.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      1.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      1.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      1.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      1.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      1.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      1.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      1.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      1.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 2;
+    int orbp, orbq;
+
+
+    orbp = 1;
+    orbq = 3;
+
+    Isomo = (1 << NMO+1)-1;
+    Isomo &= ~(1UL << (orbq-1));
+    Jsomo = (1 << NMO+1)-1;
+    Jsomo &= ~(1UL << (orbp-1));
+    printf("isomo=%d jsomo=%d\n",Isomo,Jsomo);
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    printf("1Done MEij\n");
+    printRealMatrix(MEij,rows,cols);
+    printf("1Done MEij\n");
+
+
+    //for(int i=0;i<20;i++){
+    //    for(int j=0;j<5;j++){
+    //        munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: mematrixSOMOVMO12
+#+begin_example
+isomo=3 jsomo=6
+leading test 00000011
+leading test 00000110
+1Done MEij
+
+      0.00      -1.00
+     -1.00       0.00
+1Done MEij
+#+end_example
+
+
 * Testing generation of dimensions
 
 ** TODO[/] DOMO -> VMO type
@@ -4811,7 +4933,7 @@ int main(){
     int rows, cols;
     int64_t Isomo, Jsomo, MS, NMO;
     MS = 0;
-    NMO = 4;
+    NMO = 6;
     int orbp, orbq;
 
     // Testing SOMO -> SOMO
@@ -4824,8 +4946,8 @@ int main(){
     orbq = 2;
 
     Isomo = (1 << NMO)-1;
-    rows = 4;
-    cols = 14;
+    rows = 5;
+    cols = 20;
     //Jsomo = (1 << NMO)-1;
     Jsomo = (1 << NMO-2)-1;
     printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
@@ -4860,3 +4982,62 @@ int main(){
 
 
 #+end_src
+
+#+RESULTS: csf6somo
+#+begin_example
+leading test 00111111
+leading test 00001111
+
+overlap matrix
+
+      1.00      -0.50       0.25       0.25      -0.50
+     -0.50       1.00      -0.50      -0.50       0.25
+      0.25      -0.50       1.00       0.25      -0.50
+      0.25      -0.50       0.25       1.00      -0.50
+     -0.50       0.25      -0.50      -0.50       1.00
+
+overlap matrix
+
+overlap matrix
+
+      1.41       0.94       0.47       0.47       0.94
+      0.00       1.33       0.67       0.67       0.33
+      0.00       0.00       1.15       0.00       0.58
+      0.00       0.00       0.00       1.15       0.58
+      0.00       0.00       0.00       0.00       1.00
+
+overlap matrix
+
+csf to det matrix
+
+      0.35      -0.35       0.00       0.00       0.00      -0.35       0.00       0.35       0.00       0.00       0.00       0.00      -0.35       0.00       0.35       0.00       0.00       0.00       0.35      -0.35
+      0.00       0.35      -0.35       0.00      -0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -0.35       0.35       0.00       0.35      -0.35       0.00
+      0.00       0.00       0.35      -0.35       0.00      -0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00      -0.35       0.35       0.00       0.35      -0.35       0.00       0.00
+      0.00       0.00       0.00       0.00       0.35      -0.35       0.00       0.00      -0.35       0.35      -0.35       0.35       0.00       0.00       0.35      -0.35       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.35      -0.35      -0.35       0.35       0.00       0.00      -0.35       0.35       0.35      -0.35       0.00       0.00       0.00       0.00       0.00
+
+csf to det matrix
+1Done MEij
+
+      0.50       0.00       0.00       0.00       0.00
+     -0.17       0.47       0.00       0.00       0.00
+     -0.17      -0.24       0.41       0.00       0.00
+     -0.17      -0.24      -0.41       0.00       0.00
+     -0.17      -0.24       0.00       0.41       0.00
+     -0.17       0.12      -0.20      -0.20       0.35
+     -0.17       0.12       0.20      -0.20      -0.35
+      0.17      -0.12      -0.20      -0.20      -0.35
+      0.17      -0.12       0.20      -0.20       0.35
+      0.17       0.24       0.00       0.41       0.00
+     -0.17      -0.24       0.00      -0.41       0.00
+     -0.17       0.12      -0.20       0.20      -0.35
+     -0.17       0.12       0.20       0.20       0.35
+      0.17      -0.12      -0.20       0.20       0.35
+      0.17      -0.12       0.20       0.20      -0.35
+      0.17       0.24       0.00      -0.41       0.00
+      0.17       0.24       0.41       0.00       0.00
+      0.17       0.24      -0.41       0.00       0.00
+      0.17      -0.47       0.00       0.00       0.00
+     -0.50       0.00       0.00       0.00       0.00
+1Done MEij
+#+end_example

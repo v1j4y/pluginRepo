@@ -179,7 +179,7 @@ subroutine calculate_preconditioner_cfg(diag_energies)
               call convertOrbIdsToModelSpaceIds(Icfg, Jcfg, p, q, extype, pmodel, qmodel)
               rows = AIJpqMatrixDimsList(NSOMOI,NSOMOJ,extype,pmodel,qmodel,1)
               cols = AIJpqMatrixDimsList(NSOMOI,NSOMOJ,extype,pmodel,qmodel,2)
-              call printMatrix(AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,:,:),NBFMax,NBFMax)
+              call printMatrix(AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,:,:),rows,cols)
               cnti = 1
               cntj = 1
               do ii=1,rows
@@ -207,7 +207,7 @@ subroutine calculate_preconditioner_cfg(diag_energies)
               call convertOrbIdsToModelSpaceIds(Icfg, Jcfg, p, q, extype, pmodel, qmodel)
               rows = AIJpqMatrixDimsList(NSOMOI,NSOMOJ,extype,pmodel,qmodel,1)
               cols = AIJpqMatrixDimsList(NSOMOI,NSOMOJ,extype,pmodel,qmodel,2)
-              call printMatrix(AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,:,:),NBFMax,NBFMax)
+              call printMatrix(AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,:,:),rows,cols)
               !print *,Isomo,Idomo,Jsomo,Jdomo,p,q
               !print *,AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,:,:)
               cnti = 1
@@ -237,7 +237,7 @@ subroutine calculate_preconditioner_cfg(diag_energies)
               call convertOrbIdsToModelSpaceIds(Icfg, Jcfg, p, q, extype, pmodel, qmodel)
               rows = AIJpqMatrixDimsList(NSOMOI,NSOMOJ,extype,pmodel,qmodel,1)
               cols = AIJpqMatrixDimsList(NSOMOI,NSOMOJ,extype,pmodel,qmodel,2)
-              call printMatrix(AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,:,:),NBFMax,NBFMax)
+              call printMatrix(AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,:,:),rows,cols)
               cnti = 1
               cntj = 1
               do ii=1,rows
@@ -266,7 +266,7 @@ subroutine calculate_preconditioner_cfg(diag_energies)
               call convertOrbIdsToModelSpaceIds(Icfg, Jcfg, p, q, extype, pmodel, qmodel)
               rows = AIJpqMatrixDimsList(NSOMOI,NSOMOJ,extype,pmodel,qmodel,1)
               cols = AIJpqMatrixDimsList(NSOMOI,NSOMOJ,extype,pmodel,qmodel,2)
-              call printMatrix(AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,:,:),NBFMax,NBFMax)
+              call printMatrix(AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,:,:),rows,cols)
               cnti = 1
               cntj = 1
               do ii=1,rows
@@ -808,38 +808,39 @@ end subroutine calculate_sigma_vector
       real*8          :: psi_coef_det_out(n_det,1)
       integer         :: s, bfIcfg, countcsf
       integer*8         :: Ialpha, Ibeta, Isomo
-      !call calculate_preconditioner_cfg(diag_energies)
-      !do i=1,N_configuration
-      !   print *,i,">",diag_energies(i)
-      !enddo
-      !call calculate_sigma_vector_cfg(psi_coef_out_det)
-      normcfg = 0.d0
-      normdet = 0.d0
-      call convertWFfromDETtoCSF(psi_coef,psi_coef_cfg_out)
-      countcsf = 1
+      call calculate_preconditioner_cfg(diag_energies)
       do i=1,N_configuration
-         s = 0
-         do k=1,N_int
-            if (psi_configuration(k,1,i) == 0_bit_kind) cycle
-            s = s + popcnt(psi_configuration(k,1,i))
-         enddo
-         bfIcfg = max(1,nint((binom(s,(s+1)/2)-binom(s,((s+1)/2)+1))))
-
-         do j = 1,bfIcfg
-            print *,countcsf,">",psi_coef_cfg_out(countcsf,1)
-            normcfg += psi_coef_cfg_out(countcsf,1)*psi_coef_cfg_out(countcsf,1)
-            countcsf += 1
-         enddo
-
+         print *,i,">",diag_energies(i)
       enddo
-      call convertWFfromCSFtoDET(psi_coef_cfg_out,psi_coef_det_out)
-      do i=1,n_det
-         Ialpha = psi_det(1,1,i)
-         Ibeta  = psi_det(1,2,i)
-         Isomo = IEOR(Ialpha,Ibeta)
-         !print *,i,">",psi_coef_det_out(i,1), psi_coef(i,1)
-         print *,i,">",psi_coef_det_out(i,1), psi_coef(i,1), abs(psi_coef_det_out(i,1)-psi_coef(i,1)), POPCNT(Isomo)
-         normdet += psi_coef_det_out(i,1)*psi_coef_det_out(i,1)
-      enddo
-      print *,"Norm cfg = ",normcfg," Norm det=",normdet
+      call calculate_sigma_vector_cfg(psi_coef_out_det)
+      ! Testing CSF->DET->CSF
+      !normcfg = 0.d0
+      !normdet = 0.d0
+      !call convertWFfromDETtoCSF(psi_coef,psi_coef_cfg_out)
+      !countcsf = 1
+      !do i=1,N_configuration
+      !   s = 0
+      !   do k=1,N_int
+      !      if (psi_configuration(k,1,i) == 0_bit_kind) cycle
+      !      s = s + popcnt(psi_configuration(k,1,i))
+      !   enddo
+      !   bfIcfg = max(1,nint((binom(s,(s+1)/2)-binom(s,((s+1)/2)+1))))
+
+      !   do j = 1,bfIcfg
+      !      print *,countcsf,">",psi_coef_cfg_out(countcsf,1)
+      !      normcfg += psi_coef_cfg_out(countcsf,1)*psi_coef_cfg_out(countcsf,1)
+      !      countcsf += 1
+      !   enddo
+
+      !enddo
+      !call convertWFfromCSFtoDET(psi_coef_cfg_out,psi_coef_det_out)
+      !do i=1,n_det
+      !   Ialpha = psi_det(1,1,i)
+      !   Ibeta  = psi_det(1,2,i)
+      !   Isomo = IEOR(Ialpha,Ibeta)
+      !   !print *,i,">",psi_coef_det_out(i,1), psi_coef(i,1)
+      !   print *,i,">",psi_coef_det_out(i,1), psi_coef(i,1), abs(psi_coef_det_out(i,1)-psi_coef(i,1)), POPCNT(Isomo)
+      !   normdet += psi_coef_det_out(i,1)*psi_coef_det_out(i,1)
+      !enddo
+      !print *,"Norm cfg = ",normcfg," Norm det=",normdet
       end

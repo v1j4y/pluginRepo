@@ -506,8 +506,8 @@ end subroutine get_phase_qp_to_cfg
      end do
   end do
   ! Type
-  ! 3. DOMO -> SOMO
-  !print *,"Doing DOMO->SOMO"
+  ! 3. SOMO -> VMO
+  !print *,"Doing SOMO->VMO"
   do i = 2-iand(nsomomin,1), NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
@@ -517,11 +517,11 @@ end subroutine get_phase_qp_to_cfg
         end if
         do k = 1,i
            do l = 1,i
-              if(k.NE.l)then
+              if(k .NE. l) then
                  Isomo = ISHFT(1_8,i+1)-1
-                 Isomo = IBCLR(Isomo,k-1)
+                 Isomo = IBCLR(Isomo,l-1)
                  Jsomo = ISHFT(1_8,j+1)-1
-                 Jsomo = IBCLR(Jsomo,l-1)
+                 Jsomo = IBCLR(Jsomo,k-1)
               else
                  Isomo = ISHFT(1_8,i)-1
                  Jsomo = ISHFT(1_8,j)-1
@@ -546,8 +546,8 @@ end subroutine get_phase_qp_to_cfg
      end do
   end do
   ! Type
-  ! 4. SOMO -> VMO
-  !print *,"Doing SOMO->VMO"
+  ! 4. DOMO -> VMO
+  !print *,"Doing DOMO->SOMO"
   do i = 2-iand(nsomomin,1), NSOMOMax, 2
      do j = i,i, 2
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
@@ -555,11 +555,11 @@ end subroutine get_phase_qp_to_cfg
         end if
         do k = 1,i
            do l = 1,i
-              if(k.NE.l)then
-              Isomo = ISHFT(1_8,i+1)-1
-              Isomo = IBCLR(Isomo,k-1)
-              Jsomo = ISHFT(1_8,j+1)-1
-              Jsomo = IBCLR(Jsomo,l-1)
+              if(k .NE. l) then
+                 Isomo = ISHFT(1_8,i+1)-1
+                 Isomo = IBCLR(Isomo,k+1-1)
+                 Jsomo = ISHFT(1_8,j+1)-1
+                 Jsomo = IBCLR(Jsomo,l-1)
               else
                  Isomo = ISHFT(1_8,i)-1
                  Jsomo = ISHFT(1_8,j)-1
@@ -764,17 +764,10 @@ end subroutine get_phase_qp_to_cfg
         do k = 1,i
            do l = 1,i
               if(k .NE. l) then
-                 if(k.GT.l) then
-                    Isomo = ISHFT(1_8,i+1)-1
-                    Isomo = IBCLR(Isomo,k-1)
-                    Jsomo = ISHFT(1_8,j+1)-1
-                    Jsomo = IBCLR(Jsomo,l-1)
-                 else
-                    Isomo = ISHFT(1_8,i+1)-1
-                    Isomo = IBCLR(Isomo,k-1)
-                    Jsomo = ISHFT(1_8,j+1)-1
-                    Jsomo = IBCLR(Jsomo,l-1)
-                 endif
+                 Isomo = ISHFT(1_8,i+1)-1
+                 Isomo = IBCLR(Isomo,l-1)
+                 Jsomo = ISHFT(1_8,j+1)-1
+                 Jsomo = IBCLR(Jsomo,k-1)
               else
                  Isomo = ISHFT(1_8,i)-1
                  Jsomo = ISHFT(1_8,j)-1
@@ -791,18 +784,8 @@ end subroutine get_phase_qp_to_cfg
                    rows,                     &
                    cols)
 
-              if(k.NE.l)then
-                 if(k.GT.l)then
-                    orbp = k+1
-                    orbq = l
-                 else
-                    orbp = k
-                    orbq = l+1
-                 endif
-              else
-                 orbp = k
-                 orbq = l
-              endif
+              orbp = k
+              orbq = l
               allocate(meMatrix(rows,cols))
               meMatrix = 0.0d0
               ! fill matrix
@@ -839,17 +822,10 @@ end subroutine get_phase_qp_to_cfg
         do k = 1,i
            do l = 1,i
               if(k .NE. l) then
-                 if(k.GT.l)then
-                    Isomo = ISHFT(1_8,i+1)-1
-                    Isomo = IBCLR(Isomo,k+1-1)
-                    Jsomo = ISHFT(1_8,j+1)-1
-                    Jsomo = IBCLR(Jsomo,l-1)
-                 else
-                    Isomo = ISHFT(1_8,i+1)-1
-                    Isomo = IBCLR(Isomo,k-1)
-                    Jsomo = ISHFT(1_8,j+1)-1
-                    Jsomo = IBCLR(Jsomo,l+1-1)
-                 endif
+                 Isomo = ISHFT(1_8,i+1)-1
+                 Isomo = IBCLR(Isomo,k-1)
+                 Jsomo = ISHFT(1_8,j+1)-1
+                 Jsomo = IBCLR(Jsomo,l+1-1)
               else
                  Isomo = ISHFT(1_8,i)-1
                  Jsomo = ISHFT(1_8,j)-1
@@ -862,18 +838,9 @@ end subroutine get_phase_qp_to_cfg
                    rows,                     &
                    cols)
 
-              if(k.NE.l)then
-                 if(k.GT.l)then
-                    orbp = k+1
-                    orbq = l
-                 else
-                    orbp = k
-                    orbq = l+1
-                 endif
-              else
-                 orbp = k
-                 orbq = l
-              endif
+              orbp = k
+              orbq = l
+
               allocate(meMatrix(rows,cols))
               meMatrix = 0.0d0
               ! fill matrix
