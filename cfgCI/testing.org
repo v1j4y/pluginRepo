@@ -2445,6 +2445,113 @@ int main(){
 ** TODO[0/0] DOMO -> SOMO
 DEADLINE: <2021-02-03 mer.>
 
+- [ ] Smallest case 2 somos
+
+#+name: mematrixDOMOSOMO22
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double MEijGood[20][6]=
+{
+    { 1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      1.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      1.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      1.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      1.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      1.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 1.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      1.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      1.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      1.00,      0.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      1.00,      0.00},
+    { 0.00,      0.00,      0.00,      0.00,      0.00,      1.00}
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *MEij;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 2;
+    int orbp, orbq;
+
+
+    orbp = 1;
+    orbq = 3;
+
+    Isomo = (1 << NMO+1)-1;
+    Isomo &= ~(1UL << (orbp-1));
+    Jsomo = (1 << NMO+1)-1;
+    Jsomo &= ~(1UL << (orbq-1));
+    printf("isomo=%d jsomo=%d\n",Isomo,Jsomo);
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    callcalcMEij(Isomo, Jsomo, orbp, orbq, MS, NMO, &MEij, &rows, &cols);
+
+    printf("1Done MEij\n");
+    printRealMatrix(MEij,rows,cols);
+    printf("1Done MEij\n");
+
+
+    //for(int i=0;i<20;i++){
+    //    for(int j=0;j<5;j++){
+    //        munit_assert_double_equal(MEij[i*cols + j],MEijGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(MEij);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
 DOMO to SOMO excitations for e.g.
 
 2 1 1 1 1 1
@@ -4198,13 +4305,10 @@ Done Gram-Schmidt orthonormalization
       1.00
 
 Done Gram-Schmidt orthonormalization
-
-leading test 00000111
-leading test 00000001I=6 J=3 (2 1) nocc=1
 Done MEij
 
-      1.00       0.00
-      0.00       1.00
+      0.00      -1.00
+     -1.00       0.00
 Done MEij
 Done blas BFI
 

@@ -1,4 +1,4 @@
-subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI, nconnectedI, excitationIds, excitationTypes)
+subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI, nconnectedI, excitationIds, excitationTypes, diagfactors)
   implicit none
   use bitmasks
   BEGIN_DOC
@@ -23,6 +23,7 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
   integer,intent(out)                      :: nconnectedI
   integer,intent(out)                      :: excitationIds(2,*)
   integer,intent(out)                      :: excitationTypes(*)
+  real*8 ,intent(out)                      :: diagfactors(*)
   integer*8                                :: Idomo
   integer*8                                :: Isomo
   integer*8                                :: Jdomo
@@ -30,8 +31,10 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
   integer*8                                :: IJsomo
   integer*8                                :: diffSOMO
   integer*8                                :: diffDOMO
+  integer*8                                :: xordiffSOMODOMO
   integer                                  :: ndiffSOMO
   integer                                  :: ndiffDOMO
+  integer                                  :: nxordiffSOMODOMO
   integer :: i,j,k,l,p,q,nsomoJ,nsomoalpha,starti,endi,extyp,nholes
   integer :: listholes(mo_num)
   integer :: holetype(mo_num)
@@ -41,7 +44,7 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
   ! holes in SOMO
   Isomo = psi_configuration(1,1,idxI)
   Idomo = psi_configuration(1,2,idxI)
-  do i = n_core_orb+1,n_core_orb + n_act_orb
+  do i = 1,mo_num
      if(POPCNT(IAND(Isomo,IBSET(0_8,i-1))) .EQ. 1) then
         nholes += 1
         listholes(nholes) = i
@@ -49,7 +52,7 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
      endif
   end do
   ! holes in DOMO
-  do i = n_core_orb+1,n_core_orb + n_act_orb
+  do i = 1,mo_num
      if(POPCNT(IAND(Idomo,IBSET(0_8,i-1))) .EQ. 1) then
         nholes += 1
         listholes(nholes) = i
@@ -61,7 +64,7 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
 
   p = 0
   q = 0
-  do i=idxI+1,N_configuration
+  do i=idxI,N_configuration
      Isomo = Ialpha(1,1)
      Idomo = Ialpha(1,2)
      Jsomo = psi_configuration(1,1,i)
@@ -73,12 +76,15 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
      !call debug_spindet(Jdomo,1)
      diffSOMO = IEOR(Isomo,Jsomo)
      diffDOMO = IEOR(Idomo,Jdomo)
+     xordiffSOMODOMO = IEOR(diffSOMO,diffDOMO)
      ndiffSOMO = POPCNT(diffSOMO)
      ndiffDOMO = POPCNT(diffDOMO)
-     if((ndiffSOMO + ndiffDOMO) .EQ. 0) cycle
-     !print *,"-I--i=",i,diffSOMO,diffDOMO!Isomo,Jsomo,ndiffSOMO,ndiffDOMO
+     nxordiffSOMODOMO = POPCNT(xordiffSOMODOMO)
+     print *,"-I--i=",i,ndiffSOMO,ndiffDOMO,nxordiffSOMODOMO!Isomo,Jsomo,ndiffSOMO,ndiffDOMO
+     !if((ndiffSOMO + ndiffDOMO) .EQ. 0) cycle
      !print *,POPCNT(IEOR(diffSOMO,diffDOMO)), ndiffDOMO
-     if(POPCNT(IEOR(diffSOMO,diffDOMO)) .LE. 1 .AND. ndiffDOMO .LT. 3) then
+     !if(POPCNT(IEOR(diffSOMO,diffDOMO)) .LE. 1 .AND. ndiffDOMO .LT. 3) then
+     if((ndiffSOMO+ndiffDOMO+nxordiffSOMODOMO .EQ. 4) .AND. ndiffSOMO .EQ. 2) then
      !call debug_spindet(Isomo,1)
      !call debug_spindet(Idomo,1)
      !print *,"-J--i=",i,Idomo,Jdomo,">",N_configuration
@@ -135,7 +141,37 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
         excitationIds(1,nconnectedI)=p
         excitationIds(2,nconnectedI)=q
         excitationTypes(nconnectedI) = extyp
+        diagfactors(nconnectedI) = 1.0d0
         print *,"------ > output p,q in obt=",p,q
+     else if((ndiffSOMO + ndiffDOMO) .EQ. 0) then
+        do k=1,nholes
+           p = listholes(k)
+           q = p
+           extyp = 1
+           if(holetype(k) .EQ. 1) then
+              starti = psi_config_data(i,1)
+              endi   = psi_config_data(i,2)
+              nconnectedI += 1
+              connectedI(:,:,nconnectedI) = psi_configuration(:,:,i)
+              idxs_connectedI(nconnectedI)=starti
+              excitationIds(1,nconnectedI)=p
+              excitationIds(2,nconnectedI)=q
+              excitationTypes(nconnectedI) = extyp
+              diagfactors(nconnectedI) = 1.0d0
+              print *,"------ > output p,q in obt=",p,q
+           else
+              starti = psi_config_data(i,1)
+              endi   = psi_config_data(i,2)
+              nconnectedI += 1
+              connectedI(:,:,nconnectedI) = psi_configuration(:,:,i)
+              idxs_connectedI(nconnectedI)=starti
+              excitationIds(1,nconnectedI)=p
+              excitationIds(2,nconnectedI)=q
+              excitationTypes(nconnectedI) = extyp
+              diagfactors(nconnectedI) = 2.0d0
+              print *,"------ > output p,q in obt=",p,q
+           endif
+        enddo
      endif
   end do
 

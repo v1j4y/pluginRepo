@@ -386,7 +386,7 @@ end subroutine get_phase_qp_to_cfg
 
   end subroutine convertCSFtoDET
 
-  BEGIN_PROVIDER [ integer, AIJpqMatrixDimsList, (0:NSOMOMax,0:NSOMOMax,4,NSOMOMax,NSOMOMax,2)]
+  BEGIN_PROVIDER [ integer, AIJpqMatrixDimsList, (0:NSOMOMax,0:NSOMOMax,4,NSOMOMax+1,NSOMOMax+1,2)]
  &BEGIN_PROVIDER [ integer, rowsmax]
  &BEGIN_PROVIDER [ integer, colsmax]
   use cfunctions
@@ -413,7 +413,9 @@ end subroutine get_phase_qp_to_cfg
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
   ! Type
   ! 1. SOMO -> SOMO
-  !print *,"Doing SOMO->SOMO"
+  print *,"Doing SOMO->SOMO"
+  AIJpqMatrixDimsList(0,0,1,1,1,1) = 1
+  AIJpqMatrixDimsList(0,0,1,1,1,2) = 1
   do i = 2-iand(nsomomin,1), NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i-2,i-2, 2
@@ -441,7 +443,7 @@ end subroutine get_phase_qp_to_cfg
                    MS,                       &
                    rows,                     &
                    cols)
-              !print *, "SOMO->SOMO \t",i,j,k,l,">",Isomo,Jsomo,">",rows, cols
+              print *, "SOMO->SOMO \t",i,j,k,l,">",Isomo,Jsomo,">",rows, cols
               if(rowsmax .LT. rows) then
                  rowsmax = rows
               end if
@@ -458,6 +460,8 @@ end subroutine get_phase_qp_to_cfg
   ! Type
   ! 2. DOMO -> VMO
   !print *,"Doing DOMO->VMO"
+  AIJpqMatrixDimsList(0,0,2,1,1,1) = 1
+  AIJpqMatrixDimsList(0,0,2,1,1,2) = 1
   do i = 0+iand(nsomomin,1), NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      tmpsomo = ISHFT(1_8,i+2)-1
@@ -508,6 +512,8 @@ end subroutine get_phase_qp_to_cfg
   ! Type
   ! 3. SOMO -> VMO
   !print *,"Doing SOMO->VMO"
+  AIJpqMatrixDimsList(0,0,3,1,1,1) = 1
+  AIJpqMatrixDimsList(0,0,3,1,1,2) = 1
   do i = 2-iand(nsomomin,1), NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
@@ -515,8 +521,8 @@ end subroutine get_phase_qp_to_cfg
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
-        do k = 1,i
-           do l = 1,i
+        do k = 1,i+1
+           do l = 1,i+1
               if(k .NE. l) then
                  Isomo = ISHFT(1_8,i+1)-1
                  Isomo = IBCLR(Isomo,l-1)
@@ -546,18 +552,20 @@ end subroutine get_phase_qp_to_cfg
      end do
   end do
   ! Type
-  ! 4. DOMO -> VMO
+  ! 4. DOMO -> SOMO
   !print *,"Doing DOMO->SOMO"
+  AIJpqMatrixDimsList(0,0,4,1,1,1) = 1
+  AIJpqMatrixDimsList(0,0,4,1,1,2) = 1
   do i = 2-iand(nsomomin,1), NSOMOMax, 2
      do j = i,i, 2
         if(j .GT. NSOMOMax .OR. j .LE. 0) then
            cycle
         end if
-        do k = 1,i
-           do l = 1,i
+        do k = 1,i+1
+           do l = 1,i+1
               if(k .NE. l) then
                  Isomo = ISHFT(1_8,i+1)-1
-                 Isomo = IBCLR(Isomo,k+1-1)
+                 Isomo = IBCLR(Isomo,k-1)
                  Jsomo = ISHFT(1_8,j+1)-1
                  Jsomo = IBCLR(Jsomo,l-1)
               else
@@ -586,7 +594,7 @@ end subroutine get_phase_qp_to_cfg
   print *,"Rowsmax=",rowsmax," Colsmax=",colsmax
   END_PROVIDER
 
-  BEGIN_PROVIDER [ real*8, AIJpqContainer, (0:NSOMOMax,0:NSOMOMax,4,NSOMOMax,NSOMOMax,NBFMax,NBFMax)]
+  BEGIN_PROVIDER [ real*8, AIJpqContainer, (0:NSOMOMax,0:NSOMOMax,4,NSOMOMax+1,NSOMOMax+1,NBFMax,NBFMax)]
   use cfunctions
   implicit none
   BEGIN_DOC
@@ -628,6 +636,7 @@ end subroutine get_phase_qp_to_cfg
   ! Type
   ! 1. SOMO -> SOMO
   !print *,"Doing SOMO -> SOMO"
+  AIJpqContainer(0,0,1,1,1,1,1) = 1.0d0
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i-2,i-2, 2
@@ -690,6 +699,7 @@ end subroutine get_phase_qp_to_cfg
   ! Type
   ! 2. DOMO -> VMO
   !print *,"Doing DOMO -> VMO"
+  AIJpqContainer(0,0,2,1,1,1,1) = 1.0d0
   do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      tmpsomo = ISHFT(1_8,i+2)-1
@@ -756,13 +766,14 @@ end subroutine get_phase_qp_to_cfg
   ! Type
   ! 3. SOMO -> VMO
   !print *,"Doing SOMO -> VMO"
+  AIJpqContainer(0,0,3,1,1,1,1) = 1.0d0
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
         Jsomo = ISHFT(1_8,j)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
-        do k = 1,i
-           do l = 1,i
+        do k = 1,i+1
+           do l = 1,i+1
               if(k .NE. l) then
                  Isomo = ISHFT(1_8,i+1)-1
                  Isomo = IBCLR(Isomo,l-1)
@@ -814,18 +825,19 @@ end subroutine get_phase_qp_to_cfg
   ! Type
   ! 4. DOMO -> SOMO
   print *,"Doing DOMO -> SOMO"
+  AIJpqContainer(0,0,4,1,1,1,1) = 1.0d0
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2
         Jsomo = ISHFT(1_8,i)-1
         if(j .GT. NSOMOMax .OR. j .LE. 0) cycle
-        do k = 1,i
-           do l = 1,i
+        do k = 1,i+1
+           do l = 1,i+1
               if(k .NE. l) then
                  Isomo = ISHFT(1_8,i+1)-1
                  Isomo = IBCLR(Isomo,k-1)
                  Jsomo = ISHFT(1_8,j+1)-1
-                 Jsomo = IBCLR(Jsomo,l+1-1)
+                 Jsomo = IBCLR(Jsomo,l-1)
               else
                  Isomo = ISHFT(1_8,i)-1
                  Jsomo = ISHFT(1_8,j)-1
