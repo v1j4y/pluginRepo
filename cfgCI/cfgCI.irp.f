@@ -308,19 +308,19 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   real*8,intent(out):: psi_coef_out_det(N_det,1)
   integer(bit_kind) :: Icfg(N_INT,2)
   integer :: i,j,k,l,p,q,noccp,noccq, ii, jj, m, n, idxI, kk, nocck,orbk
-  integer(bit_kind) :: alphas_Icfg(N_INT,2,200)
-  integer(bit_kind) :: singlesI(N_INT,2,200)
-  integer(bit_kind) :: connectedI_alpha(N_INT,2,200)
-  integer           :: idxs_singlesI(200)
-  integer           :: idxs_connectedI_alpha(200)
+  integer(bit_kind) :: alphas_Icfg(N_INT,2,400)
+  integer(bit_kind) :: singlesI(N_INT,2,400)
+  integer(bit_kind) :: connectedI_alpha(N_INT,2,400)
+  integer           :: idxs_singlesI(400)
+  integer           :: idxs_connectedI_alpha(400)
   integer(bit_kind) :: psi_configuration_out(N_INT,2,400)
   real*8            :: psi_coef_out(dimBasisCSF)
   logical           :: psi_coef_out_init(dimBasisCSF)
-  integer           :: excitationIds_single(2,200)
-  integer           :: excitationTypes_single(200)
-  integer           :: excitationIds(2,200)
-  integer           :: excitationTypes(200)
-  real*8            :: diagfactors(200)
+  integer           :: excitationIds_single(2,400)
+  integer           :: excitationTypes_single(400)
+  integer           :: excitationIds(2,400)
+  integer           :: excitationTypes(400)
+  real*8            :: diagfactors(400)
   integer           :: nholes
   integer           :: nvmos
   integer           :: listvmos(mo_num)
@@ -430,7 +430,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
 
      call generate_all_singles_cfg_with_type(Icfg,singlesI,idxs_singlesI,excitationIds_single, &
           excitationTypes_single,nsinglesI,N_int)
-     print *,"-------------------I=",i, nsinglesI
+     print *,"-------------------I=",i, nsinglesI, " nholes=",nholes
      call debug_spindet(Isomo,N_int)
      call debug_spindet(Idomo,N_int)
 
@@ -448,12 +448,12 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         call debug_spindet(Jdomo,N_int)
 
         ! Add the hole on J
-        if(POPCNT(IAND(Jsomo,IBSET(0_8,q-1))) .EQ. 1) then
+        if(POPCNT(IAND(Jsomo,IBSET(0_8,q-1))) .EQ. 1  .AND. POPCNT(IAND(Isomo,IBSET(0_8,q-1))) .EQ. 0) then
            nholes += 1
            listholes(nholes) = q
            holetype(nholes) = 1
         endif
-        if(POPCNT(IAND(Jdomo,IBSET(0_8,q-1))) .EQ. 1 .AND. POPCNT(IAND(Idomo,IBSET(0_8,q-1))).EQ.0) then
+        if((POPCNT(IAND(Jdomo,IBSET(0_8,q-1))) .EQ. 1 .AND. POPCNT(IAND(Idomo,IBSET(0_8,q-1))) .EQ. 0) .AND. POPCNT(IAND(Isomo,IBSET(0_8,q-1))) .EQ. 0) then
            nholes += 1
            listholes(nholes) = q
            holetype(nholes) = 2
@@ -473,7 +473,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
               meCC1 = AIJpqContainer(NSOMOI,NSOMOJ,extype,pmodel,qmodel,cnti,cntj)
               psi_coef_out(jj) += meCC1 * psi_coef_config(ii,1) * h_core_ri(p,q)
               psi_coef_out_init(jj) = .True.
-              print *,jj,"sing=",h_core_ri(p,q), meCC1,psi_coef_out(jj)
+              print *,jj,"sing=",h_core_ri(p,q), meCC1,psi_coef_config(ii,1),"=",psi_coef_out(jj)
               cntj += 1
            enddo
            cnti += 1
@@ -524,10 +524,10 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         !   !enddo
         !enddo
         ! Undo setting in listholes
-        if(POPCNT(IAND(Jsomo,IBSET(0_8,q-1))) .EQ. 1) then
+        if(POPCNT(IAND(Jsomo,IBSET(0_8,q-1))) .EQ. 1  .AND. POPCNT(IAND(Isomo,IBSET(0_8,q-1))) .EQ. 0) then
            nholes -= 1
         endif
-        if(POPCNT(IAND(Jdomo,IBSET(0_8,q-1))) .EQ. 1) then
+        if((POPCNT(IAND(Jdomo,IBSET(0_8,q-1))) .EQ. 1 .AND. POPCNT(IAND(Idomo,IBSET(0_8,q-1))) .EQ. 0) .AND. POPCNT(IAND(Isomo,IBSET(0_8,q-1))) .EQ. 0) then
            nholes -= 1
         endif
      enddo
@@ -616,14 +616,15 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
            extype = excitationTypes(j)
            call convertOrbIdsToModelSpaceIds(alphas_Icfg(:,:,k), connectedI_alpha(:,:,j), p, q, extype, pmodel, qmodel)
            ! for E_pp E_rs and E_ppE_rr case
-           !call debug_spindet(alphas_Icfg(:,1,k),1)
-           !call debug_spindet(alphas_Icfg(:,2,k),1)
-           !print *,"det I"
-           !call debug_spindet(connectedI_alpha(:,1,j),1)
-           !call debug_spindet(connectedI_alpha(:,2,j),1)
+           call debug_spindet(alphas_Icfg(:,1,k),1)
+           call debug_spindet(alphas_Icfg(:,2,k),1)
+           print *,"det I"
+           call debug_spindet(connectedI_alpha(:,1,j),1)
+           call debug_spindet(connectedI_alpha(:,2,j),1)
            rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
            colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
-           print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha
+           call printMatrix(AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,:,:),rowsikpq,colsikpq)
+           print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha, " coef=",psi_coef_config(idxs_connectedI_alpha(j),1)
            do l = 1,rowsTKI
               do m = 1,colsikpq
                  TKI(l,totcolsTKI+m) = AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,l,m) * psi_coef_config(idxs_connectedI_alpha(j)+m-1,1)
@@ -639,19 +640,38 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
                  if(moi.EQ.mok .AND. moj.EQ.mol)then
                     diagfac = diagfactors(j)
                     diagfac *= diagfactors(l)
-                    print *,"integrals (",m,l,")",mok,moi,mol,moj, "|", diagfac
+                    print *,"integrals (",totcolsTKI+m,l,")",mok,moi,mol,moj, "|", diagfac
                     GIJpqrs(totcolsTKI+m,l) = diagfac*0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
                  else
-                    if(mok.EQ.mol .AND. mol.EQ.moj) then
-                       diagfac = 1.0d0
-                       print *,"integrals (",m,l,")",mok,moi,mol,moj, "|", diagfac
-                       GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
-                       GIJpqrs(totcolsTKI+m,l) += 0.5d0*mo_two_e_integral(mok,moi,moi,moi) ! g(pq,sr) = <ps,qr>
-                    else
+                    !if(mok.EQ.mol .AND. mol.EQ.moj) then
+                    !   diagfac = 1.0d0
+                    !   print *,"integrals (",totcolsTKI+m,l,")",mok,moi,mol,moj, "|", diagfac
+                    !   GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
+                    !   print *,"integrals (",totcolsTKI+m,l,")",mok,moi,moi,moi, "|", diagfac
+                    !   GIJpqrs(totcolsTKI+m,l) += 0.5d0*mo_two_e_integral(mok,moi,moi,moi) ! g(pq,sr) = <ps,qr>
+                    !else if(moi.EQ.mol .AND. mol.EQ.moj) then
+                    !   diagfac = 1.0d0
+                    !   print *,"integrals (",totcolsTKI+m,l,")",mok,moi,mol,moj, "|", diagfac
+                    !   GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
+                    !   print *,"integrals (",totcolsTKI+m,l,")",mok,mol,mok,mok, "|", diagfac
+                    !   GIJpqrs(totcolsTKI+m,l) += 0.5d0*mo_two_e_integral(mok,mol,mok,mok) ! g(pq,sr) = <ps,qr>
+                    !else if(mok.EQ.moi .AND. mok.EQ.mol) then
+                    !   diagfac = 1.0d0
+                    !   print *,"integrals (",m,l,")",mok,moi,mol,moj, "|", diagfac
+                    !   GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
+                    !   print *,"integrals (",m,l,")",mok,moi,moi,moi, "|", diagfac
+                    !   GIJpqrs(totcolsTKI+m,l) += 0.5d0*mo_two_e_integral(moj,mol,moj,moj) ! g(pq,sr) = <ps,qr>
+                    !else if(mok.EQ.moi .AND. mok.EQ.moj) then
+                    !   diagfac = 1.0d0
+                    !   print *,"integrals (",m,l,")",mok,moi,mol,moj, "|", diagfac
+                    !   GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
+                    !   print *,"integrals (",m,l,")",mok,moi,moi,moi, "|", diagfac
+                    !   GIJpqrs(totcolsTKI+m,l) += 0.5d0*mo_two_e_integral(mol,mol,mol,moj) ! g(pq,sr) = <ps,qr>
+                    !else
                        diagfac = diagfactors(j)*diagfactors(l)
-                       print *,"integrals (",m,l,")",mok,moi,mol,moj, "|", diagfac
+                       print *,"integrals (",totcolsTKI+m,l,")",mok,moi,mol,moj, "|", diagfac
                        GIJpqrs(totcolsTKI+m,l) = diagfac*0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
-                    endif
+                    !endif
                  endif
               enddo
            enddo
@@ -659,9 +679,9 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         enddo
 
 
-        print *,"TKI matrix"
+        print *,"TKI matrix dims= (",rowsTKI,",", totcolsTKI,")"
         call printMatrix(TKI,rowsTKI,totcolsTKI)
-        print *,"GIJpqrs matrix"
+        print *,"GIJpqrs matrix dims= (",totcolsTKI,",", nconnectedI,")"
         call printMatrix(GIJpqrs,totcolsTKI,nconnectedI)
 
         ! Do big BLAS
@@ -670,7 +690,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
              TKI, size(TKI,1), GIJpqrs, size(GIJpqrs,1), 0.d0, &
              TKIGIJ , size(TKIGIJ,1) )
 
-        print *,"TKIGIJ matrix"
+        print *,"TKIGIJ matrix dims= (",rowsTKI,",", nconnectedI,")"
         call printMatrix(TKIGIJ,rowsTKI,nconnectedI)
 
         ! Collect the result
@@ -763,21 +783,22 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   !print *,"(14,44)=",1.0*mo_two_e_integral(1,4,4,4)*sqrt(2.d0)
   !print *,"(12,24)=",mo_two_e_integral(1,3,4,3)*sqrt(2.d0)
   !print *,"(34,13)=",mo_two_e_integral(3,1,3,4)*sqrt(2.d0)
-  !sqrt2 = sqrt(2.0d0)
-  !psi_coef_out_det(2,1) =-sqrt2*h_core_ri(1,4)
-  !psi_coef_out_det(2,1)+=-0.5*sqrt2*(mo_two_e_integral(1,2,2,4)*1.d0 + mo_two_e_integral(1,1,4,1)*1.d0 &
-  !                               +mo_two_e_integral(1,3,4,3)*2.d0 + mo_two_e_integral(1,4,4,4)*1.d0 &
-  !                               +mo_two_e_integral(1,1,1,4)*2.d0 + mo_two_e_integral(3,1,3,4)*2.d0 &
-  !                               -mo_two_e_integral(3,1,4,3)*1.d0)
-  !psi_coef_out_det(2,1) = psi_coef_out_det(2,1)/sqrt2
-  !print *,"1->",-sqrt2*h_core_ri(1,4)
-  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(1,2,2,4)*1.d0
-  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(1,1,4,1)*1.d0
-  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(1,3,4,3)*2.d0
-  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(1,4,4,4)*1.d0
-  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(1,1,1,4)*2.d0
-  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(3,1,3,4)*2.d0
-  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(3,1,4,3)*1.d0
+  sqrt2 = dsqrt(2.0d0)
+  !psi_coef_out_det(8,1) =+1.d0*h_core_ri(4,1)
+  !psi_coef_out_det(8,1)+= 0.5d0*(-1.d0*mo_two_e_integral(3,4,1,3)*1.d0 &
+  !                              +1.d0*mo_two_e_integral(2,4,1,2)*1.d0 &
+  !                              +2.d0*mo_two_e_integral(4,2,2,1)*1.d0 &
+  !                              +1.d0*(mo_two_e_integral(1,4,1,1)*1.d0 + mo_two_e_integral(2,4,2,1)*1.d0 + mo_two_e_integral(3,4,3,1)*2.d0) &
+  !                                    +mo_two_e_integral(2,4,2,1)*1.d0 + mo_two_e_integral(3,4,3,1)*2.d0 + mo_two_e_integral(4,4,4,1)*1.d0)
+  !psi_coef_out_det(8,1) = psi_coef_out_det(8,1)/sqrt2
+  print *,"1->",h_core_ri(1,4)
+  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(1,3,3,4)*1.d0
+  !print *,"1->",+0.5*sqrt2*mo_two_e_integral(2,1,4,2)*1.d0
+  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(1,1,1,4)*1.d0
+  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(2,1,2,4)*2.d0
+  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(4,1,4,4)*1.d0
+  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(1,2,4,2)*2.d0
+  !print *,"1->",-0.5*sqrt2*mo_two_e_integral(1,4,4,4)*2.d0
   do i = 1,N_configuration
      startdet = psi_configuration_to_psi_det(1,i)
      enddet = psi_configuration_to_psi_det(2,i)
@@ -796,8 +817,9 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         energy_qp2 += psi_coef_out_loc2(countdet,1)*psi_coef(countdet,1)
         energy_hpsi += psi_coef_out_det(countdet,1)*psi_coef(countdet,1)
         issame = .False.
-        if(abs(psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)) .LT. 0.0000000001d0) issame = .True.
-        print *, "i=",i,ndetI, startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
+        !if(abs(abs(psi_coef_out_loc2(startdet+k-1,1))-abs(psi_coef_out_det(startdet+k-1,1))) .LT. 1.0e-8) issame = .True.
+        if(abs(psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)) .LT. 1.0e-8) issame = .True.
+        print *, "i=",i,countdet,ndetI, startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
         !print *, "i=",i,ndetI," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)
      enddo
      countdet += ndetI

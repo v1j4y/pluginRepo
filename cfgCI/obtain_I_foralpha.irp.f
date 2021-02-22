@@ -35,30 +35,9 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
   integer                                  :: ndiffSOMO
   integer                                  :: ndiffDOMO
   integer                                  :: nxordiffSOMODOMO
-  integer :: i,j,k,l,p,q,nsomoJ,nsomoalpha,starti,endi,extyp,nholes
+  integer :: ii,i,j,k,l,p,q,nsomoJ,nsomoalpha,starti,endi,extyp,nholes
   integer :: listholes(mo_num)
   integer :: holetype(mo_num)
-
-  ! find out all pq holes possible
-  nholes = 0
-  ! holes in SOMO
-  Isomo = psi_configuration(1,1,idxI)
-  Idomo = psi_configuration(1,2,idxI)
-  do i = 1,mo_num
-     if(POPCNT(IAND(Isomo,IBSET(0_8,i-1))) .EQ. 1) then
-        nholes += 1
-        listholes(nholes) = i
-        holetype(nholes) = 1
-     endif
-  end do
-  ! holes in DOMO
-  do i = 1,mo_num
-     if(POPCNT(IAND(Idomo,IBSET(0_8,i-1))) .EQ. 1) then
-        nholes += 1
-        listholes(nholes) = i
-        holetype(nholes) = 2
-     endif
-  end do
 
   nconnectedI = 0
 
@@ -144,6 +123,27 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
         diagfactors(nconnectedI) = 1.0d0
         print *,"------ > output p,q in obt=",p,q
      else if((ndiffSOMO + ndiffDOMO) .EQ. 0) then
+        ! find out all pq holes possible
+        nholes = 0
+        ! holes in SOMO
+        Isomo = psi_configuration(1,1,i)
+        Idomo = psi_configuration(1,2,i)
+        do ii = 1,mo_num
+           if(POPCNT(IAND(Isomo,IBSET(0_8,ii-1))) .EQ. 1) then
+              nholes += 1
+              listholes(nholes) = ii
+              holetype(nholes) = 1
+           endif
+        end do
+        ! holes in DOMO
+        do ii = 1,mo_num
+           if(POPCNT(IAND(Idomo,IBSET(0_8,ii-1))) .EQ. 1) then
+              nholes += 1
+              listholes(nholes) = ii
+              holetype(nholes) = 2
+           endif
+        end do
+
         do k=1,nholes
            p = listholes(k)
            q = p

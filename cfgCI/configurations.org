@@ -92,13 +92,13 @@ via BLAS level 3 operations.
   !if(detDimperBF > maxDetDimPerBF) maxDetDimPerBF = detDimperBF
   ncfgprev = cfg_seniority_index(i)
   enddo
-  !if(NSOMOMax .EQ. elec_num)then
-  !      ncfgpersomo = N_configuration + 1
-  !      ncfg = ncfgpersomo - ncfgprev
-  !      dimcsfpercfg = max(1,nint((binom(i-2,(i-2+1)/2)-binom(i-2,((i-2+1)/2)+1))))
-  !      dimBasisCSF += ncfg * dimcsfpercfg
-  !      print *,i,">(",ncfg,ncfgprev,ncfgpersomo,")",",",detDimperBF,">",dimcsfpercfg, " | dimbas= ", dimBasisCSF
-  !endif
+  if(NSOMOMax .EQ. elec_num)then
+        ncfgpersomo = N_configuration + 1
+        ncfg = ncfgpersomo - ncfgprev
+        dimcsfpercfg = max(1,nint((binom(i-2,(i-2+1)/2)-binom(i-2,((i-2+1)/2)+1))))
+        dimBasisCSF += ncfg * dimcsfpercfg
+        print *,i,">(",ncfg,ncfgprev,ncfgpersomo,")",",",detDimperBF,">",dimcsfpercfg, " | dimbas= ", dimBasisCSF
+  endif
   END_PROVIDER
   #+end_src
 
@@ -128,11 +128,11 @@ subroutine get_phase_qp_to_cfg(Ialpha, Ibeta, phaseout)
   deta = Ialpha
   detb = Ibeta
   ! remove the domos
-  mask = IAND(deta,detb)
-  deta = IEOR(deta,mask)
-  detb = IEOR(detb,mask)
-  mask = 0
-  phaseout = 1.0
+  !mask = IAND(deta,detb)
+  !deta = IEOR(deta,mask)
+  !detb = IEOR(detb,mask)
+  mask = 0_8
+  phaseout = 1.0d0
   do while((deta).GT.0_8)
      mask = ISHFT(1_8,count)
      if(POPCNT(IAND(deta,mask)).EQ.1)then
@@ -142,11 +142,10 @@ subroutine get_phase_qp_to_cfg(Ialpha, Ibeta, phaseout)
            phaseout *= -1.0d0
         endif
         deta = IEOR(deta,mask)
-     else
-        if(POPCNT(IAND(detb,mask)).EQ.1) then
-           nbetas += 1
-           detb = IEOR(detb,mask)
-        endif
+     endif
+     if(POPCNT(IAND(detb,mask)).EQ.1) then
+        nbetas += 1
+        detb = IEOR(detb,mask)
      endif
      count += 1
   enddo
@@ -213,8 +212,10 @@ end subroutine get_phase_qp_to_cfg
       do j = startdet, enddet
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
+         call debug_spindet(Ialpha,1,1)
+         call debug_spindet(Ibeta ,1,1)
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
-         !print *,">>",Ialpha,Ibeta,phasedet
+         print *,">>",Ialpha,Ibeta,phasedet
          tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)*phasedet
          !tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)
          norm_det1 += tempCoeff(countdet)*tempCoeff(countdet)
@@ -300,7 +301,7 @@ end subroutine get_phase_qp_to_cfg
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
-         !print *,">>",Ialpha,Ibeta,phasedet
+         print *,">>",Ialpha,Ibeta,phasedet
          tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)*phasedet
          !tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)
          norm_det1 += tempCoeff(countdet)*tempCoeff(countdet)
@@ -402,13 +403,15 @@ end subroutine get_phase_qp_to_cfg
 
        print *,"result"
        call printMatrix(tmp_psi_coef_det,ndetI,1)
-       
+
        countdet = 1
        do j=startdet,enddet
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
+         call debug_spindet(Ialpha,1,1)
+         call debug_spindet(Ibeta ,1,1)
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
-         !print *,">>",Ialpha,Ibeta,phasedet
+         print *,">>",Ialpha,Ibeta,phasedet
          psi_coef_det(psi_configuration_to_psi_det_data(j),1) = tmp_psi_coef_det(countdet)*phasedet
          countdet += 1
        enddo
@@ -993,3 +996,72 @@ end subroutine get_phase_qp_to_cfg
 |  3 |
 |  2 |
 |  0 |
+
+
+* Testing phase
+
+#+begin_src fortran
+      subroutine get_phase_qp_to_cfg(Ialpha, Ibeta, phaseout)
+      implicit none
+      integer*8,intent(in) :: Ialpha
+      integer*8,intent(in) :: Ibeta
+      real*8,intent(out) :: phaseout
+      integer*8          :: mask, deta, detb
+      integer*8          :: nbetas
+      integer            :: count
+      nbetas = 0_8
+      mask = 0_8
+      count = 0
+      deta = Ialpha
+      detb = Ibeta
+!     remove the domos
+      !mask = IAND(deta,detb)
+      !deta = IEOR(deta,mask)
+      !detb = IEOR(detb,mask)
+      mask = 0_8
+      phaseout = 1.0d0
+      do while((deta).GT.0_8)
+         mask = ISHFT(1_8,count)
+         if(POPCNT(IAND(deta,mask)).EQ.1)then
+            if(IAND(nbetas,1_8).EQ.0_8) then
+               phaseout =  phaseout *1.0d0
+            else
+               phaseout = phaseout * (-1.0d0)
+            endif
+            deta = IEOR(deta,mask)
+         endif
+         if(POPCNT(IAND(detb,mask)).EQ.1) then
+            nbetas = nbetas+ 1
+            detb = IEOR(detb,mask)
+         endif
+         count = count + 1
+         print *,"count=",count," nbeta=",nbetas
+      enddo
+      end subroutine get_phase_qp_to_cfg
+
+      program main
+      implicit none
+      integer*8 ::Ialpha
+      integer*8 ::Ibeta
+      integer :: i
+      integer :: j
+      integer :: extype
+      real*8  :: phaseout
+      Ialpha=12
+      Ibeta =12-8+1
+      phaseout = 1.0d0
+      print *,"alpha=",Ialpha
+      print *,"beta =",Ibeta
+      call get_phase_qp_to_cfg(Ialpha,Ibeta,phaseout)
+      print *,"Phase=",phaseout
+      end program
+#+end_src
+
+#+RESULTS:
+| alpha= |   12 |        |   |
+| beta   |    = | 5      |   |
+| count= |    1 | nbeta= | 1 |
+| count= |    2 | nbeta= | 1 |
+| count= |    3 | nbeta= | 2 |
+| count= |    4 | nbeta= | 2 |
+| Phase= | -1.0 |        |   |

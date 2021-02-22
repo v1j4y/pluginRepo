@@ -3157,27 +3157,27 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
 //printf("phase=%d\n",phase);
 //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
 // SOMO -> SOMO
-//printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(1));
-//int phase=0;
-//int outdet = applyRemoveShftSOMOSOMO(1,2,1,&phase);
-//printf("phase=%d\n",phase);
-//printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
-// DOMO -> VMO
-printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(10));
+printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(2));
 int phase=0;
-int outdet = applyRemoveShftSOMOSOMO(10,1,4,&phase);
+int outdet = applyRemoveShftSOMOSOMO(2,2,1,&phase);
 printf("phase=%d\n",phase);
 printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
+// DOMO -> VMO
+//printf("\nleading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(10));
+//int phase=0;
+//int outdet = applyRemoveShftSOMOSOMO(10,1,4,&phase);
+//printf("phase=%d\n",phase);
+//printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(outdet));
 #+end_src
 
 #+RESULTS:
-|          |      |      |
-| leading  | test | 1010 |
-| na=1     | nb=1 |      |
-|          |      |      |
-| nfermi=2 |      |      |
-| phase=1  |      |      |
-| leading  | test |    1 |
+|          |      |    |
+| leading  | test | 10 |
+| na=0     | nb=0 |    |
+|          |      |    |
+| nfermi=0 |      |    |
+| phase=1  |      |    |
+| leading  | test |  0 |
 
 #+begin_src C
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
@@ -3454,9 +3454,9 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     //printf("\nDone Overlap Matrix I\n");
     getOverlapMatrix_withDet(bftodetmatrixI, rowsbftodetI, colsbftodetI, Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
 
-    //printf("\nDone Overlap Matrix I\n");
-    //printRealMatrix(overlapMatrixI, rowsI, colsI);
-    //printf("\nDone Overlap Matrix I\n");
+    printf("\nDone Overlap Matrix I\n");
+    printRealMatrix(overlapMatrixI, rowsI, colsI);
+    printf("\nDone Overlap Matrix I\n");
 
     orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
 

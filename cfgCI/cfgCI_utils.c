@@ -1825,9 +1825,9 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     //printf("\nDone Overlap Matrix I\n");
     getOverlapMatrix_withDet(bftodetmatrixI, rowsbftodetI, colsbftodetI, Isomo, MS, &overlapMatrixI, &rowsI, &colsI, &NSOMO);
 
-    //printf("\nDone Overlap Matrix I\n");
-    //printRealMatrix(overlapMatrixI, rowsI, colsI);
-    //printf("\nDone Overlap Matrix I\n");
+    printf("\nDone Overlap Matrix I\n");
+    printRealMatrix(overlapMatrixI, rowsI, colsI);
+    printf("\nDone Overlap Matrix I\n");
 
     orthoMatrixI = malloc(rowsI*colsI*sizeof(double));
 
