@@ -809,8 +809,6 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         Ibeta = psi_det(1,2,startdet+k-1)
         Isomo = IEOR(Ialpha,Ibeta)
         Idomo = IAND(Ialpha,Ibeta)
-        call debug_spindet(Isomo,1)
-        call debug_spindet(Idomo,1)
         !norm_coef_det += psi_coef_out_det(countdet,1)*psi_coef_out_det(countdet,1)
         norm_coef_det += psi_coef(countdet,1)*psi_coef(countdet,1)
         norm_coef_loc += psi_coef_out_loc2(countdet,1)*psi_coef_out_loc2(countdet,1)
@@ -818,8 +816,13 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         energy_hpsi += psi_coef_out_det(countdet,1)*psi_coef(countdet,1)
         issame = .False.
         !if(abs(abs(psi_coef_out_loc2(startdet+k-1,1))-abs(psi_coef_out_det(startdet+k-1,1))) .LT. 1.0e-8) issame = .True.
-        if(abs(psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)) .LT. 1.0e-8) issame = .True.
-        print *, "i=",i,countdet,ndetI, startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
+        if(abs(psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)) .LT. 1.0e-8) then
+           issame = .True.
+        else
+           call debug_spindet(Isomo,1)
+           call debug_spindet(Idomo,1)
+           print *, "i=",i,countdet,ndetI, startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
+        endif
         !print *, "i=",i,ndetI," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)
      enddo
      countdet += ndetI

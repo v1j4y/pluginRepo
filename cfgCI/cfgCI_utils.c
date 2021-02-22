@@ -666,7 +666,7 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
     outdet &= ~(1UL << (q-1));
 
     // calculate the phase
-    int occatp = idet & (1UL << (p-1));
+    int occatp = __builtin_popcount(idet & (1UL << (p-1)));
     int na, nb;
     int tmpdet = outdet & (maskp ^ maskq);
     na = __builtin_popcount(tmpdet);
@@ -676,7 +676,7 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
 
     // Step 2: shift
     if(q > p){
-        int nfermions = occatp == 0 ? na+nb : na+nb+1;
+        int nfermions = occatp == 1 ? na+nb : na+nb+1;
         //printf("\nnfermi=%d\n",nfermions);
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
         // start with q
@@ -693,7 +693,7 @@ int applyRemoveShftSOMOSOMO(int idet, int p, int q, int *phase){
         outdet = tmpdetp1 | tmpdetp2;
     }
     else{
-        int nfermions = occatp == 0 ? na+nb+1 : na+nb;
+        int nfermions = occatp == 0 ? na+nb : na+nb+1;
         //printf("\nnfermi=%d\n",nfermions);
         (*phase) = nfermions % 2 == 0 ? 1 : -1;
         // start with p

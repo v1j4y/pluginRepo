@@ -8,7 +8,7 @@
 
 ** Simple unit tests with munit
 
-#+begin_src C :tangle tests.c
+#+begin_src C #:tangle tests.c
 #include <stdio.h>
 #include "munit/munit.h"
 
@@ -3330,8 +3330,8 @@ int main(){
     // 0  2
     // 2  1
 
-    orbp = 1;
-    orbq = 2;
+    orbp = 2;
+    orbq = 1;
 
     Isomo = (1 << NMO)-1;
     //Jsomo = (1 << NMO)-1;
@@ -3376,6 +3376,12 @@ BF to det I
 
 BF to det I
 
+Done Overlap Matrix I
+
+      1.00
+
+Done Overlap Matrix I
+
 Done Gram-Schmidt orthonormalization I
 
       1.00
@@ -3401,16 +3407,16 @@ Done Gram-Schmidt orthonormalization
 Done Gram-Schmidt orthonormalization
 Done MEij
 
-     -1.00
       1.00
+     -1.00
 Done MEij
 Done blas BFI
 
-     -1.41
+      1.41
 Done blas BFI
 1Done MEij
 
-     -1.41
+      1.41
 1Done MEij
 #+end_example
 
@@ -3470,15 +3476,17 @@ int main(){
     // 0  2
     // 2  1
 
-    orbp = 1;
-    orbq = 4;
+    orbp = 2;
+    orbq = 3;
 
     Isomo = (1 << NMO)-1;
-    Jsomo = (1 << NMO-2)-1;
-    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
-    //printf("\n");
-    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
-    //printf("\n");
+    Jsomo = (1 << NMO)-1;
+    Jsomo &= ~(1UL<<orbp-1);
+    Jsomo &= ~(1UL<<orbq-1);
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
 
     getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
 
@@ -3506,6 +3514,8 @@ int main(){
 
 #+RESULTS: promatrixSOMOSOMO42
 #+begin_example
+leading test 00001111
+leading test 00001001
 
 BF to det I
 
@@ -3513,6 +3523,13 @@ BF to det I
       0.00       0.50      -0.50      -0.50       0.50       0.00
 
 BF to det I
+
+Done Overlap Matrix I
+
+      1.00      -0.50
+     -0.50       1.00
+
+Done Overlap Matrix I
 
 Done Gram-Schmidt orthonormalization I
 
@@ -3540,22 +3557,22 @@ Done Gram-Schmidt orthonormalization
 Done Gram-Schmidt orthonormalization
 Done MEij
 
-     -1.00       0.00
-      0.00      -1.00
-      0.00       0.00
-      0.00       0.00
       1.00       0.00
+     -1.00       0.00
+      0.00       0.00
+      0.00       0.00
       0.00       1.00
+      0.00      -1.00
 Done MEij
 Done blas BFI
 
-     -1.00       1.00
-      0.50      -0.50
+      1.00      -1.00
+     -0.50       0.50
 Done blas BFI
 1Done CSFICSFJApqij
 
-     -1.22
-      0.71
+      1.22
+     -0.71
 1Done CSFICSFJApqij
 #+end_example
 
@@ -4126,6 +4143,13 @@ BF to det I
 
 BF to det I
 
+Done Overlap Matrix I
+
+      1.00      -0.50
+     -0.50       1.00
+
+Done Overlap Matrix I
+
 Done Gram-Schmidt orthonormalization I
 
       1.15       0.58
@@ -4234,7 +4258,7 @@ int main(){
     // 2  1
 
     orbp = 3;
-    orbq = 1;
+    orbq = 2;
 
     Isomo = (1 << NMO+1)-1;
     Isomo &= ~(1UL<<orbq-1);
@@ -4273,7 +4297,7 @@ int main(){
 
 #+RESULTS: promatrixSOMOVMO22
 #+begin_example
-leading test 00000110
+leading test 00000101
 leading test 00000011
 
 BF to det I
@@ -4281,6 +4305,12 @@ BF to det I
       0.71      -0.71
 
 BF to det I
+
+Done Overlap Matrix I
+
+      1.00
+
+Done Overlap Matrix I
 
 Done Gram-Schmidt orthonormalization I
 
@@ -4307,8 +4337,8 @@ Done Gram-Schmidt orthonormalization
 Done Gram-Schmidt orthonormalization
 Done MEij
 
-      0.00      -1.00
-     -1.00       0.00
+      1.00       0.00
+      0.00       1.00
 Done MEij
 Done blas BFI
 
