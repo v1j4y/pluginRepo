@@ -792,7 +792,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         energy_hpsi += psi_coef_out_det(countdet,1)*psi_coef(countdet,1)
         issame = .False.
         !if(abs(abs(psi_coef_out_loc2(startdet+k-1,1))-abs(psi_coef_out_det(startdet+k-1,1))) .LT. 1.0e-8) issame = .True.
-        if(abs(psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)) .LT. 1.0e-10) then
+        if(abs(psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)) .LT. 1.0e-8) then
            issame = .True.
            print *, "i=",i,countdet,POPCNT(Isomo), startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
         else
@@ -834,7 +834,20 @@ end subroutine calculate_sigma_vector
       implicit none
       BEGIN_DOC
 !     TODO : Put the documentation of the program here
-      END_DOC iend, psi_csf_inp, psi_csf_out)
+      END_DOC
+      integer         :: i,j,k,l,p,q
+      real*8          :: normcfg, normdet
+      real*8          :: psi_coef_out_det(N_det,1)
+      real*8          :: diag_energies(dimBasisCSF)
+      real*8          :: psi_coef_cfg_out(dimBasisCSF,1)
+      real*8          :: psi_coef_det_out(n_det,1)
+      integer         :: s, bfIcfg, countcsf
+      integer*8         :: Ialpha, Ibeta, Isomo
+      call calculate_preconditioner_cfg(diag_energies)
+      do i=1,N_configuration
+         print *,i,">",diag_energies(i)
+      enddo
+      call calculate_sigma_vector_cfg(psi_coef_out_det)
       ! Testing CSF->DET->CSF
       !normcfg = 0.d0
       !normdet = 0.d0
@@ -855,7 +868,7 @@ end subroutine calculate_sigma_vector
       !   enddo
 
       !enddo
-      !call convertWFfromCSFtoDET(,psi_coef_det_out)
+      !call convertWFfromCSFtoDET( ff,psi_coef_det_out)
       !do i=1,n_det
       !   Ialpha = psi_det(1,1,i)
       !   Ibeta  = psi_det(1,2,i)
