@@ -895,7 +895,7 @@ end subroutine get_phase_qp_to_cfg
   end do
   ! Type
   ! 4. DOMO -> SOMO
-  print *,"Doing DOMO -> SOMO"
+  !print *,"Doing DOMO -> SOMO"
   AIJpqContainer(0,0,4,1,1,1,1) = 1.0d0
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1

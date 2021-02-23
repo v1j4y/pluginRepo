@@ -59,7 +59,7 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
      ndiffSOMO = POPCNT(diffSOMO)
      ndiffDOMO = POPCNT(diffDOMO)
      nxordiffSOMODOMO = POPCNT(xordiffSOMODOMO)
-     print *,"-I--i=",i,ndiffSOMO,ndiffDOMO,nxordiffSOMODOMO!Isomo,Jsomo,ndiffSOMO,ndiffDOMO
+     !print *,"-I--i=",i,ndiffSOMO,ndiffDOMO,nxordiffSOMODOMO!Isomo,Jsomo,ndiffSOMO,ndiffDOMO
      !if((ndiffSOMO + ndiffDOMO) .EQ. 0) cycle
      !print *,POPCNT(IEOR(diffSOMO,diffDOMO)), ndiffDOMO
      !if(POPCNT(IEOR(diffSOMO,diffDOMO)) .LE. 1 .AND. ndiffDOMO .LT. 3) then
@@ -121,7 +121,7 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
         excitationIds(2,nconnectedI)=q
         excitationTypes(nconnectedI) = extyp
         diagfactors(nconnectedI) = 1.0d0
-        print *,"------ > output p,q in obt=",p,q
+        !print *,"------ > output p,q in obt=",p,q
      else if((ndiffSOMO + ndiffDOMO) .EQ. 0) then
         ! find out all pq holes possible
         nholes = 0
@@ -158,7 +158,7 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
               excitationIds(2,nconnectedI)=q
               excitationTypes(nconnectedI) = extyp
               diagfactors(nconnectedI) = 1.0d0
-              print *,"------ > output p,q in obt=",p,q
+              !print *,"------ > output p,q in obt=",p,q
            else
               starti = psi_config_data(i,1)
               endi   = psi_config_data(i,2)
@@ -169,7 +169,7 @@ subroutine obtain_connected_I_foralpha(idxI, Ialpha, connectedI, idxs_connectedI
               excitationIds(2,nconnectedI)=q
               excitationTypes(nconnectedI) = extyp
               diagfactors(nconnectedI) = 2.0d0
-              print *,"------ > output p,q in obt=",p,q
+              !print *,"------ > output p,q in obt=",p,q
            endif
         enddo
      endif
