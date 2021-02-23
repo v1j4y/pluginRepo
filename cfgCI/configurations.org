@@ -770,7 +770,7 @@ end subroutine get_phase_qp_to_cfg
   end do
   ! Type
   ! 2. DOMO -> VMO
-  !print *,"Doing DOMO -> VMO"
+  print *,"Doing DOMO -> VMO"
   AIJpqContainer(0,0,2,1,1,1,1) = 1.0d0
   do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
@@ -822,8 +822,8 @@ end subroutine get_phase_qp_to_cfg
                    meMatrix,                 &
                    rows,                     &
                    cols)
-             !call printMatrix(meMatrix,rows,cols)
-             !print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
+             print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
+             call printMatrix(meMatrix,rows,cols)
               ! i -> j
              do ri = 1,rows
                  do ci = 1,cols
@@ -838,7 +838,6 @@ end subroutine get_phase_qp_to_cfg
   ! Type
   ! 3. SOMO -> VMO
   !print *,"Doing SOMO -> VMO"
-  AIJpqContainer(0,0,3,1,1,1,1) = 1.0d0
   do i = 2, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
      do j = i,i, 2

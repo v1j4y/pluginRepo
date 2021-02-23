@@ -623,7 +623,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
            call debug_spindet(connectedI_alpha(:,2,j),1)
            rowsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1)
            colsikpq = AIJpqMatrixDimsList(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,2)
-           call printMatrix(AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,:,:),rowsikpq,colsikpq)
+           call printMatrix(AIJpqContainer(NSOMOalpha,NSOMOI,extype,pmodel,qmodel,1:rowsikpq,1:colsikpq),rowsikpq,colsikpq)
            print *,"j=",j,">",rowsikpq,colsikpq,"ex=",extype,"pmod(p)=",p,"qmod(q)=",q," somoI=",NSOMOI," somoa=",NSOMOalpha, " coef=",psi_coef_config(idxs_connectedI_alpha(j),1)
            do l = 1,rowsTKI
               do m = 1,colsikpq
@@ -643,31 +643,6 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
                     print *,"integrals (",totcolsTKI+m,l,")",mok,moi,mol,moj, "|", diagfac
                     GIJpqrs(totcolsTKI+m,l) = diagfac*0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
                  else
-                    !if(mok.EQ.mol .AND. mol.EQ.moj) then
-                    !   diagfac = 1.0d0
-                    !   print *,"integrals (",totcolsTKI+m,l,")",mok,moi,mol,moj, "|", diagfac
-                    !   GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
-                    !   print *,"integrals (",totcolsTKI+m,l,")",mok,moi,moi,moi, "|", diagfac
-                    !   GIJpqrs(totcolsTKI+m,l) += 0.5d0*mo_two_e_integral(mok,moi,moi,moi) ! g(pq,sr) = <ps,qr>
-                    !else if(moi.EQ.mol .AND. mol.EQ.moj) then
-                    !   diagfac = 1.0d0
-                    !   print *,"integrals (",totcolsTKI+m,l,")",mok,moi,mol,moj, "|", diagfac
-                    !   GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
-                    !   print *,"integrals (",totcolsTKI+m,l,")",mok,mol,mok,mok, "|", diagfac
-                    !   GIJpqrs(totcolsTKI+m,l) += 0.5d0*mo_two_e_integral(mok,mol,mok,mok) ! g(pq,sr) = <ps,qr>
-                    !else if(mok.EQ.moi .AND. mok.EQ.mol) then
-                    !   diagfac = 1.0d0
-                    !   print *,"integrals (",m,l,")",mok,moi,mol,moj, "|", diagfac
-                    !   GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
-                    !   print *,"integrals (",m,l,")",mok,moi,moi,moi, "|", diagfac
-                    !   GIJpqrs(totcolsTKI+m,l) += 0.5d0*mo_two_e_integral(moj,mol,moj,moj) ! g(pq,sr) = <ps,qr>
-                    !else if(mok.EQ.moi .AND. mok.EQ.moj) then
-                    !   diagfac = 1.0d0
-                    !   print *,"integrals (",m,l,")",mok,moi,mol,moj, "|", diagfac
-                    !   GIJpqrs(totcolsTKI+m,l) = 0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
-                    !   print *,"integrals (",m,l,")",mok,moi,moi,moi, "|", diagfac
-                    !   GIJpqrs(totcolsTKI+m,l) += 0.5d0*mo_two_e_integral(mol,mol,mol,moj) ! g(pq,sr) = <ps,qr>
-                    !else
                        diagfac = diagfactors(j)*diagfactors(l)
                        print *,"integrals (",totcolsTKI+m,l,")",mok,moi,mol,moj, "|", diagfac
                        GIJpqrs(totcolsTKI+m,l) = diagfac*0.5d0*mo_two_e_integral(mok,mol,moi,moj) ! g(pq,sr) = <ps,qr>
@@ -733,7 +708,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
      print *, "i=",i,"coef=",psi_coef_out(i)
   enddo
 
-  integer::N_st_loc,startdet,enddet,countdet,ndetI
+  integer::N_st_loc,startdet,enddet,countdet,ndetI,ndontmatch
   real*8 ::psi_energy_loc(1)
   double precision ::psi_s2_loc(N_det,1)
   real*8 ::psi_energy_loc2
@@ -747,6 +722,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   integer(bit_kind)::tmp_tmp2det(N_int,2)
   integer(bit_kind)::tmp_tmp2det2(N_int,2)
   N_st_loc=1
+  ndontmatch = 0
   psi_energy_loc2=0.d0
   !call u_0_H_u_0(psi_energy_loc2,psi_s2_loc,psi_coef,N_det,psi_det,N_int,N_st_loc,psi_det_size)
   call H_S2_u_0_nstates_openmp(psi_coef_out_loc2,psi_s2_loc,psi_coef,1,N_det)
@@ -816,12 +792,14 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         energy_hpsi += psi_coef_out_det(countdet,1)*psi_coef(countdet,1)
         issame = .False.
         !if(abs(abs(psi_coef_out_loc2(startdet+k-1,1))-abs(psi_coef_out_det(startdet+k-1,1))) .LT. 1.0e-8) issame = .True.
-        if(abs(psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)) .LT. 1.0e-8) then
+        if(abs(psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)) .LT. 1.0e-10) then
            issame = .True.
+           print *, "i=",i,countdet,POPCNT(Isomo), startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
         else
            call debug_spindet(Isomo,1)
            call debug_spindet(Idomo,1)
-           print *, "i=",i,countdet,ndetI, startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
+           print *, "i=",i,countdet,POPCNT(Isomo), startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
+           ndontmatch +=1
         endif
         !print *, "i=",i,ndetI," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)
      enddo
@@ -829,8 +807,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   enddo
   norm_coef_det = sqrt(norm_coef_det)
   norm_coef_loc = sqrt(norm_coef_loc)
-  print *,"norm = ",norm_coef_det, " size=",N_det, " Energy=",energy_hpsi, " Energyqp=",energy_qp2 !+nuclear_repulsion
-  print *,"norm = ",norm_coef_det, " size=",N_det, " Energy=",energy_hpsi/norm_coef_det, " Energyqp=",energy_qp2/norm_coef_det !+nuclear_repulsion
+  print *,"dont match=",ndontmatch,"norm = ",norm_coef_det, " size=",N_det, " Energy=",energy_hpsi/norm_coef_det, " Energyqp=",energy_qp2/norm_coef_det !+nuclear_repulsion
 
 end subroutine calculate_sigma_vector
 
@@ -857,20 +834,7 @@ end subroutine calculate_sigma_vector
       implicit none
       BEGIN_DOC
 !     TODO : Put the documentation of the program here
-      END_DOC
-      integer         :: i,j,k,l,p,q
-      real*8          :: normcfg, normdet
-      real*8          :: psi_coef_out_det(N_det,1)
-      real*8          :: diag_energies(dimBasisCSF)
-      real*8          :: psi_coef_cfg_out(dimBasisCSF,1)
-      real*8          :: psi_coef_det_out(n_det,1)
-      integer         :: s, bfIcfg, countcsf
-      integer*8         :: Ialpha, Ibeta, Isomo
-      call calculate_preconditioner_cfg(diag_energies)
-      do i=1,N_configuration
-         print *,i,">",diag_energies(i)
-      enddo
-      call calculate_sigma_vector_cfg(psi_coef_out_det)
+      END_DOC iend, psi_csf_inp, psi_csf_out)
       ! Testing CSF->DET->CSF
       !normcfg = 0.d0
       !normdet = 0.d0
@@ -891,7 +855,7 @@ end subroutine calculate_sigma_vector
       !   enddo
 
       !enddo
-      !call convertWFfromCSFtoDET(psi_coef_cfg_out,psi_coef_det_out)
+      !call convertWFfromCSFtoDET(,psi_coef_det_out)
       !do i=1,n_det
       !   Ialpha = psi_det(1,1,i)
       !   Ibeta  = psi_det(1,2,i)

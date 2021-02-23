@@ -3772,15 +3772,17 @@ int main(){
     // 0  2
     // 2  1
 
-    orbp = 6;
+    orbp = 3;
     orbq = 1;
 
     Isomo = (1 << NMO)-1;
-    Jsomo = (1 << NMO-2)-1;
-    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
-    //printf("\n");
-    //printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
-    //printf("\n");
+    Jsomo = (1 << NMO)-1;
+    Jsomo &= ~(1UL<<orbp-1);
+    Jsomo &= ~(1UL<<orbq-1);
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
 
     getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
 
@@ -3808,6 +3810,8 @@ int main(){
 
 #+RESULTS: promatrixSOMOSOMO64
 #+begin_example
+leading test 00111111
+leading test 00111010
 
 BF to det I
 
@@ -3819,11 +3823,21 @@ BF to det I
 
 BF to det I
 
+Done Overlap Matrix I
+
+      1.00      -0.50       0.25       0.25      -0.50
+     -0.50       1.00      -0.50      -0.50       0.25
+      0.25      -0.50       1.00       0.25      -0.50
+      0.25      -0.50       0.25       1.00      -0.50
+     -0.50       0.25      -0.50      -0.50       1.00
+
+Done Overlap Matrix I
+
 Done Gram-Schmidt orthonormalization I
 
-      0.75       0.34      -0.27      -0.24       0.69
-      0.00       0.91       0.45       0.39      -0.54
-      0.00       0.00       1.00      -0.29       0.79
+      1.41       0.94       0.47       0.47       0.94
+      0.00       1.33       0.67       0.67       0.33
+      0.00       0.00       1.15      -0.00       0.58
       0.00       0.00       0.00       1.15       0.58
       0.00       0.00       0.00       0.00       1.00
 
@@ -3851,42 +3865,42 @@ Done Gram-Schmidt orthonormalization
 Done Gram-Schmidt orthonormalization
 Done MEij
 
+      0.00       0.00       0.00       0.00       0.00       0.00
      -1.00       0.00       0.00       0.00       0.00       0.00
-      0.00      -1.00       0.00       0.00       0.00       0.00
-      0.00       0.00      -1.00       0.00       0.00       0.00
-      0.00       0.00       0.00       0.00       0.00       0.00
-      0.00       0.00       0.00      -1.00       0.00       0.00
-      0.00       0.00       0.00       0.00      -1.00       0.00
-      0.00       0.00       0.00       0.00       0.00       0.00
-      0.00       0.00       0.00       0.00       0.00      -1.00
-      0.00       0.00       0.00       0.00       0.00       0.00
-      0.00       0.00       0.00       0.00       0.00       0.00
-      0.00       0.00       0.00       0.00       0.00       0.00
       0.00       0.00       0.00       0.00       0.00       0.00
       1.00       0.00       0.00       0.00       0.00       0.00
+      0.00      -1.00       0.00       0.00       0.00       0.00
       0.00       0.00       0.00       0.00       0.00       0.00
       0.00       1.00       0.00       0.00       0.00       0.00
+      0.00       0.00      -1.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
       0.00       0.00       1.00       0.00       0.00       0.00
+      0.00       0.00       0.00      -1.00       0.00       0.00
       0.00       0.00       0.00       0.00       0.00       0.00
       0.00       0.00       0.00       1.00       0.00       0.00
+      0.00       0.00       0.00       0.00      -1.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00
       0.00       0.00       0.00       0.00       1.00       0.00
+      0.00       0.00       0.00       0.00       0.00      -1.00
+      0.00       0.00       0.00       0.00       0.00       0.00
       0.00       0.00       0.00       0.00       0.00       1.00
+      0.00       0.00       0.00       0.00       0.00       0.00
 Done MEij
 Done blas BFI
 
-     -0.71       0.71       0.00       0.00       0.71      -0.71
-      0.00      -0.71       0.71       0.71      -0.71       0.00
-      0.00       0.35      -0.35      -0.35       0.35       0.00
-      0.00       0.35      -0.35      -0.35       0.35       0.00
-      0.35      -0.35       0.00       0.00      -0.35       0.35
+      0.35       0.00      -0.35      -0.35       0.00       0.35
+     -0.35       0.35       0.00       0.00       0.35      -0.35
+     -0.35       0.35       0.00       0.00       0.35      -0.35
+      0.00      -0.35       0.35       0.35      -0.35       0.00
+      0.00      -0.35       0.35       0.35      -0.35       0.00
 Done blas BFI
 1Done CSFICSFJApqij
 
-     -0.50      -0.56
-     -0.33      -0.49
-      0.48       0.22
-      0.35       0.61
-      0.61      -0.35
+      0.00       0.00
+     -1.22       0.00
+     -0.71       0.00
+      0.00      -1.22
+      0.00      -0.71
 1Done CSFICSFJApqij
 #+end_example
 
@@ -4093,8 +4107,8 @@ int main(){
     // 0  2
     // 2  1
 
-    orbp = 5;
-    orbq = 2;
+    orbp = 3;
+    orbq = 1;
 
     Isomo = (1 << NMO+1)-1;
     Isomo &= ~(1UL<<orbp-1);
@@ -4133,8 +4147,8 @@ int main(){
 
 #+RESULTS: promatrixDOMOSOMO44
 #+begin_example
-leading test 00001111
-leading test 00011101
+leading test 00011011
+leading test 00011110
 
 BF to det I
 
@@ -4179,25 +4193,285 @@ Done Gram-Schmidt orthonormalization
 Done Gram-Schmidt orthonormalization
 Done MEij
 
-      0.00       0.00       0.00      -1.00       0.00       0.00
-     -1.00       0.00       0.00       0.00       0.00       0.00
-      0.00       0.00       0.00       0.00      -1.00       0.00
-      0.00      -1.00       0.00       0.00       0.00       0.00
-      0.00       0.00       0.00       0.00       0.00      -1.00
-      0.00       0.00      -1.00       0.00       0.00       0.00
+      1.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       1.00       0.00       0.00       0.00
+      0.00       1.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       1.00       0.00
+      0.00       0.00       0.00       1.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       1.00
 Done MEij
 Done blas BFI
 
       0.50       0.00      -0.50      -0.50       0.00       0.50
-     -0.50       0.50       0.00       0.00       0.50      -0.50
+      0.00      -0.50       0.50       0.50      -0.50       0.00
 Done blas BFI
 1Done MEij
 
-      0.50       0.87
-     -0.87       0.50
+      1.00       0.00
+      0.00      -1.00
 1Done MEij
 #+end_example
 
+#+begin_src python :results output
+import numpy
+import copy
+from functools import reduce
+bftodet  = numpy.zeros(shape=(2,6),dtype=float)
+bftodet = numpy.array(
+    [[0.5,-0.5, 0  , 0  ,-0.5,0.5],
+     [0  , 0.5,-0.5,-0.5, 0.5,0  ]]
+    )
+ovlp  = numpy.zeros(shape=(2,2),dtype=float)
+ortho = numpy.array(
+    [[numpy.sqrt(4./3.),numpy.sqrt(1./3.)],
+     [0.,1.]]
+    )
+ortho2 = copy.deepcopy(ortho)
+ortho[0,:] = ortho2[0,:]
+ortho[1,:] =-ortho2[1,:]
+vec = numpy.array([
+    0.06287236,0,-0.06287236,-0.06287236,0,0.06287236
+],dtype=float)
+
+meij = numpy.array(
+   [[ 0.00  ,    0.00  ,    0.00  ,   -1.00  ,    0.00  ,    0.00],
+    [-1.00  ,    0.00  ,    0.00  ,    0.00  ,    0.00  ,    0.00],
+    [ 0.00  ,    0.00  ,    0.00  ,    0.00  ,   -1.00  ,    0.00],
+    [ 0.00  ,   -1.00  ,    0.00  ,    0.00  ,    0.00  ,    0.00],
+    [ 0.00  ,    0.00  ,    0.00  ,    0.00  ,    0.00  ,   -1.00],
+    [ 0.00  ,    0.00  ,   -1.00  ,    0.00  ,    0.00  ,    0.00]]
+    )
+meij = numpy.array(
+  [[  0.00  ,   -1.00  ,    0.00   ,   0.00   ,   0.00   ,   0.00],
+   [  0.00  ,    0.00  ,    0.00   ,  -1.00   ,   0.00   ,   0.00],
+   [  0.00  ,    0.00  ,    0.00   ,   0.00   ,   0.00   ,  -1.00],
+   [ -1.00  ,    0.00  ,    0.00   ,   0.00   ,   0.00   ,   0.00],
+   [  0.00  ,    0.00  ,   -1.00   ,   0.00   ,   0.00   ,   0.00],
+   [  0.00  ,    0.00  ,    0.00   ,   0.00   ,  -1.00   ,   0.00]]
+    )
+#meij = numpy.eye(6,dtype=float)
+print(ortho)
+print(numpy.linalg.norm(vec))
+print(reduce(numpy.dot,(ortho,bftodet,vec)))
+print(reduce(numpy.dot,(bftodet.T,ortho2.T)))
+print(reduce(numpy.dot,(ortho, bftodet,meij,bftodet.T,ortho2.T)))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+[[ 1.15470054  0.57735027]
+ [-0.         -1.        ]]
+0.12574472
+[ 0.10889812 -0.06287236]
+[[ 0.57735027  0.        ]
+ [-0.28867513  0.5       ]
+ [-0.28867513 -0.5       ]
+ [-0.28867513 -0.5       ]
+ [-0.28867513  0.5       ]
+ [ 0.57735027  0.        ]]
+[[ 0.5       -0.8660254]
+ [-0.8660254 -0.5      ]]
+#+end_example
+
+- [ ] 6 somos
+
+#+name: SOMOSOMO6
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double ApqIJGood[1][1]=
+{
+    { 1.4142135623730950488016887242096980785696718753769480731766797379 }
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *CSFICSFJApqIJ;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 2;
+    orbq = 7;
+
+    Isomo = (1 << NMO+1)-1;
+    Isomo &= ~(1UL<<orbp-1);
+    Jsomo = (1 << NMO+1)-1;
+    Jsomo &= ~(1UL<<orbq-1);
+    //Jsomo = (1 << NMO)-1;
+    //Jsomo = ((1 << NMO)-1) << 1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
+
+    printf("1Done MEij\n");
+    printRealMatrix(CSFICSFJApqIJ,rows,cols);
+    printf("1Done MEij\n");
+
+
+    //for(int i=0;i<rows;i++){
+    //    for(int j=0;j<cols;j++){
+    //        munit_assert_double_equal(CSFICSFJApqIJ[i*cols + j],ApqIJGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(CSFICSFJApqIJ);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
+
+#+RESULTS: SOMOSOMO6
+#+begin_example
+leading test 01111101
+leading test 00111111
+
+BF to det I
+
+      0.35      -0.35       0.00       0.00       0.00      -0.35       0.00       0.35       0.00       0.00       0.00       0.00      -0.35       0.00       0.35       0.00       0.00       0.00       0.35      -0.35
+      0.00       0.35      -0.35       0.00      -0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -0.35       0.35       0.00       0.35      -0.35       0.00
+      0.00       0.00       0.35      -0.35       0.00      -0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00      -0.35       0.35       0.00       0.35      -0.35       0.00       0.00
+      0.00       0.00       0.00       0.00       0.35      -0.35       0.00       0.00      -0.35       0.35      -0.35       0.35       0.00       0.00       0.35      -0.35       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.35      -0.35      -0.35       0.35       0.00       0.00      -0.35       0.35       0.35      -0.35       0.00       0.00       0.00       0.00       0.00
+
+BF to det I
+
+Done Overlap Matrix I
+
+      1.00      -0.50       0.25       0.25      -0.50
+     -0.50       1.00      -0.50      -0.50       0.25
+      0.25      -0.50       1.00       0.25      -0.50
+      0.25      -0.50       0.25       1.00      -0.50
+     -0.50       0.25      -0.50      -0.50       1.00
+
+Done Overlap Matrix I
+
+Done Gram-Schmidt orthonormalization I
+
+      1.41       0.94       0.47       0.47       0.94
+      0.00       1.33       0.67       0.67       0.33
+      0.00       0.00       1.15      -0.00       0.58
+      0.00       0.00       0.00       1.15       0.58
+      0.00       0.00       0.00       0.00       1.00
+
+Gen det basis I
+
+Gen det basis J
+
+      0.35      -0.35       0.00       0.00       0.00      -0.35       0.00       0.35       0.00       0.00       0.00       0.00      -0.35       0.00       0.35       0.00       0.00       0.00       0.35      -0.35
+      0.00       0.35      -0.35       0.00      -0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -0.35       0.35       0.00       0.35      -0.35       0.00
+      0.00       0.00       0.35      -0.35       0.00      -0.35       0.35       0.00       0.00       0.00       0.00       0.00       0.00      -0.35       0.35       0.00       0.35      -0.35       0.00       0.00
+      0.00       0.00       0.00       0.00       0.35      -0.35       0.00       0.00      -0.35       0.35      -0.35       0.35       0.00       0.00       0.35      -0.35       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.35      -0.35      -0.35       0.35       0.00       0.00      -0.35       0.35       0.35      -0.35       0.00       0.00       0.00       0.00       0.00
+
+Gen det basis  J
+
+Done overlap J
+
+      1.00      -0.50       0.25       0.25      -0.50
+     -0.50       1.00      -0.50      -0.50       0.25
+      0.25      -0.50       1.00       0.25      -0.50
+      0.25      -0.50       0.25       1.00      -0.50
+     -0.50       0.25      -0.50      -0.50       1.00
+
+Done overlap J
+
+Done Gram-Schmidt orthonormalization
+
+      1.41       0.94       0.47       0.47       0.94
+      0.00       1.33       0.67       0.67       0.33
+      0.00       0.00       1.15      -0.00       0.58
+      0.00       0.00       0.00       1.15       0.58
+      0.00       0.00       0.00       0.00       1.00
+
+Done Gram-Schmidt orthonormalization
+Done MEij
+
+      0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00
+     -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      -1.00       0.00       0.00
+Done MEij
+Done blas BFI
+
+      0.00       0.00      -0.35       0.35       0.00       0.35      -0.35       0.00       0.00       0.00       0.00       0.00       0.00       0.35      -0.35       0.00      -0.35       0.35       0.00       0.00
+      0.00       0.00       0.00       0.00       0.00      -0.35       0.35       0.35      -0.35       0.00       0.00       0.35      -0.35      -0.35       0.35       0.00       0.00       0.00       0.00       0.00
+      0.00       0.00       0.00       0.00       0.35       0.00      -0.35      -0.35       0.00       0.35      -0.35       0.00       0.35       0.35       0.00      -0.35       0.00       0.00       0.00       0.00
+      0.35      -0.35       0.00       0.00       0.00       0.00      -0.35       0.00       0.35       0.00       0.00      -0.35       0.00       0.35       0.00       0.00       0.00       0.00       0.35      -0.35
+      0.00       0.35       0.00      -0.35      -0.35       0.00       0.35       0.00       0.00       0.00       0.00       0.00       0.00      -0.35       0.00       0.35       0.35       0.00      -0.35       0.00
+Done blas BFI
+1Done MEij
+
+      0.33       0.47      -0.00       0.82      -0.00
+      0.47      -0.08       0.43      -0.14       0.75
+     -0.00       0.43       0.25       0.25       0.43
+      0.82      -0.14       0.25      -0.25      -0.43
+     -0.00       0.75       0.43      -0.43      -0.25
+1Done MEij
+#+end_example
+  
 
 ** TODO[2/2] SOMO -> VMO type
 
@@ -4798,6 +5072,100 @@ Done blas BFI
      -1.22       0.71
 1Done MEij
 #+end_example
+
+- [ ] 4 somo to 6 somo
+
+#+name: DOMOVMO6somo
+#+begin_src C :noweb yes :main no :libs -lm -lblas :results output :flags -I . :includes '(cfgCI_utils.c tree_utils.c munit/munit.c)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "./munit/munit.h"
+#include "/home/vijay/Documents/codes/qp2/src/cfgCI/tree_utils.h"
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
+//<<getOverlapMatrix>>
+//<<generateAllBFs>>
+//<<treefuncmain>>
+//<<indexlist>>
+//<<calculateIslands>>
+//<<getNsomo>>
+//<<getncsfs>>
+//<<inttobindigit>>
+//<<gramSchmidt>>
+//<<getApqIJMatrix>>
+//<<convertBFtoDetBasis>>
+
+
+const double ApqIJGood[1][1]=
+{
+    { 1.4142135623730950488016887242096980785696718753769480731766797379 }
+};
+
+int main(){
+    int test_MEij_SOMO_SOMO_matrix = -1;
+    double *CSFICSFJApqIJ;
+    int rows, cols;
+    rows = 0;
+    cols = 0;
+    int64_t Isomo, Jsomo, MS, NMO;
+    MS = 0;
+    NMO = 6;
+    int orbp, orbq;
+
+    // Testing SOMO -> SOMO
+    // 1  1
+    // |  |
+    // 0  2
+    // 2  1
+
+    orbp = 2;
+    orbq = 6;
+
+    Isomo = (1 << NMO)-1;
+    Isomo &= ~(1UL<<orbq-1);
+    Isomo &= ~(1UL<<orbp-1);
+    Jsomo = (1 << NMO)-1;
+    //Jsomo = (1 << NMO)-1;
+    //Jsomo = ((1 << NMO)-1) << 1;
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Isomo));
+    printf("\n");
+    printf("leading test "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(Jsomo));
+    printf("\n");
+
+    getApqIJMatrixDriver(Isomo, Jsomo, orbp, orbq, MS, NMO, &CSFICSFJApqIJ, &rows, &cols);
+
+    printf("1Done MEij\n");
+    printRealMatrix(CSFICSFJApqIJ,rows,cols);
+    printf("1Done MEij\n");
+
+
+    //for(int i=0;i<rows;i++){
+    //    for(int j=0;j<cols;j++){
+    //        munit_assert_double_equal(CSFICSFJApqIJ[i*cols + j],ApqIJGood[i][j],6);
+    //    }
+    //}
+
+    test_MEij_SOMO_SOMO_matrix = 0;
+
+    // Garbage collection
+    free(CSFICSFJApqIJ);
+
+    return(test_MEij_SOMO_SOMO_matrix);
+}
+
+
+#+end_src
 
 
 * Testing CSFs

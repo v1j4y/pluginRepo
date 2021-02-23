@@ -3555,6 +3555,19 @@ void getApqIJMatrixDriver(int64_t Isomo, int64_t Jsomo, int orbp, int orbq, int6
     transB = true;
     callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, CSFICSFJApqIJ, transA, transB);
 
+    //if(rowsI == rowsJ){
+    //    if(orbp>=orbq){
+    //        for(int i = 0; i < rowsI; i++)
+    //            for(int j = i+1; j < rowsJ; j++)
+    //                CSFICSFJApqIJ[i*rowsJ + j] = CSFICSFJApqIJ[j*rowsJ + i];
+    //    }
+    //    else{
+    //        for(int i = 0; i < rowsI; i++)
+    //            for(int j = 0; j < i; j++)
+    //                CSFICSFJApqIJ[i*rowsJ + j] = CSFICSFJApqIJ[j*rowsJ + i];
+    //    }
+    //}
+
     //printf("ME CSF basis\n");
     //printRealMatrix(CSFICSFJApqIJ, rowsI, rowsJ);
 
@@ -3702,6 +3715,19 @@ void getApqIJMatrixDriverArrayInp(int64_t Isomo, int64_t Jsomo, int32_t orbp, in
     transB = true;
     callBlasMatxMat(CSFIbfJApqIJ, rowsI, rowsbftodetJ, orthoMatrixJ, rowsJ, colsJ, tmpCSFICSFJApqIJ, transA, transB);
     //printRealMatrix(tmpCSFICSFJApqIJ,rowsI,rowsJ);
+
+    //if(rowsI == rowsJ && rowsI >= 2){
+    //    if(orbp >= orbq){
+    //        for(int i = 0; i < rowsI; i++)
+    //            for(int j = i+1; j < rowsJ; j++)
+    //                tmpCSFICSFJApqIJ[i*rowsJ + j] = tmpCSFICSFJApqIJ[j*rowsJ + i];
+    //    }
+    //    else{
+    //        for(int i = 0; i < rowsI; i++)
+    //            for(int j = 0; j < i; j++)
+    //                tmpCSFICSFJApqIJ[i*rowsJ + j] = tmpCSFICSFJApqIJ[j*rowsJ + i];
+    //    }
+    //}
 
     // Transfer to actual buffer in Fortran order
     for(int i = 0; i < rowsI; i++)
