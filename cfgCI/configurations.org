@@ -73,7 +73,7 @@ via BLAS level 3 operations.
   integer ncfgpersomo
   detDimperBF = 0
   MS = elec_alpha_num-elec_beta_num
-  print *,"NSOMOMax=",NSOMOMax, cfg_seniority_index(0)
+  !print *,"NSOMOMax=",NSOMOMax, cfg_seniority_index(0)
   ! number of cfgs = number of dets for 0 somos
   dimBasisCSF = cfg_seniority_index(0)-1
   ncfgprev = cfg_seniority_index(0)
@@ -87,7 +87,7 @@ via BLAS level 3 operations.
   !detDimperBF = max(1,nint((binom(i,(i+1)/2))))
   dimcsfpercfg = max(1,nint((binom(i-2,(i-2+1)/2)-binom(i-2,((i-2+1)/2)+1))))
   dimBasisCSF += ncfg * dimcsfpercfg
-  print *,i,">(",ncfg,ncfgprev,ncfgpersomo,")",",",detDimperBF,">",dimcsfpercfg, " | dimbas= ", dimBasisCSF
+  !print *,i,">(",ncfg,ncfgprev,ncfgpersomo,")",",",detDimperBF,">",dimcsfpercfg, " | dimbas= ", dimBasisCSF
   !if(cfg_seniority_index(i+2) == -1) EXIT
   !if(detDimperBF > maxDetDimPerBF) maxDetDimPerBF = detDimperBF
   ncfgprev = cfg_seniority_index(i)
@@ -97,7 +97,7 @@ via BLAS level 3 operations.
         ncfg = ncfgpersomo - ncfgprev
         dimcsfpercfg = max(1,nint((binom(i-2,(i-2+1)/2)-binom(i-2,((i-2+1)/2)+1))))
         dimBasisCSF += ncfg * dimcsfpercfg
-        print *,i,">(",ncfg,ncfgprev,ncfgpersomo,")",",",detDimperBF,">",dimcsfpercfg, " | dimbas= ", dimBasisCSF
+        !print *,i,">(",ncfg,ncfgprev,ncfgpersomo,")",",",detDimperBF,">",dimcsfpercfg, " | dimbas= ", dimBasisCSF
   endif
   END_PROVIDER
   #+end_src
@@ -212,18 +212,18 @@ end subroutine get_phase_qp_to_cfg
       do j = startdet, enddet
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
-         call debug_spindet(Ialpha,1,1)
-         call debug_spindet(Ibeta ,1,1)
+         !call debug_spindet(Ialpha,1,1)
+         !call debug_spindet(Ibeta ,1,1)
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
-         print *,">>",Ialpha,Ibeta,phasedet
+         !print *,">>",Ialpha,Ibeta,phasedet
          tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)*phasedet
          !tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)
          norm_det1 += tempCoeff(countdet)*tempCoeff(countdet)
          countdet += 1
       enddo
 
-       print *,"dimcoef=",bfIcfg,norm_det1
-       call printMatrix(tempCoeff,ndetI,1)
+       !print *,"dimcoef=",bfIcfg,norm_det1
+       !call printMatrix(tempCoeff,ndetI,1)
 
       s = 0
       do k=1,N_int
@@ -236,13 +236,13 @@ end subroutine get_phase_qp_to_cfg
       ! can be more efficient
       allocate(tempBuffer(bfIcfg,ndetI))
       tempBuffer = DetToCSFTransformationMatrix(s,:bfIcfg,:ndetI)
-       print *,"csftodetdim=",bfIcfg,ndetI
-       call printMatrix(tempBuffer,bfIcfg,ndetI)
+       !print *,"csftodetdim=",bfIcfg,ndetI
+       !call printMatrix(tempBuffer,bfIcfg,ndetI)
 
        call dgemm('N','N', bfIcfg, 1, ndetI, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_config(countcsf+1,1), size(psi_coef_config,1))
        !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf), 1)
 
-      call printMatrix(psi_coef_config(countcsf+1,1),bfIcfg,1)
+      !call printMatrix(psi_coef_config(countcsf+1,1),bfIcfg,1)
       deallocate(tempCoeff)
       deallocate(tempBuffer)
       psi_config_data(i,1) = countcsf + 1
@@ -301,7 +301,7 @@ end subroutine get_phase_qp_to_cfg
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
-         print *,">>",Ialpha,Ibeta,phasedet
+         !print *,">>",Ialpha,Ibeta,phasedet
          tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)*phasedet
          !tempCoeff(countdet) = psi_coef(psi_configuration_to_psi_det_data(j), istate)
          norm_det1 += tempCoeff(countdet)*tempCoeff(countdet)
@@ -386,32 +386,32 @@ end subroutine get_phase_qp_to_cfg
           tempCoeff(j) = psi_coef_cfg_in(countcsf,1)
           countcsf += 1
        enddo
-       print *,"dimcoef=",bfIcfg
-       call printMatrix(tempCoeff,bfIcfg,1)
+       !print *,"dimcoef=",bfIcfg
+       !call printMatrix(tempCoeff,bfIcfg,1)
 
        ! perhaps blocking with CFGs of same seniority
        ! can be more efficient
        allocate(tempBuffer(bfIcfg,ndetI))
        tempBuffer = DetToCSFTransformationMatrix(s,:bfIcfg,:ndetI)
-       print *,"csftodetdim=",bfIcfg,ndetI
-       call printMatrix(tempBuffer,bfIcfg,ndetI)
+       !print *,"csftodetdim=",bfIcfg,ndetI
+       !call printMatrix(tempBuffer,bfIcfg,ndetI)
 
        !call dgemm('T','N', ndetI, 1, bfIcfg, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, psi_coef_det(countdet,1), size(psi_coef_det,1))
        call dgemm('T','N', ndetI, 1, bfIcfg, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, size(tempCoeff,1), 0.d0, tmp_psi_coef_det, size(tmp_psi_coef_det,1))
 
        !call dgemv('N', NBFMax, maxDetDimPerBF, 1.d0, tempBuffer, size(tempBuffer,1), tempCoeff, 1, 0.d0, psi_coef_config(countcsf,1), 1)
 
-       print *,"result"
-       call printMatrix(tmp_psi_coef_det,ndetI,1)
+       !print *,"result"
+       !call printMatrix(tmp_psi_coef_det,ndetI,1)
 
        countdet = 1
        do j=startdet,enddet
          Ialpha = psi_det(1,1,psi_configuration_to_psi_det_data(j))
          Ibeta  = psi_det(1,2,psi_configuration_to_psi_det_data(j))
-         call debug_spindet(Ialpha,1,1)
-         call debug_spindet(Ibeta ,1,1)
+         !call debug_spindet(Ialpha,1,1)
+         !call debug_spindet(Ibeta ,1,1)
          call get_phase_qp_to_cfg(Ialpha, Ibeta, phasedet)
-         print *,">>",Ialpha,Ibeta,phasedet
+         !print *,">>",Ialpha,Ibeta,phasedet
          psi_coef_det(psi_configuration_to_psi_det_data(j),1) = tmp_psi_coef_det(countdet)*phasedet
          countdet += 1
        enddo
@@ -477,7 +477,7 @@ end subroutine get_phase_qp_to_cfg
   !allocate(AIJpqMatrixDimsList(NSOMOMax,NSOMOMax,4,NSOMOMax,NSOMOMax,2))
   ! Type
   ! 1. SOMO -> SOMO
-  print *,"Doing SOMO->SOMO"
+  !print *,"Doing SOMO->SOMO"
   AIJpqMatrixDimsList(0,0,1,1,1,1) = 1
   AIJpqMatrixDimsList(0,0,1,1,1,2) = 1
   do i = 2-iand(nsomomin,1), NSOMOMax, 2
@@ -507,7 +507,7 @@ end subroutine get_phase_qp_to_cfg
                    MS,                       &
                    rows,                     &
                    cols)
-              print *, "SOMO->SOMO \t",i,j,k,l,">",Isomo,Jsomo,">",rows, cols
+              !print *, "SOMO->SOMO \t",i,j,k,l,">",Isomo,Jsomo,">",rows, cols
               if(rowsmax .LT. rows) then
                  rowsmax = rows
               end if
@@ -770,7 +770,7 @@ end subroutine get_phase_qp_to_cfg
   end do
   ! Type
   ! 2. DOMO -> VMO
-  print *,"Doing DOMO -> VMO"
+  !print *,"Doing DOMO -> VMO"
   AIJpqContainer(0,0,2,1,1,1,1) = 1.0d0
   do i = 0, NSOMOMax, 2
      Isomo = ISHFT(1_8,i)-1
@@ -822,8 +822,8 @@ end subroutine get_phase_qp_to_cfg
                    meMatrix,                 &
                    rows,                     &
                    cols)
-             print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
-             call printMatrix(meMatrix,rows,cols)
+             !print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
+             !call printMatrix(meMatrix,rows,cols)
               ! i -> j
              do ri = 1,rows
                  do ci = 1,cols
@@ -936,8 +936,8 @@ end subroutine get_phase_qp_to_cfg
                    meMatrix,                 &
                    rows,                     &
                    cols)
-             call printMatrix(meMatrix,rows,cols)
-             print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
+             !call printMatrix(meMatrix,rows,cols)
+             !print *, i,j,k,l,">",Isomo,Jsomo,">",rows, cols,">",rowsmax,colsmax
               ! i -> j
              do ri = 1,rows
                  do ci = 1,cols

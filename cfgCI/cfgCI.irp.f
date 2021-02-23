@@ -868,7 +868,7 @@ end subroutine calculate_sigma_vector
       !   enddo
 
       !enddo
-      !call convertWFfromCSFtoDET( ff,psi_coef_det_out)
+      !call convertWFfromCSFtoDET(psi_coef_cfg_out,psi_coef_det_out)
       !do i=1,n_det
       !   Ialpha = psi_det(1,1,i)
       !   Ibeta  = psi_det(1,2,i)
