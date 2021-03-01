@@ -19,145 +19,6 @@ subroutine get_core_energy(ecore)
  end do
 end subroutine get_core_energy
 
-subroutine calculate_preconditioner_cfg(diag_energies)
-  implicit none
-  use bitmasks
-  BEGIN_DOC
-  ! Documentation for calculate_preconditioner
-  !
-  ! Calculates the diagonal energies of
-  ! the configurations in psi_configuration
-  ! returns : diag_energies :
-  END_DOC
-  integer :: i,j,k,l,p,q,noccp,noccq, ii, jj
-  real*8,intent(out) :: diag_energies(dimBasisCSF)
-  integer                            :: nholes
-  integer                            :: nvmos
-  integer                            :: listvmos(mo_num)
-  integer                            :: vmotype(mo_num) ! 1 -> VMO 2 -> SOMO
-  integer                            :: listholes(mo_num)
-  integer                            :: holetype(mo_num) ! 1-> SOMO 2->DOMO
-  integer*8                          :: Idomo
-  integer*8                          :: Isomo
-  integer*8                          :: Jdomo
-  integer*8                          :: Jsomo
-  integer*8                          :: diffSOMO
-  integer*8                          :: diffDOMO
-  integer                            :: NSOMOI
-  integer                            :: NSOMOJ
-  integer                            :: ndiffSOMO
-  integer                            :: ndiffDOMO
-  integer                            :: starti, endi, cnti, cntj, rows,cols
-  integer                            :: extype,pmodel,qmodel
-  integer(bit_kind) :: Icfg(N_INT,2)
-  integer(bit_kind) :: Jcfg(N_INT,2)
-  integer,external  :: getNSOMO
-  real*8, external  :: mo_two_e_integral
-  real*8            :: hpp
-  real*8            :: meCC
-  real*8            :: ecore
-
-  ! initialize energies
-  diag_energies = 0.d0
-
-  ! calculate core energy
-  call get_core_energy(ecore)
-  !diag_energies = ecore
-
-  ! calculate the core energy
-  !print *,"Core energy=",ref_bitmask_energy
-
-  do i=1,N_configuration
-
-     Isomo = psi_configuration(1,1,i)
-     Idomo = psi_configuration(1,2,i)
-     Icfg(1,1) = psi_configuration(1,1,i)
-     Icfg(1,2) = psi_configuration(1,2,i)
-     NSOMOI = getNSOMO(psi_configuration(:,:,i))
-
-     starti = psi_config_data(i,1)
-     endi   = psi_config_data(i,2)
-
-     ! find out all pq holes possible
-     nholes = 0
-     ! holes in SOMO
-     !do k = n_core_orb+1,n_core_orb + n_act_orb
-     do k = 1,mo_num
-        if(POPCNT(IAND(Isomo,IBSET(0_8,k-1))) .EQ. 1) then
-           nholes += 1
-           listholes(nholes) = k
-           holetype(nholes) = 1
-        endif
-     enddo
-     ! holes in DOMO
-     !do k = n_core_orb+1,n_core_orb + n_act_orb
-     !do k = 1+n_core_inact_orb,n_core_orb+n_core_inact_act_orb
-     do k = 1,mo_num
-        if(POPCNT(IAND(Idomo,IBSET(0_8,k-1))) .EQ. 1) then
-           nholes += 1
-           listholes(nholes) = k
-           holetype(nholes) = 2
-        endif
-     enddo
-
-     ! find vmos
-     listvmos = -1
-     vmotype = -1
-     nvmos = 0
-     !do k = n_core_orb+1,n_core_orb + n_act_orb
-     do k = 1,mo_num
-        !print *,i,IBSET(0,i-1),POPCNT(IAND(Isomo,(IBSET(0_8,i-1)))), POPCNT(IAND(Idomo,(IBSET(0_8,i-1))))
-        if(POPCNT(IAND(Isomo,(IBSET(0_8,k-1)))) .EQ. 0 .AND. POPCNT(IAND(Idomo,(IBSET(0_8,k-1)))) .EQ. 0) then
-           nvmos += 1
-           listvmos(nvmos) = k
-           vmotype(nvmos) = 0
-        else if(POPCNT(IAND(Isomo,(IBSET(0_8,k-1)))) .EQ. 1 .AND. POPCNT(IAND(Idomo,(IBSET(0_8,k-1)))) .EQ. 0 ) then
-           nvmos += 1
-           listvmos(nvmos) = k
-           vmotype(nvmos) = 1
-        end if
-     enddo
-     !print *,"I=",i
-     !call debug_spindet(psi_configuration(1,1,i),N_int)
-     !call debug_spindet(psi_configuration(1,2,i),N_int)
-
-     do k=1,nholes
-        p = listholes(k)
-        noccp = holetype(k)
-
-        ! Calculate one-electron
-        ! and two-electron coulomb terms
-        do l=1,nholes
-           q = listholes(l)
-           noccq = holetype(l)
-           !print *,"--------------- K=",p," L=",q
-
-           ! one-electron term
-           if(p.EQ.q) then
-              hpp = noccq * h_core_ri(p,q)!mo_one_e_integrals(q,q)
-           else
-              hpp = 0.d0
-           endif
-
-
-           do j=starti,endi
-              ! coulomb term
-              ! (pp,qq) = <pq|pq>
-              if(p.EQ.q) then
-                 diag_energies(j) += hpp !+ 0.5d0 * (noccp * noccq * mo_two_e_integral(p,q,p,q))
-                 !print *,"hpp=",hpp,"diga= ",diag_energies(j)
-!             else
-!                diag_energies(j) +=     !  0.5d0 * noccp * noccq * mo_two_e_integral(p,q,p,q)
-!                print *,"diga= ",diag_energies(j)
-              endif
-           enddo
-        enddo
-
-     enddo
-  enddo
-
-end subroutine calculate_preconditioner_cfg
-
 subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   implicit none
   use bitmasks
@@ -184,8 +45,8 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   integer           :: idxs_singlesI(400)
   integer           :: idxs_connectedI_alpha(400)
   integer(bit_kind) :: psi_configuration_out(N_INT,2,400)
-  real*8            :: psi_coef_out(dimBasisCSF)
-  logical           :: psi_coef_out_init(dimBasisCSF)
+  real*8            :: psi_coef_out(n_CSF)
+  logical           :: psi_coef_out_init(n_CSF)
   integer           :: excitationIds_single(2,400)
   integer           :: excitationTypes_single(400)
   integer           :: excitationIds(2,400)
@@ -213,7 +74,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   real*8,dimension(:,:),allocatable  :: TKIGIJ
   real*8, external :: mo_two_e_integral
   real*8, external :: get_two_e_integral
-  real*8          :: diag_energies(dimBasisCSF)
+  real*8          :: diag_energies(n_CSF)
   call calculate_preconditioner_cfg(diag_energies)
 
   MS = 0
@@ -222,7 +83,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   psi_coef_out=0.d0
   psi_coef_out_init = .False.
 
-  print *,"CSF basis dim=",dimBasisCSF
+  print *,"CSF basis dim=",n_CSF
 
 
   !!! Single Excitations !!!
@@ -348,7 +209,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   enddo
 
   !print *,"Done singles"
-  !do i = 1,dimBasisCSF
+  !do i = 1,n_CSF
   !   print *, "i=",i,"coef=",psi_coef_config(i,1),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
   !enddo
 
@@ -514,7 +375,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
 
 
   ! Add the diagonal contribution
-  do i = 1,dimBasisCSF
+  do i = 1,n_CSF
      !print *, "i=",i,"coef=",psi_coef_config(i,1),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
      psi_coef_out(i) += 1.0d0*diag_energies(i)*psi_coef_config(i,1)
      !psi_coef_out(i) = diag_energies(i)*psi_coef_config(i,1)
@@ -538,11 +399,12 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
   ndontmatch = 0
   psi_energy_loc2=0.d0
   !call u_0_H_u_0(psi_energy_loc2,psi_s2_loc,psi_coef,N_det,psi_det,N_int,N_st_loc,psi_det_size)
-  call H_S2_u_0_nstates_openmp(psi_coef_out_loc2,psi_s2_loc,psi_coef,1,N_det)
+  !call H_S2_u_0_nstates_openmp(psi_coef_out_loc2,psi_s2_loc,psi_coef,1,N_det)
+  call H_u_0_nstates_openmp(psi_coef_out_loc2,psi_coef,1,N_det)
 
   psi_coef_out_det = 0.d0
 
-  call convertWFfromCSFtoDET(psi_coef_out,psi_coef_out_det)
+  call convertWFfromCSFtoDET(1,psi_coef_out,psi_coef_out_det)
   ! calculate H|Psi> manually
   !psi_coef_out_det = 0.d0
   !psi_coef_out_det(1,1) = 2.0d0 * h_core_ri(1,1) + 0.0d0 * h_core_ri(2,2)
@@ -624,6 +486,170 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
 
 end subroutine calculate_sigma_vector
 
+subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
+  implicit none
+  use bitmasks
+  BEGIN_DOC
+  ! Documentation for sigma-vector calculation
+  !
+  ! Calculates the result of the
+  ! application of the hamiltonian to the
+  ! wavefunction in CFG basis once
+  ! TODO : Things prepare outside this routine
+  !  1. Touch the providers for
+  !     a. ApqIJ containers
+  !     b. DET to CSF transformation matrices
+  !  2. DET to CSF transcormation
+  !  2. CSF to DET back transcormation
+  ! returns : psi_coef_out_det :
+  END_DOC
+  real*8,intent(out):: psi_coef_out_det(N_det,1)
+  integer(bit_kind) :: Icfg(N_INT,2)
+  integer :: i,j,k,l,p,q,noccp,noccq, ii, jj, m, n, idxI, kk, nocck,orbk
+  integer(bit_kind) :: alphas_Icfg(N_INT,2,400)
+  integer(bit_kind) :: singlesI(N_INT,2,400)
+  integer(bit_kind) :: connectedI_alpha(N_INT,2,400)
+  integer           :: idxs_singlesI(400)
+  integer           :: idxs_connectedI_alpha(400)
+  integer(bit_kind) :: psi_configuration_out(N_INT,2,400)
+  real*8            :: psi_coef_out(n_CSF,1)
+  logical           :: psi_coef_out_init(n_CSF)
+  integer           :: excitationIds_single(2,400)
+  integer           :: excitationTypes_single(400)
+  integer           :: excitationIds(2,400)
+  integer           :: excitationTypes(400)
+  real*8            :: diagfactors(400)
+  integer           :: nholes
+  integer           :: nvmos
+  integer           :: listvmos(mo_num)
+  integer           :: vmotype(mo_num) ! 1 -> VMO 2 -> SOMO
+  integer           :: listholes(mo_num)
+  integer           :: holetype(mo_num) ! 1-> SOMO 2->DOMO
+  integer  :: Nalphas_Icfg, nconnectedI, rowsikpq, colsikpq, nsinglesI
+  integer  :: extype,NSOMOalpha,NSOMOI,NSOMOJ,pmodel,qmodel
+  integer :: getNSOMO
+  integer :: totcolsTKI
+  integer :: rowsTKI
+  integer :: noccpp
+  integer*8 :: MS, Isomo, Idomo, Jsomo, Jdomo, Ialpha, Ibeta
+  integer :: moi, moj, mok, mol, starti, endi, startj, endj, cnti, cntj, cntk
+  real*8  :: norm_coef_cfg, fac2eints
+  real*8  :: norm_coef_det
+  real*8  :: meCC1, meCC2, diagfac
+  real*8,dimension(:,:),allocatable :: TKI
+  real*8,dimension(:,:),allocatable  :: GIJpqrs
+  real*8,dimension(:,:),allocatable  :: TKIGIJ
+  real*8, external :: mo_two_e_integral
+  real*8, external :: get_two_e_integral
+  real*8          :: diag_energies(n_CSF)
+
+  !touch dettocsftransformationmatrix psi_coef_config psi_config_data psi_csf_to_config_data
+
+
+  MS = 0
+  norm_coef_cfg=0.d0
+
+  psi_coef_out=0.d0
+  psi_coef_out_init = .False.
+
+  print *,"CSF basis dim=",n_CSF
+
+    
+  call calculate_sigma_vector_cfg_nst(psi_coef_out, psi_coef_config, 1, n_CSF, 1, n_CSF, 0, 1)
+
+  ! Add the diagonal contribution
+  !do i = 1,n_CSF
+  !   !print *, "i=",i,"coef=",psi_coef_config(i,1),psi_coef_out(i)," ini?=",psi_coef_out_init(i)
+  !   psi_coef_out(i) += 1.0d0*diag_energies(i)*psi_coef_config(i,1)
+  !   !psi_coef_out(i) = diag_energies(i)*psi_coef_config(i,1)
+  !   !print *, "i=",i,"coef=",psi_coef_out(i)
+  !enddo
+
+  integer::N_st_loc,startdet,enddet,countdet,ndetI,ndontmatch
+  real*8 ::psi_energy_loc(1)
+  double precision ::psi_s2_loc(N_det,1)
+  real*8 ::psi_energy_loc2
+  double precision ::psi_coef_out_loc2(N_det,1)
+  real*8 :: coefcontrib, sqrt2
+  real*8 :: energy_hpsi, energy_qp2, norm_coef_loc
+  double precision :: hij
+  logical :: issame
+  integer(bit_kind)::tmp_det(N_int)
+  integer(bit_kind)::tmp_det2(N_int)
+  integer(bit_kind)::tmp_tmp2det(N_int,2)
+  integer(bit_kind)::tmp_tmp2det2(N_int,2)
+  N_st_loc=1
+  ndontmatch = 0
+  energy_qp2=0.d0
+  psi_energy_loc2=0.d0
+  !call u_0_H_u_0(psi_energy_loc2,psi_s2_loc,psi_coef,N_det,psi_det,N_int,N_st_loc,psi_det_size)
+  call H_u_0_nstates_openmp(psi_coef_out_loc2,psi_coef,1,N_det)
+  do i=1,N_det
+      energy_qp2 += psi_coef_out_loc2(i,1)*psi_coef(i,1)
+  enddo
+ double precision :: i_H_psi_array(N_states)
+
+ energy_qp2=0.d0
+ norm_coef_loc = 0.d0
+ do i=1,N_det
+  call i_H_psi(psi_det(1,1,i), psi_det, psi_coef, N_int, N_det, &
+               size(psi_coef,1), N_states, i_H_psi_array)
+  do j=1,1
+    norm_coef_loc += psi_coef(i,j)*psi_coef(i,j)
+    energy_qp2 += i_H_psi_array(j) * psi_coef(i,j)
+  enddo
+ enddo
+
+ print *, 'Energy:'
+ do i=1,1
+   print *, energy_qp2/norm_coef_loc
+ enddo
+
+  psi_coef_out_det = 0.d0
+
+  call convertWFfromCSFtoDET(1,psi_coef_out(:,1),psi_coef_out_det)
+  energy_hpsi=0.d0
+  norm_coef_det=0.d0
+  norm_coef_loc=0.d0
+  countdet=1
+  sqrt2 = dsqrt(2.0d0)
+  print *,"1->",h_core_ri(1,4)
+  do i = 1,N_configuration
+     startdet = psi_configuration_to_psi_det(1,i)
+     enddet = psi_configuration_to_psi_det(2,i)
+     ndetI = enddet-startdet+1
+
+     do k=1,ndetI
+        Ialpha= psi_det(1,1,startdet+k-1)
+        Ibeta = psi_det(1,2,startdet+k-1)
+        Isomo = IEOR(Ialpha,Ibeta)
+        Idomo = IAND(Ialpha,Ibeta)
+        !norm_coef_det += psi_coef_out_det(countdet,1)*psi_coef_out_det(countdet,1)
+        norm_coef_det += psi_coef(startdet+k-1,1)*psi_coef(startdet+k-1,1)
+        norm_coef_loc += psi_coef_out_loc2(startdet+k-1,1)*psi_coef_out_loc2(startdet+k-1,1)
+        !energy_qp2 += psi_coef_out_loc2(startdet+k-1,1)*psi_coef(startdet+k-1,1)
+        energy_hpsi += psi_coef_out_det(startdet+k-1,1)*psi_coef(startdet+k-1,1)
+        issame = .False.
+        !if(abs(abs(psi_coef_out_loc2(startdet+k-1,1))-abs(psi_coef_out_det(startdet+k-1,1))) .LT. 1.0e-8) issame = .True.
+        if(abs(psi_coef_out_loc2(startdet+k-1,1)-psi_coef_out_det(startdet+k-1,1)) .LT. 1.0e-5) then
+           issame = .True.
+           print *, "i=",i,countdet,POPCNT(Isomo), startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
+        else
+           call debug_spindet(Isomo,1)
+           call debug_spindet(Idomo,1)
+           print *, "i=",i,countdet,POPCNT(Isomo), startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
+           ndontmatch +=1
+        endif
+        !print *, "i=",i,ndetI," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)
+     countdet += 1
+     enddo
+  enddo
+  norm_coef_det = sqrt(norm_coef_det)
+  norm_coef_loc = sqrt(norm_coef_loc)
+  print *,"dont match=",ndontmatch,"norm = ",norm_coef_det, " size=",N_det, " Energy=",energy_hpsi +nuclear_repulsion, " Energyqp=",energy_qp2 +nuclear_repulsion, "Nuclear=",nuclear_repulsion
+
+end subroutine calculate_sigma_vector
+
       subroutine printMatrix(mat, rows, cols)
       implicit none
       BEGIN_DOC
@@ -651,16 +677,17 @@ end subroutine calculate_sigma_vector
       integer         :: i,j,k,l,p,q
       real*8          :: normcfg, normdet
       real*8          :: psi_coef_out_det(N_det,1)
-      real*8          :: diag_energies(dimBasisCSF)
-      real*8          :: psi_coef_cfg_out(dimBasisCSF,1)
+      real*8          :: diag_energies(n_CSF)
+      real*8          :: psi_coef_cfg_out(n_CSF,1)
       real*8          :: psi_coef_det_out(n_det,1)
       integer         :: s, bfIcfg, countcsf
       integer*8         :: Ialpha, Ibeta, Isomo
-      call calculate_preconditioner_cfg(diag_energies)
-      do i=1,N_configuration
-         print *,i,">",diag_energies(i)
-      enddo
-      call calculate_sigma_vector_cfg(psi_coef_out_det)
+      !call calculate_preconditioner_cfg(diag_energies)
+      !do i=1,N_configuration
+      !   print *,i,">",diag_energies(i)
+      !enddo
+      !call calculate_sigma_vector_cfg(psi_coef_out_det)
+      call calculate_sigma_vector_cfg_test(psi_coef_out_det)
       ! Testing CSF->DET->CSF
       !normcfg = 0.d0
       !normdet = 0.d0
