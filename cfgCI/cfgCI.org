@@ -738,6 +738,30 @@ subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
   real*8, external :: mo_two_e_integral
   real*8, external :: get_two_e_integral
   real*8          :: diag_energies(n_CSF)
+  double precision ::psi_coef_out_loc2(N_det,1)
+
+  double precision :: i_H_psi_array(N_states)
+  energy_qp2=0.d0
+  psi_energy_loc2=0.d0
+
+  !PROVIDE psi_coef
+
+  energy_qp2=0.d0
+  norm_coef_loc = 0.d0
+  do i=1,N_det
+   call i_H_psi(psi_det(1,1,i), psi_det, psi_coef, N_int, N_det, &
+                size(psi_coef,1), N_states, i_H_psi_array)
+   do j=1,1
+     norm_coef_loc += psi_coef(i,j)*psi_coef(i,j)
+     energy_qp2 += i_H_psi_array(j) * psi_coef(i,j)
+     psi_coef_out_loc2(i,1) = i_H_psi_array(j)*psi_coef(i,j)
+   enddo
+  enddo
+
+ print *, 'Energy:'
+ do i=1,1
+   print *, energy_qp2/norm_coef_loc
+ enddo
 
   !touch dettocsftransformationmatrix psi_coef_config psi_config_data psi_csf_to_config_data
 
@@ -748,7 +772,7 @@ subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
   psi_coef_out_init = .False.
 
   print *,"CSF basis dim=",n_CSF
-    
+
   call calculate_sigma_vector_cfg_nst(psi_coef_out, psi_coef_config, 1, n_CSF, 1, n_CSF, 0, 1)
 
   ! Add the diagonal contribution
@@ -763,7 +787,6 @@ subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
   real*8 ::psi_energy_loc(1)
   double precision ::psi_s2_loc(N_det,1)
   real*8 ::psi_energy_loc2
-  double precision ::psi_coef_out_loc2(N_det,1)
   real*8 :: coefcontrib, sqrt2
   real*8 :: energy_hpsi, energy_qp2, norm_coef_loc
   double precision :: hij
@@ -774,32 +797,12 @@ subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
   integer(bit_kind)::tmp_tmp2det2(N_int,2)
   N_st_loc=1
   ndontmatch = 0
-  energy_qp2=0.d0
-  psi_energy_loc2=0.d0
 
   !call u_0_H_u_0(psi_energy_loc2,psi_s2_loc,psi_coef,N_det,psi_det,N_int,N_st_loc,psi_det_size)
-  call H_u_0_nstates_openmp(psi_coef_out_loc2,psi_coef,1,N_det)
-  do i=1,N_det
-      energy_qp2 += psi_coef_out_loc2(i,1)*psi_coef(i,1)
-  enddo
- double precision :: i_H_psi_array(N_states)
-
- 
- energy_qp2=0.d0
- norm_coef_loc = 0.d0
- do i=1,N_det
-  call i_H_psi(psi_det(1,1,i), psi_det, psi_coef, N_int, N_det, &
-               size(psi_coef,1), N_states, i_H_psi_array)
-  do j=1,1
-    norm_coef_loc += psi_coef(i,j)*psi_coef(i,j)
-    energy_qp2 += i_H_psi_array(j) * psi_coef(i,j)
-  enddo
- enddo
-
- print *, 'Energy:'
- do i=1,1
-   print *, energy_qp2/norm_coef_loc
- enddo
+  !call H_u_0_nstates_openmp(psi_coef_out_loc2,psi_coef,1,N_det)
+  !do i=1,N_det
+  !    energy_qp2 += psi_coef_out_loc2(i,1)*psi_coef(i,1)
+  !enddo
 
   psi_coef_out_det = 0.d0
 
@@ -901,6 +904,14 @@ Main function that calls the sigma-vector routine.
       !   print *,i,">",diag_energies(i)
       !enddo
       !call calculate_sigma_vector_cfg(psi_coef_out_det)
+
+      PROVIDE mo_two_e_integrals_in_map mo_integrals_map big_array_exchange_integrals
+
+      !print *, 'Energy:'
+      !do i=1,1
+      !   print *, energy_qp2/norm_coef_loc
+      !enddo
+      !print *,"Energy qp2=", energy_qp2 + nuclear_repulsion
       call calculate_sigma_vector_cfg_test(psi_coef_out_det)
       ! Testing CSF->DET->CSF
       !normcfg = 0.d0
