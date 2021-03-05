@@ -663,7 +663,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
         else
            call debug_spindet(Isomo,1)
            call debug_spindet(Idomo,1)
-           print *, "i=",i,countdet,POPCNT(Isomo), startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
+           print *, "i = ",i,countdet,POPCNT(Isomo), startdet+k-1," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)," |", issame
            ndontmatch +=1
         endif
         !print *, "i=",i,ndetI," > ",psi_coef_out_det(startdet+k-1,1)," >> ",psi_coef_out_loc2(startdet+k-1,1)

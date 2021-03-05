@@ -404,6 +404,7 @@ subroutine calculate_sigma_vector_cfg(psi_coef_out_det)
 
   psi_coef_out_det = 0.d0
 
+  !call convertWFfromCSFtoDET(psi_coef_out,psi_coef_out_det)
   call convertWFfromCSFtoDET(1,psi_coef_out,psi_coef_out_det)
   ! calculate H|Psi> manually
   !psi_coef_out_det = 0.d0
@@ -506,19 +507,19 @@ subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
   real*8,intent(out):: psi_coef_out_det(N_det,1)
   integer(bit_kind) :: Icfg(N_INT,2)
   integer :: i,j,k,l,p,q,noccp,noccq, ii, jj, m, n, idxI, kk, nocck,orbk
-  integer(bit_kind) :: alphas_Icfg(N_INT,2,400)
-  integer(bit_kind) :: singlesI(N_INT,2,400)
-  integer(bit_kind) :: connectedI_alpha(N_INT,2,400)
-  integer           :: idxs_singlesI(400)
-  integer           :: idxs_connectedI_alpha(400)
-  integer(bit_kind) :: psi_configuration_out(N_INT,2,400)
+  integer(bit_kind) :: alphas_Icfg(N_INT,2,4000)
+  integer(bit_kind) :: singlesI(N_INT,2,4000)
+  integer(bit_kind) :: connectedI_alpha(N_INT,2,4000)
+  integer           :: idxs_singlesI(4000)
+  integer           :: idxs_connectedI_alpha(4000)
+  integer(bit_kind) :: psi_configuration_out(N_INT,2,4000)
   real*8            :: psi_coef_out(n_CSF,1)
   logical           :: psi_coef_out_init(n_CSF)
-  integer           :: excitationIds_single(2,400)
-  integer           :: excitationTypes_single(400)
-  integer           :: excitationIds(2,400)
-  integer           :: excitationTypes(400)
-  real*8            :: diagfactors(400)
+  integer           :: excitationIds_single(2,4000)
+  integer           :: excitationTypes_single(4000)
+  integer           :: excitationIds(2,4000)
+  integer           :: excitationTypes(4000)
+  real*8            :: diagfactors(4000)
   integer           :: nholes
   integer           :: nvmos
   integer           :: listvmos(mo_num)
@@ -545,7 +546,6 @@ subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
 
   !touch dettocsftransformationmatrix psi_coef_config psi_config_data psi_csf_to_config_data
 
-
   MS = 0
   norm_coef_cfg=0.d0
 
@@ -553,7 +553,6 @@ subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
   psi_coef_out_init = .False.
 
   print *,"CSF basis dim=",n_CSF
-
     
   call calculate_sigma_vector_cfg_nst(psi_coef_out, psi_coef_config, 1, n_CSF, 1, n_CSF, 0, 1)
 
@@ -582,6 +581,7 @@ subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
   ndontmatch = 0
   energy_qp2=0.d0
   psi_energy_loc2=0.d0
+
   !call u_0_H_u_0(psi_energy_loc2,psi_s2_loc,psi_coef,N_det,psi_det,N_int,N_st_loc,psi_det_size)
   call H_u_0_nstates_openmp(psi_coef_out_loc2,psi_coef,1,N_det)
   do i=1,N_det
@@ -589,6 +589,7 @@ subroutine calculate_sigma_vector_cfg_test(psi_coef_out_det)
   enddo
  double precision :: i_H_psi_array(N_states)
 
+ 
  energy_qp2=0.d0
  norm_coef_loc = 0.d0
  do i=1,N_det
@@ -688,7 +689,7 @@ end subroutine calculate_sigma_vector
       !enddo
       !call calculate_sigma_vector_cfg(psi_coef_out_det)
       call calculate_sigma_vector_cfg_test(psi_coef_out_det)
-      ! Testing CSF->DET->CSF
+      ! ! Testing CSF->DET->CSF
       !normcfg = 0.d0
       !normdet = 0.d0
       !call convertWFfromDETtoCSF(psi_coef,psi_coef_cfg_out)
