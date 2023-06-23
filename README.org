@@ -1,1 +1,13 @@
-* Plugin repository
+Plugin repository
+====================
+
+
+cfgCI
+--------
+
+
+testCFGMEqp
+--------------
+
+* Testing singlet MEs for the CFG version
+
